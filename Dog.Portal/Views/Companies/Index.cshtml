@@ -1,0 +1,846 @@
+@model Dog.Portal.Models.CompaniesListViewModel
+@using System.Text.Json
+@{
+    Layout = "_AdminLayout";
+    ViewData["Title"] = "Companies";
+    // Force camelCase so the JS below can consistently use o.id / o.code / o.name
+    // (matches the casing of AJAX responses from Controller.Json()).
+    var jsonOpts = new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase };
+    var countriesJson   = JsonSerializer.Serialize(Model.Countries,   jsonOpts);
+    var currenciesJson  = JsonSerializer.Serialize(Model.Currencies,  jsonOpts);
+    var headOfficesJson = JsonSerializer.Serialize(
+        Model.HeadOffices.Select(h => new { h.Id, h.CompanyName, h.CompanyCode }),
+        jsonOpts);
+}
+
+<style>
+    /* ── Header ─────────────────────────────────── */
+    .pg-hdr { display:flex; align-items:flex-start; justify-content:space-between; gap:1rem; flex-wrap:wrap; margin-bottom:1.5rem; }
+    .pg-hdr h4 { font-size:1.15rem; font-weight:800; color:#0f172a; margin:0 0 .25rem; letter-spacing:-.02em; }
+    .pg-hdr p  { font-size:.845rem; color:#64748b; margin:0; }
+
+    /* Summary chips */
+    .summary-row { display:flex; align-items:center; gap:.625rem; flex-wrap:wrap; }
+    .s-chip { display:inline-flex; align-items:center; gap:.35rem; font-size:.8rem; font-weight:700; padding:.35rem .875rem; border-radius:20px; white-space:nowrap; }
+    .sc-total { background:#ede9fe; color:#6d28d9; }
+    .sc-ho    { background:#dbeafe; color:#1d4ed8; }
+    .sc-br    { background:#d1fae5; color:#065f46; }
+
+    /* New button */
+    .btn-new { display:inline-flex; align-items:center; gap:.45rem; padding:.625rem 1.25rem; background:linear-gradient(135deg,#667eea,#764ba2); color:#fff; border:none; border-radius:10px; font-size:.875rem; font-weight:700; cursor:pointer; box-shadow:0 4px 14px rgba(102,126,234,.3); transition:all .2s; text-decoration:none; }
+    .btn-new:hover { transform:translateY(-1px); box-shadow:0 6px 20px rgba(102,126,234,.4); color:#fff; }
+
+    /* Filter tabs */
+    .filter-tabs { display:flex; align-items:center; gap:.375rem; margin-bottom:1rem; flex-wrap:wrap; }
+    .ft { padding:.45rem 1rem; border-radius:8px; font-size:.82rem; font-weight:600; border:1.5px solid #e2e8f0; background:#fff; color:#64748b; cursor:pointer; text-decoration:none; transition:all .18s; }
+    .ft:hover { border-color:#cbd5e1; color:#334155; }
+    .ft.active { background:linear-gradient(135deg,#667eea,#764ba2); border-color:transparent; color:#fff; box-shadow:0 2px 8px rgba(102,126,234,.25); }
+
+    /* Data card */
+    .dc { background:#fff; border-radius:14px; border:1px solid #e9eef4; box-shadow:0 1px 4px rgba(0,0,0,.04),0 6px 20px rgba(0,0,0,.04); overflow:hidden; }
+    .dc-head { padding:1rem 1.375rem; border-bottom:1px solid #f1f5f9; background:#fafbfc; display:flex; align-items:center; justify-content:space-between; gap:1rem; flex-wrap:wrap; }
+
+    /* Search */
+    .srch-wrap { position:relative; }
+    .srch-wrap i { position:absolute; left:.875rem; top:50%; transform:translateY(-50%); color:#94a3b8; font-size:.9rem; pointer-events:none; }
+    .srch-input { width:280px; padding:.6rem .875rem .6rem 2.375rem; border:1.5px solid #e2e8f0; border-radius:9px; font-size:.845rem; color:#1e293b; background:#fff; outline:none; transition:border-color .2s,box-shadow .2s; }
+    .srch-input:focus { border-color:#667eea; box-shadow:0 0 0 3px rgba(102,126,234,.1); }
+    .srch-input::placeholder { color:#cbd5e1; }
+    .btn-srch { padding:.6rem 1rem; background:linear-gradient(135deg,#667eea,#764ba2); color:#fff; border:none; border-radius:9px; font-size:.845rem; font-weight:600; cursor:pointer; display:inline-flex; align-items:center; gap:.375rem; }
+    .btn-clr  { padding:.6rem .875rem; background:#f1f5f9; color:#64748b; border:1.5px solid #e2e8f0; border-radius:9px; font-size:.845rem; font-weight:500; text-decoration:none; display:inline-flex; align-items:center; gap:.3rem; }
+    .btn-clr:hover { background:#e2e8f0; color:#334155; }
+
+    /* Table */
+    .tbl-wrap { overflow-x:auto; }
+    .dt { width:100%; border-collapse:collapse; }
+    .dt thead th { padding:.75rem 1.125rem; font-size:.7rem; font-weight:700; color:#64748b; text-transform:uppercase; letter-spacing:.09em; background:#f8fafc; border-bottom:1px solid #f0f4f8; white-space:nowrap; }
+    .dt tbody td { padding:.875rem 1.125rem; font-size:.855rem; color:#374151; border-bottom:1px solid #f8fafc; vertical-align:middle; }
+    .dt tbody tr:last-child td { border-bottom:none; }
+    .dt tbody tr { transition:background .15s; }
+    .dt tbody tr:hover td { background:#fafbff; }
+    .rn { color:#cbd5e1; font-size:.8rem; font-weight:600; }
+
+    /* Company avatar */
+    .co-av { width:38px; height:38px; border-radius:10px; background:linear-gradient(135deg,#667eea,#764ba2); display:flex; align-items:center; justify-content:center; color:#fff; font-size:.85rem; font-weight:800; flex-shrink:0; }
+    .co-av.branch { background:linear-gradient(135deg,#0ea5e9,#2563eb); }
+    .co-name { font-weight:700; color:#1e293b; }
+    .co-code { font-size:.72rem; color:#94a3b8; font-family:'Consolas','Monaco',monospace; }
+
+    /* Type chip */
+    .tc-ho { background:#dbeafe; color:#1d4ed8; font-size:.74rem; font-weight:700; padding:.2rem .6rem; border-radius:6px; display:inline-block; }
+    .tc-br { background:#d1fae5; color:#065f46; font-size:.74rem; font-weight:700; padding:.2rem .6rem; border-radius:6px; display:inline-block; }
+
+    /* Status */
+    .s-on  { background:#d1fae5; color:#065f46; font-size:.74rem; font-weight:600; padding:.25rem .65rem; border-radius:20px; display:inline-flex; align-items:center; gap:.3rem; }
+    .s-off { background:#fee2e2; color:#991b1b; font-size:.74rem; font-weight:600; padding:.25rem .65rem; border-radius:20px; display:inline-flex; align-items:center; gap:.3rem; }
+
+    /* Count chip */
+    .cc { display:inline-flex; align-items:center; gap:.35rem; font-size:.82rem; font-weight:600; }
+
+    /* Action buttons */
+    .acts { display:flex; align-items:center; gap:.375rem; flex-wrap:nowrap; }
+    .ab { display:inline-flex; align-items:center; gap:.3rem; padding:.35rem .7rem; border-radius:7px; font-size:.78rem; font-weight:600; cursor:pointer; border:1.5px solid; transition:all .18s; text-decoration:none; background:#fff; white-space:nowrap; }
+    .ab-view   { color:#4338ca; border-color:#e0e7ff; background:#eef2ff; }
+    .ab-view:hover { background:#e0e7ff; border-color:#c7d2fe; color:#3730a3; }
+    .ab-edit   { color:#0369a1; border-color:#bae6fd; background:#f0f9ff; }
+    .ab-edit:hover { background:#e0f2fe; border-color:#7dd3fc; }
+    .ab-toggle { color:#92400e; border-color:#fde68a; background:#fffbeb; }
+    .ab-toggle:hover { background:#fef3c7; }
+    .ab-toggle.deactivate { color:#991b1b; border-color:#fecaca; background:#fef2f2; }
+    .ab-toggle.deactivate:hover { background:#fee2e2; }
+    .ab-del    { color:#991b1b; border-color:#fecaca; background:#fef2f2; }
+    .ab-del:hover { background:#fee2e2; }
+
+    /* Footer + pagination */
+    .dc-foot { padding:.9rem 1.375rem; border-top:1px solid #f1f5f9; background:#fafbfc; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:.75rem; }
+    .ri { font-size:.82rem; color:#94a3b8; }
+    .ri strong { color:#374151; }
+    .pgn { display:flex; align-items:center; gap:.25rem; }
+    .pb { display:flex; align-items:center; justify-content:center; min-width:32px; height:32px; padding:0 .5rem; border:1.5px solid #e2e8f0; border-radius:7px; font-size:.8rem; font-weight:500; color:#64748b; text-decoration:none; transition:all .18s; background:#fff; }
+    .pb:hover { background:#f8fafc; color:#334155; border-color:#cbd5e1; }
+    .pb.cur   { background:linear-gradient(135deg,#667eea,#764ba2); color:#fff; border-color:transparent; font-weight:700; }
+    .pb.off   { opacity:.35; pointer-events:none; }
+    .pb.wide  { padding:0 .875rem; }
+    .pgn-dots { padding:0 .25rem; color:#cbd5e1; font-size:.82rem; }
+
+    /* Empty state */
+    .es { text-align:center; padding:4rem 2rem; }
+    .es i { font-size:3rem; color:#e2e8f0; display:block; margin-bottom:1rem; }
+    .es h6 { font-weight:600; color:#64748b; margin:0 0 .375rem; }
+    .es p  { font-size:.845rem; color:#94a3b8; margin:0; }
+
+    .alert-err { background:#fef2f2; border:1px solid #fecaca; border-radius:10px; padding:.875rem 1.125rem; color:#dc2626; font-size:.845rem; display:flex; align-items:center; gap:.625rem; margin-bottom:1.25rem; }
+
+    /* ── Modal ───────────────────────────────────── */
+    .modal-content { border:none; border-radius:16px; box-shadow:0 20px 60px rgba(0,0,0,.18); }
+    .modal-header { padding:1.25rem 1.5rem; border-bottom:1px solid #f1f5f9; background:#fafbfc; border-radius:16px 16px 0 0; }
+    .modal-title { font-size:1rem; font-weight:800; color:#0f172a; }
+    .modal-body  { padding:1.375rem 1.5rem; }
+    .modal-footer { padding:1rem 1.5rem; border-top:1px solid #f1f5f9; background:#fafbfc; border-radius:0 0 16px 16px; }
+
+    /* Form sections inside modal */
+    .fm-section { margin-bottom:1.25rem; }
+    .fm-section-title { font-size:.75rem; font-weight:700; color:#94a3b8; text-transform:uppercase; letter-spacing:.08em; margin-bottom:.75rem; padding-bottom:.375rem; border-bottom:1px solid #f1f5f9; }
+
+    .form-label { font-size:.8rem; font-weight:600; color:#374151; margin-bottom:.4rem; }
+    .form-control, .form-select {
+        padding:.6rem .875rem; border:1.5px solid #e2e8f0; border-radius:9px;
+        font-size:.845rem; color:#1e293b; background:#fff;
+        transition:border-color .2s, box-shadow .2s;
+    }
+    .form-control:focus, .form-select:focus { border-color:#667eea; box-shadow:0 0 0 3px rgba(102,126,234,.1); outline:none; }
+
+    /* Active toggle in form */
+    .active-toggle { display:flex; align-items:center; gap:.625rem; padding:.625rem .875rem; border:1.5px solid #e2e8f0; border-radius:9px; cursor:pointer; }
+    .active-toggle input { display:none; }
+    .toggle-track { width:40px; height:22px; border-radius:11px; background:#e2e8f0; position:relative; transition:background .2s; flex-shrink:0; }
+    .toggle-track::after { content:''; position:absolute; width:16px; height:16px; border-radius:50%; background:#fff; top:3px; left:3px; transition:transform .2s; box-shadow:0 1px 3px rgba(0,0,0,.2); }
+    .active-toggle input:checked + .toggle-track { background:#667eea; }
+    .active-toggle input:checked + .toggle-track::after { transform:translateX(18px); }
+    .toggle-lbl { font-size:.845rem; font-weight:600; color:#374151; }
+
+    /* Modal save button */
+    .btn-modal-save { padding:.7rem 1.5rem; background:linear-gradient(135deg,#667eea,#764ba2); color:#fff; border:none; border-radius:9px; font-size:.875rem; font-weight:700; cursor:pointer; display:inline-flex; align-items:center; gap:.45rem; transition:all .2s; box-shadow:0 4px 12px rgba(102,126,234,.3); }
+    .btn-modal-save:hover:not(:disabled) { transform:translateY(-1px); box-shadow:0 6px 18px rgba(102,126,234,.4); }
+    .btn-modal-save:disabled { opacity:.65; cursor:not-allowed; }
+    .btn-modal-cancel { padding:.7rem 1.25rem; background:#f1f5f9; color:#64748b; border:1.5px solid #e2e8f0; border-radius:9px; font-size:.875rem; font-weight:600; cursor:pointer; }
+    .btn-modal-cancel:hover { background:#e2e8f0; }
+
+    /* Toast */
+    .toast-wrap { position:fixed; bottom:1.75rem; right:1.75rem; z-index:9999; display:flex; flex-direction:column; gap:.5rem; pointer-events:none; }
+    .toast-msg { display:flex; align-items:center; gap:.625rem; padding:.875rem 1.25rem; border-radius:12px; font-size:.855rem; font-weight:600; box-shadow:0 8px 32px rgba(0,0,0,.15); pointer-events:all; transform:translateX(120%); transition:transform .3s cubic-bezier(.4,0,.2,1); max-width:320px; }
+    .toast-msg.show { transform:translateX(0); }
+    .toast-success { background:#065f46; color:#fff; }
+    .toast-error   { background:#991b1b; color:#fff; }
+    .spin { width:14px; height:14px; border:2px solid rgba(255,255,255,.3); border-top-color:#fff; border-radius:50%; animation:sp .65s linear infinite; flex-shrink:0; }
+    @@keyframes sp { to { transform:rotate(360deg); } }
+
+    @@media (max-width:576px) { .srch-input { width:100%; } .dc-head { flex-direction:column; align-items:stretch; } .acts { flex-wrap:wrap; } }
+</style>
+
+<div class="toast-wrap" id="toastWrap"></div>
+
+<!-- ── Page header ─────────────────────────────────────────── -->
+<div class="pg-hdr">
+    <div>
+        <h4><i class="bi bi-building-fill me-2" style="color:#667eea;"></i>Companies</h4>
+        <p>Manage head offices, branches, and company information.</p>
+    </div>
+    <div class="d-flex align-items-center gap-2 flex-wrap">
+        <div class="summary-row">
+            <span class="s-chip sc-total"><i class="bi bi-building"></i> @(Model.HeadOfficeCount + Model.BranchCount) total</span>
+            <span class="s-chip sc-ho"><i class="bi bi-building-fill"></i> @Model.HeadOfficeCount HQ</span>
+            <span class="s-chip sc-br"><i class="bi bi-diagram-2-fill"></i> @Model.BranchCount branches</span>
+        </div>
+        <button class="btn-new" onclick="openCreate()">
+            <i class="bi bi-plus-lg"></i> New Company
+        </button>
+    </div>
+</div>
+
+@if (!string.IsNullOrEmpty(ViewBag.FetchError as string))
+{
+    <div class="alert-err"><i class="bi bi-exclamation-circle-fill"></i>@ViewBag.FetchError</div>
+}
+
+<div style="font-size:.82rem;color:#64748b;margin-bottom:1rem;">
+    <i class="bi bi-info-circle me-1" style="color:#94a3b8;"></i>
+    Only head offices are listed here. Click <strong style="color:#374151;">View</strong> on any row to see its branches.
+</div>
+
+<!-- ── Data card ───────────────────────────────────────────── -->
+<div class="dc">
+    <div class="dc-head">
+        <form method="get" class="d-flex align-items-center gap-2 flex-wrap">
+            <input type="hidden" name="page" value="1" />
+            <div class="srch-wrap">
+                <i class="bi bi-search"></i>
+                <input class="srch-input" type="text" name="search" value="@Model.SearchTerm" placeholder="Search companies…" autocomplete="off" />
+            </div>
+            <button type="submit" class="btn-srch"><i class="bi bi-search"></i> Search</button>
+            @if (!string.IsNullOrEmpty(Model.SearchTerm))
+            {
+                <a href="/Companies" class="btn-clr"><i class="bi bi-x-circle"></i> Clear</a>
+            }
+        </form>
+    </div>
+
+    <div class="tbl-wrap">
+        <table class="dt">
+            <thead>
+                <tr>
+                    <th style="width:48px;">#</th>
+                    <th>Company</th>
+                    <th class="d-none d-md-table-cell">Location</th>
+                    <th style="width:100px;" class="d-none d-lg-table-cell">Branches</th>
+                    <th style="width:90px;" class="d-none d-lg-table-cell">Currency</th>
+                    <th style="width:90px;">Status</th>
+                    <th style="width:200px;">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (Model.Companies.Any())
+                {
+                    @for (int i = 0; i < Model.Companies.Count; i++)
+                    {
+                        var c = Model.Companies[i];
+                        var av = c.CompanyName?.Length > 0 ? c.CompanyName[0].ToString().ToUpper() : "C";
+                        <tr>
+                            <td><span class="rn">@(Model.From + i)</span></td>
+                            <td>
+                                <div class="d-flex align-items-center gap-2">
+                                    <div class="co-av">@av</div>
+                                    <div>
+                                        <div class="co-name">@c.CompanyName</div>
+                                        <div class="co-code">@c.CompanyCode</div>
+                                    </div>
+                                </div>
+                            </td>
+                            <td class="d-none d-md-table-cell">
+                                <div style="font-size:.82rem;color:#374151;">
+                                    <i class="bi bi-geo-alt" style="font-size:.7rem;color:#94a3b8;"></i>
+                                    @(c.Location ?? c.CityName ?? "—")
+                                </div>
+                                @if (!string.IsNullOrEmpty(c.CountryName))
+                                {
+                                    <div style="font-size:.74rem;color:#94a3b8;margin-top:.1rem;">@c.CountryName</div>
+                                }
+                            </td>
+                            <td class="d-none d-lg-table-cell">
+                                <span class="cc"><i class="bi bi-diagram-2-fill" style="color:#667eea;font-size:.8rem;"></i> @c.BranchCount</span>
+                                <span style="font-size:.74rem;color:#94a3b8;">
+                                    @(c.BranchCount == 1 ? "branch" : "branches")
+                                </span>
+                            </td>
+                            <td class="d-none d-lg-table-cell">
+                                @if (!string.IsNullOrEmpty(c.CurrencyCode))
+                                {
+                                    <span style="background:#f1f5f9;border:1px solid #e2e8f0;color:#475569;font-size:.75rem;font-weight:700;padding:.2rem .55rem;border-radius:6px;font-family:monospace;">@c.CurrencyCode</span>
+                                }
+                            </td>
+                            <td>
+                                @if (c.IsActive)
+                                { <span class="s-on"><i class="bi bi-circle-fill" style="font-size:.45rem;"></i>Active</span> }
+                                else
+                                { <span class="s-off"><i class="bi bi-circle-fill" style="font-size:.45rem;"></i>Inactive</span> }
+                            </td>
+                            <td>
+                                <div class="acts">
+                                    <a href="/Companies/Details/@c.Id" class="ab ab-view" title="View Details & Branches">
+                                        <i class="bi bi-eye"></i> View
+                                    </a>
+                                    <button class="ab ab-edit" onclick="openEdit(@c.Id)" title="Edit">
+                                        <i class="bi bi-pencil"></i>
+                                    </button>
+                                    <button class="ab ab-toggle @(c.IsActive ? "deactivate" : "")"
+                                            onclick="toggleStatus(@c.Id, this)"
+                                            title="@(c.IsActive ? "Deactivate" : "Activate")">
+                                        <i class="bi @(c.IsActive ? "bi-pause-circle" : "bi-play-circle")"></i>
+                                    </button>
+                                    <button class="ab ab-del" onclick="deleteCompany(@c.Id, '@(c.CompanyName?.Replace("'","\\'"))')" title="Delete">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                }
+                else
+                {
+                    <tr><td colspan="7">
+                        <div class="es">
+                            <i class="bi bi-building"></i>
+                            <h6>@(string.IsNullOrEmpty(Model.SearchTerm) ? "No head offices yet" : "No companies match your search")</h6>
+                            <p>@(string.IsNullOrEmpty(Model.SearchTerm) ? "Click \"New Company\" to add the first head office." : "Try a different keyword or clear the filter.")</p>
+                        </div>
+                    </td></tr>
+                }
+            </tbody>
+        </table>
+    </div>
+
+    @if (Model.TotalCount > 0)
+    {
+        <div class="dc-foot">
+            <div class="ri">Showing <strong>@Model.From</strong>–<strong>@Model.To</strong> of <strong>@Model.TotalCount</strong></div>
+            @if (Model.TotalPages > 1)
+            {
+                <nav class="pgn">
+                    <a class="pb wide @(Model.Page<=1?"off":"")" href="?search=@Model.SearchTerm&page=@(Model.Page-1)">
+                        <i class="bi bi-chevron-left" style="font-size:.7rem;"></i> Prev
+                    </a>
+                    @{
+                        int tp=Model.TotalPages,cp=Model.Page;
+                        var pages=new List<int?>();
+                        if(tp<=7){for(int p=1;p<=tp;p++)pages.Add(p);}
+                        else{pages.Add(1);if(cp>3)pages.Add(null);for(int p=Math.Max(2,cp-1);p<=Math.Min(tp-1,cp+1);p++)pages.Add(p);if(cp<tp-2)pages.Add(null);pages.Add(tp);}
+                    }
+                    @foreach(var pn in pages){
+                        if(pn==null){<span class="pgn-dots">…</span>}
+                        else{<a class="pb @(pn==Model.Page?"cur":"")" href="?search=@Model.SearchTerm&page=@pn">@pn</a>}
+                    }
+                    <a class="pb wide @(Model.Page>=Model.TotalPages?"off":"")" href="?search=@Model.SearchTerm&page=@(Model.Page+1)">
+                        Next <i class="bi bi-chevron-right" style="font-size:.7rem;"></i>
+                    </a>
+                </nav>
+            }
+        </div>
+    }
+</div>
+
+<!-- ══ CREATE / EDIT MODAL ════════════════════════════════════ -->
+<div class="modal fade" id="companyModal" tabindex="-1" aria-labelledby="companyModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div>
+                    <h5 class="modal-title" id="companyModalLabel">New Company</h5>
+                    <div style="font-size:.78rem;color:#94a3b8;margin-top:.15rem;" id="modalSubtitle">Fill in company details</div>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="fm-id" value="0" />
+
+                <!-- Basic Info -->
+                <div class="fm-section">
+                    <div class="fm-section-title"><i class="bi bi-info-circle me-1"></i>Basic Information</div>
+                    <div class="row g-3">
+                        <div class="col-md-7">
+                            <label class="form-label">Company Name <span style="color:#ef4444;">*</span></label>
+                            <input type="text" id="fm-name" class="form-control" placeholder="e.g. Dog Section Ltd" />
+                        </div>
+                        <div class="col-md-5">
+                            <label class="form-label">Company Code <span style="color:#ef4444;">*</span></label>
+                            <input type="text" id="fm-code" class="form-control" placeholder="e.g. DS001" style="text-transform:uppercase;" />
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label">Branch of (leave empty for Head Office)</label>
+                            <select id="fm-parent" class="form-select">
+                                <option value="">— Head Office (no parent) —</option>
+                            </select>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label">Status</label>
+                            <label class="active-toggle">
+                                <input type="checkbox" id="fm-active" checked />
+                                <span class="toggle-track"></span>
+                                <span class="toggle-lbl" id="activeLabel">Active</span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Contact -->
+                <div class="fm-section">
+                    <div class="fm-section-title"><i class="bi bi-envelope me-1"></i>Contact Details</div>
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Email Address</label>
+                            <input type="email" id="fm-email" class="form-control" placeholder="info@company.com" />
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Phone Number</label>
+                            <input type="text" id="fm-phone" class="form-control" placeholder="+263 77 123 4567" />
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label">Website</label>
+                            <input type="text" id="fm-website" class="form-control" placeholder="www.company.com" />
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Location -->
+                <div class="fm-section">
+                    <div class="fm-section-title"><i class="bi bi-geo-alt me-1"></i>Location</div>
+                    <div class="row g-3">
+                        <div class="col-md-4">
+                            <label class="form-label">Country <span style="color:#ef4444;">*</span></label>
+                            <select id="fm-country" class="form-select" onchange="loadProvinces(parseInt(this.value) || 0)">
+                                <option value="">Select country…</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Province <span style="color:#ef4444;">*</span></label>
+                            <select id="fm-province" class="form-select" onchange="loadCities(parseInt(this.value) || 0)">
+                                <option value="">Select province…</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">City <span style="color:#ef4444;">*</span></label>
+                            <select id="fm-city" class="form-select">
+                                <option value="">Select city…</option>
+                            </select>
+                        </div>
+                        <div class="col-md-8">
+                            <label class="form-label">Street Address</label>
+                            <input type="text" id="fm-address" class="form-control" placeholder="123 Main Street" />
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Location Display</label>
+                            <input type="text" id="fm-location" class="form-control" placeholder="Harare CBD" />
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Financial -->
+                <div class="fm-section">
+                    <div class="fm-section-title"><i class="bi bi-currency-exchange me-1"></i>Financial</div>
+                    <div class="row g-3">
+                        <div class="col-md-5">
+                            <label class="form-label">Default Currency <span style="color:#ef4444;">*</span></label>
+                            <select id="fm-currency" class="form-select">
+                                <option value="">Select currency…</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Admin user (only for new head offices) -->
+                <div class="fm-section" id="fm-admin-section">
+                    <div class="fm-section-title">
+                        <i class="bi bi-person-gear me-1"></i>Admin User
+                        <span style="font-weight:400;color:#94a3b8;margin-left:.35rem;">First user of this company — manages staff &amp; branches.</span>
+                    </div>
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label">First Name <span style="color:#ef4444;">*</span></label>
+                            <input type="text" id="fm-adm-first" class="form-control" placeholder="John" />
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Last Name <span style="color:#ef4444;">*</span></label>
+                            <input type="text" id="fm-adm-last" class="form-control" placeholder="Doe" />
+                        </div>
+                        <div class="col-md-7">
+                            <label class="form-label">Admin Email <span style="color:#ef4444;">*</span></label>
+                            <input type="email" id="fm-adm-email" class="form-control" placeholder="admin@company.com" />
+                        </div>
+                        <div class="col-md-5">
+                            <label class="form-label">Admin Phone</label>
+                            <input type="text" id="fm-adm-phone" class="form-control" placeholder="+263…" />
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label">Initial Password <span style="color:#ef4444;">*</span></label>
+                            <input type="text" id="fm-adm-pw" class="form-control" placeholder="Minimum 8 characters" autocomplete="new-password" />
+                            <div style="font-size:.74rem;color:#94a3b8;margin-top:.25rem;">
+                                Share this with the Admin; they should change it on first login.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="fm-error" class="alert-err" style="display:none;">
+                    <i class="bi bi-exclamation-circle-fill"></i><span id="fm-error-msg"></span>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn-modal-cancel" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn-modal-save" id="modalSaveBtn" onclick="saveCompany()">
+                    <i class="bi bi-check2-circle"></i> Save Company
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Delete confirm modal -->
+<div class="modal fade" id="deleteModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered" style="max-width:420px;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" style="color:#991b1b;"><i class="bi bi-exclamation-triangle-fill me-2"></i>Delete Company</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p style="font-size:.9rem;color:#374151;margin:0;">
+                    Are you sure you want to delete <strong id="deleteCompanyName"></strong>?
+                    This action cannot be undone.
+                </p>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-modal-cancel" data-bs-dismiss="modal">Cancel</button>
+                <button class="btn-modal-save" id="confirmDeleteBtn" style="background:linear-gradient(135deg,#ef4444,#dc2626);box-shadow:0 4px 12px rgba(220,38,38,.3);" onclick="confirmDelete()">
+                    <i class="bi bi-trash"></i> Delete
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // ── Preloaded data ─────────────────────────────────────────
+    const COUNTRIES  = @Html.Raw(countriesJson);
+    const CURRENCIES = @Html.Raw(currenciesJson);
+    const HEAD_OFFICES = @Html.Raw(headOfficesJson);
+
+    let deleteTargetId = 0;
+
+    // Helper — reads a property by either camelCase or PascalCase
+    const pick = (o, a, b) => (o?.[a] ?? o?.[b]);
+
+    // ── Init dropdowns ─────────────────────────────────────────
+    document.addEventListener('DOMContentLoaded', () => {
+        console.debug('[companies] COUNTRIES', COUNTRIES);
+        console.debug('[companies] CURRENCIES', CURRENCIES);
+        console.debug('[companies] HEAD_OFFICES', HEAD_OFFICES);
+
+        populateSelect('fm-country',  COUNTRIES,   o => ({
+            val: pick(o,'id','Id'),
+            txt: `${pick(o,'code','Code')} — ${pick(o,'name','Name')}`
+        }));
+        populateSelect('fm-currency', CURRENCIES,  o => ({
+            val: pick(o,'id','Id'),
+            txt: `${pick(o,'code','Code')} — ${pick(o,'name','Name')}`
+        }));
+        populateSelect('fm-parent',   HEAD_OFFICES, o => ({
+            val: pick(o,'id','Id'),
+            txt: `${pick(o,'companyName','CompanyName')} (${pick(o,'companyCode','CompanyCode')})`
+        }), '— Head Office (no parent) —');
+
+        document.getElementById('fm-active')?.addEventListener('change', e => {
+            document.getElementById('activeLabel').textContent = e.target.checked ? 'Active' : 'Inactive';
+        });
+    });
+
+    function populateSelect(id, data, mapper, emptyLabel) {
+        const sel = document.getElementById(id);
+        if (!sel) return;
+        const first = sel.options[0];
+        sel.innerHTML = '';
+        if (emptyLabel !== undefined) {
+            const opt = document.createElement('option');
+            opt.value = ''; opt.textContent = emptyLabel;
+            sel.appendChild(opt);
+        } else if (first) {
+            sel.appendChild(first);
+        }
+        data.forEach(o => {
+            const m = mapper(o);
+            if (m.val <= 0) return; // Skip invalid IDs
+            const opt = document.createElement('option');
+            opt.value = m.val; opt.textContent = m.txt;
+            sel.appendChild(opt);
+        });
+    }
+
+    // ── Cascading dropdowns ───────────────────
+    async function loadProvinces(countryId) {
+        console.log('Loading provinces for countryId:', countryId);
+        if (countryId <= 0) return;
+        const pSel = document.getElementById('fm-province');
+        const cSel = document.getElementById('fm-city');
+        pSel.innerHTML = '<option value="">Loading…</option>';
+        cSel.innerHTML = '<option value="">Select city…</option>';
+        try {
+            // const res = await fetch(`/Companies/Provinces/${countryId}`);
+            const res = await fetch(`/Companies/Provinces?countryId=${countryId}`);
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            const provinces = await res.json();
+            console.log('Provinces loaded:', provinces);
+            pSel.innerHTML = provinces.length ? '<option value="">Select province…</option>' : '<option value="">No provinces</option>';
+            provinces.forEach(p => {
+                const opt = document.createElement('option');
+                opt.value = p.id;
+                opt.textContent = p.name;
+                pSel.appendChild(opt);
+            });
+        } catch (err) {
+            pSel.innerHTML = '<option value="">Error loading provinces</option>';
+            console.error('Error loading provinces:', err);
+        }
+    }
+
+    async function loadCities(provinceId) {
+        console.log('Loading cities for provinceId:', provinceId);
+        if (provinceId <= 0) return;
+        const cSel = document.getElementById('fm-city');
+        cSel.innerHTML = '<option value="">Loading…</option>';
+        try {
+            // const res = await fetch(`/Companies/Cities/${provinceId}`);
+             // const res = await fetch(`/Companies/Provinces?countryId=${countryId}`);
+            const res = await fetch(`/Companies/Cities?provinceId=${provinceId}`);
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            const cities = await res.json();
+            console.log('Cities loaded:', cities);
+            cSel.innerHTML = cities.length ? '<option value="">Select city…</option>' : '<option value="">No cities</option>';
+            cities.forEach(c => {
+                const opt = document.createElement('option');
+                opt.value = c.id;
+                opt.textContent = c.name;
+                cSel.appendChild(opt);
+            });
+        } catch (err) {
+            cSel.innerHTML = '<option value="">Error loading cities</option>';
+            console.error('Error loading cities:', err);
+        }
+    }
+
+    // ── Open create modal ──────────────────────────────────────
+    function openCreate() {
+        resetForm();
+        document.getElementById('companyModalLabel').textContent = 'New Company';
+        document.getElementById('modalSubtitle').textContent = 'Fill in the company details below';
+        document.getElementById('fm-active').checked = true;
+        document.getElementById('activeLabel').textContent = 'Active';
+        // Show admin section — it's a new HQ by default (no parent)
+        updateAdminVisibility();
+         // 🔥 FIX: trigger provinces if a country is preselected
+        const countryVal = parseInt(document.getElementById('fm-country').value) || 0;
+        if (countryVal > 0) {
+            loadProvinces(countryVal);
+        }
+        new bootstrap.Modal(document.getElementById('companyModal')).show();
+    }
+
+    // Show/hide Admin section based on whether creating HQ (no parent) vs Branch.
+    // Also hide it entirely in edit mode.
+    function updateAdminVisibility() {
+        const id        = parseInt(document.getElementById('fm-id').value) || 0;
+        const parentVal = document.getElementById('fm-parent').value;
+        const section   = document.getElementById('fm-admin-section');
+        if (!section) return;
+        // Edit mode → never show; Branch → never show; New HQ → show.
+        section.style.display = (id === 0 && !parentVal) ? 'block' : 'none';
+    }
+
+    // React when parent (branch-of) changes
+    document.getElementById('fm-parent')?.addEventListener('change', updateAdminVisibility);
+
+    // ── Open edit modal ────────────────────────────────────────
+    async function openEdit(id) {
+        resetForm();
+        document.getElementById('companyModalLabel').textContent = 'Edit Company';
+        document.getElementById('modalSubtitle').textContent = 'Update company information';
+        document.getElementById('fm-id').value = id;
+
+        try {
+            const res  = await fetch(`/api/companies/${id}`, { headers: { 'Authorization': '' } });
+            // Fetch from portal proxy instead
+            const resp = await fetch(`/Companies/GetCompany/${id}`);
+            const data = await resp.json();
+            if (!data.success) { showToast(data.message || 'Failed to load company.', 'error'); return; }
+            const c = data.data;
+
+            // Support either camelCase or PascalCase from the proxy
+            const get = (k) => c[k] ?? c[k.charAt(0).toUpperCase() + k.slice(1)];
+
+            document.getElementById('fm-name').value    = get('companyName')    || '';
+            document.getElementById('fm-code').value    = get('companyCode')    || '';
+            document.getElementById('fm-email').value   = get('emailAddress')   || '';
+            document.getElementById('fm-phone').value   = get('phoneNumber')    || '';
+            document.getElementById('fm-website').value = get('website')        || '';
+            document.getElementById('fm-address').value = get('address')        || '';
+            document.getElementById('fm-location').value= get('location')       || '';
+            document.getElementById('fm-active').checked = !!get('isActive');
+            document.getElementById('activeLabel').textContent = get('isActive') ? 'Active' : 'Inactive';
+            document.getElementById('fm-parent').value  = get('parentCompanyId') || '';
+            document.getElementById('fm-currency').value= get('defaultCurrencyId') || '';
+
+            const countryId  = get('countryId');
+            const provinceId = get('provinceId');
+            const cityId     = get('cityId');
+            document.getElementById('fm-country').value = countryId || '';
+            if (countryId) {
+                await loadProvinces(countryId, provinceId);
+            }
+            if (provinceId) {
+                await loadCities(provinceId, cityId);
+            }
+
+            updateAdminVisibility();  // hide admin section in edit mode
+            new bootstrap.Modal(document.getElementById('companyModal')).show();
+        } catch (e) {
+            showToast('Failed to load company data.', 'error');
+        }
+    }
+
+    function resetForm() {
+        ['fm-id','fm-name','fm-code','fm-email','fm-phone','fm-website','fm-address','fm-location',
+         'fm-adm-first','fm-adm-last','fm-adm-email','fm-adm-phone','fm-adm-pw'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.value = id === 'fm-id' ? '0' : '';
+        });
+        document.getElementById('fm-country').value  = '';
+        document.getElementById('fm-province').innerHTML = '<option value="">Select province…</option>';
+        document.getElementById('fm-city').innerHTML     = '<option value="">Select city…</option>';
+        document.getElementById('fm-currency').value = '';
+        document.getElementById('fm-parent').value   = '';
+        document.getElementById('fm-error').style.display = 'none';
+    }
+
+    // ── Save (create or update) ────────────────────────────────
+    async function saveCompany() {
+        const id = parseInt(document.getElementById('fm-id').value);
+        const isNewHQ = id === 0 && !document.getElementById('fm-parent').value;
+
+        const payload = {
+            id,
+            companyName:       document.getElementById('fm-name').value.trim(),
+            companyCode:       document.getElementById('fm-code').value.trim().toUpperCase(),
+            emailAddress:      document.getElementById('fm-email').value.trim() || null,
+            phoneNumber:       document.getElementById('fm-phone').value.trim() || null,
+            website:           document.getElementById('fm-website').value.trim() || null,
+            address:           document.getElementById('fm-address').value.trim() || null,
+            location:          document.getElementById('fm-location').value.trim() || null,
+            countryId:         parseInt(document.getElementById('fm-country').value)  || 0,
+            provinceId:        parseInt(document.getElementById('fm-province').value) || 0,
+            cityId:            parseInt(document.getElementById('fm-city').value)     || 0,
+            defaultCurrencyId: parseInt(document.getElementById('fm-currency').value) || 0,
+            parentCompanyId:   parseInt(document.getElementById('fm-parent').value)  || null,
+            isActive:          document.getElementById('fm-active').checked,
+
+            // Admin fields — only for new HQ
+            adminFirstName:    isNewHQ ? (document.getElementById('fm-adm-first').value.trim() || null) : null,
+            adminLastName:     isNewHQ ? (document.getElementById('fm-adm-last').value.trim()  || null) : null,
+            adminEmail:        isNewHQ ? (document.getElementById('fm-adm-email').value.trim() || null) : null,
+            adminPhone:        isNewHQ ? (document.getElementById('fm-adm-phone').value.trim() || null) : null,
+            adminPassword:     isNewHQ ? (document.getElementById('fm-adm-pw').value           || null) : null
+        };
+
+        if (!payload.companyName || !payload.companyCode) {
+            showFieldError('Company Name and Code are required.');
+            return;
+        }
+        if (!payload.countryId || !payload.provinceId || !payload.cityId || !payload.defaultCurrencyId) {
+            showFieldError('Please select Country, Province, City, and Currency.');
+            return;
+        }
+        // Admin validation — required for new HQs
+        if (isNewHQ) {
+            if (!payload.adminFirstName || !payload.adminLastName) {
+                showFieldError("Admin's first and last name are required.");
+                return;
+            }
+            if (!payload.adminEmail || !/^[^\s@@]+@@[^\s@@]+\.[^\s@@]+$/.test(payload.adminEmail)) {
+                showFieldError('Please enter a valid Admin email.');
+                return;
+            }
+            if (!payload.adminPassword || payload.adminPassword.length < 8) {
+                showFieldError('Admin password must be at least 8 characters.');
+                return;
+            }
+        }
+
+        const btn = document.getElementById('modalSaveBtn');
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spin"></span> Saving…';
+
+        try {
+            const url  = id > 0 ? '/Companies/Update' : '/Companies/Create';
+            const res  = await fetch(url, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload) });
+            const data = await res.json();
+
+            if (data.success) {
+                bootstrap.Modal.getInstance(document.getElementById('companyModal'))?.hide();
+                // Partial success (company ok, admin failed) — show warning instead of success
+                showToast(data.message || 'Company saved!', data.partial ? 'error' : 'success');
+                setTimeout(() => location.reload(), 1200);
+            } else {
+                showFieldError(data.message || 'Failed to save company.');
+            }
+        } catch {
+            showFieldError('Network error. Please try again.');
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="bi bi-check2-circle"></i> Save Company';
+        }
+    }
+
+    function showFieldError(msg) {
+        const el = document.getElementById('fm-error');
+        document.getElementById('fm-error-msg').textContent = msg;
+        el.style.display = 'flex';
+    }
+
+    // ── Toggle status ──────────────────────────────────────────
+    async function toggleStatus(id, btn) {
+        btn.disabled = true;
+        try {
+            const res  = await fetch(`/Companies/ToggleStatus/${id}`, { method:'POST', headers:{'Content-Type':'application/json'}, body:'{}' });
+            const data = await res.json();
+            if (data.success) {
+                showToast(data.message || 'Status updated.', 'success');
+                setTimeout(() => location.reload(), 600);
+            } else {
+                showToast(data.message || 'Failed.', 'error');
+            }
+        } catch { showToast('Network error.', 'error'); }
+        finally { btn.disabled = false; }
+    }
+
+    // ── Delete ─────────────────────────────────────────────────
+    function deleteCompany(id, name) {
+        deleteTargetId = id;
+        document.getElementById('deleteCompanyName').textContent = name;
+        new bootstrap.Modal(document.getElementById('deleteModal')).show();
+    }
+
+    async function confirmDelete() {
+        const btn = document.getElementById('confirmDeleteBtn');
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spin"></span> Deleting…';
+        try {
+            const res  = await fetch(`/Companies/Delete/${deleteTargetId}`, { method:'POST', headers:{'Content-Type':'application/json'}, body:'{}' });
+            const data = await res.json();
+            bootstrap.Modal.getInstance(document.getElementById('deleteModal'))?.hide();
+            if (data.success) {
+                showToast(data.message || 'Company deleted.', 'success');
+                setTimeout(() => location.reload(), 700);
+            } else {
+                showToast(data.message || 'Delete failed.', 'error');
+            }
+        } catch { showToast('Network error.', 'error'); }
+        finally { btn.disabled = false; btn.innerHTML = '<i class="bi bi-trash"></i> Delete'; }
+    }
+
+    // ── Toast ──────────────────────────────────────────────────
+    function showToast(msg, type) {
+        const wrap = document.getElementById('toastWrap');
+        const el   = document.createElement('div');
+        el.className = `toast-msg toast-${type}`;
+        el.innerHTML = `<i class="bi ${type==='success'?'bi-check-circle-fill':'bi-exclamation-circle-fill'}"></i>${msg}`;
+        wrap.appendChild(el);
+        requestAnimationFrame(() => el.classList.add('show'));
+        setTimeout(() => { el.classList.remove('show'); setTimeout(()=>el.remove(),350); }, 3500);
+    }
+</script>

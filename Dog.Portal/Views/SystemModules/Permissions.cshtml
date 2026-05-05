@@ -1,0 +1,596 @@
+@model Dog.Portal.Models.SubmodulePermissionsViewModel
+@{
+    Layout = "_AdminLayout";
+    ViewData["Title"] = $"Permissions — {Model.Submodule.Name}";
+
+    // Derive a colour for each permission action type
+    static string ActionColor(string name)
+    {
+        var n = name.ToLowerInvariant();
+        if (n.EndsWith(".view")   || n.EndsWith(".read"))   return "blue";
+        if (n.EndsWith(".create") || n.EndsWith(".add"))    return "green";
+        if (n.EndsWith(".edit")   || n.EndsWith(".update")) return "amber";
+        if (n.EndsWith(".delete") || n.EndsWith(".remove")) return "red";
+        if (n.EndsWith(".export") || n.EndsWith(".print"))  return "teal";
+        return "purple";
+    }
+}
+
+<style>
+    /* Breadcrumb */
+    .bcrumb { display: flex; align-items: center; gap: 0.375rem; font-size: 0.8rem; color: #94a3b8; margin-bottom: 1.25rem; flex-wrap: wrap; }
+    .bcrumb a { color: #667eea; text-decoration: none; font-weight: 500; }
+    .bcrumb a:hover { color: #4f46e5; }
+    .bcrumb .sep { color: #e2e8f0; }
+    .bcrumb .cur { color: #374151; font-weight: 600; }
+
+    /* Sub info card */
+    .sub-hero {
+        background: #fff; border-radius: 14px;
+        border: 1px solid #e9eef4;
+        box-shadow: 0 1px 4px rgba(0,0,0,0.04), 0 6px 20px rgba(0,0,0,0.04);
+        padding: 1.375rem 1.75rem; margin-bottom: 1.5rem;
+        display: flex; align-items: center; gap: 1.25rem; flex-wrap: wrap;
+    }
+
+    .sub-hero-icon {
+        width: 52px; height: 52px; border-radius: 12px;
+        background: linear-gradient(135deg, #0ea5e9 0%, #2563eb 100%);
+        display: flex; align-items: center; justify-content: center;
+        font-size: 1.4rem; color: #fff; flex-shrink: 0;
+        box-shadow: 0 4px 14px rgba(14,165,233,0.3);
+    }
+
+    .sub-hero-body { flex: 1; min-width: 0; }
+    .sub-hero-body h5 { font-size: 1rem; font-weight: 700; color: #0f172a; margin: 0 0 0.25rem; }
+    .sub-hero-meta { display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; }
+    .sm-item { display: flex; align-items: center; gap: 0.35rem; font-size: 0.8rem; color: #64748b; }
+    .sm-item i { color: #94a3b8; }
+
+    .ctag {
+        display: inline-block; background: #f1f5f9; border: 1px solid #e2e8f0;
+        color: #475569; font-size: 0.76rem;
+        font-family: 'Consolas','Monaco',monospace;
+        padding: 0.2rem 0.5rem; border-radius: 5px;
+    }
+
+    .rtag {
+        display: inline-flex; align-items: center; gap: 0.3rem;
+        background: #f0fdf4; border: 1px solid #bbf7d0;
+        color: #166534; font-size: 0.76rem;
+        font-family: 'Consolas','Monaco',monospace;
+        padding: 0.2rem 0.5rem; border-radius: 5px;
+    }
+
+    /* Action colour helpers */
+    .perm-chip {
+        display: inline-flex; align-items: center; gap: 0.3rem;
+        font-size: 0.73rem; font-weight: 700;
+        padding: 0.25rem 0.65rem; border-radius: 20px;
+    }
+    .perm-chip.blue   { background:#dbeafe; color:#1d4ed8; }
+    .perm-chip.green  { background:#d1fae5; color:#065f46; }
+    .perm-chip.amber  { background:#fef3c7; color:#92400e; }
+    .perm-chip.red    { background:#fee2e2; color:#991b1b; }
+    .perm-chip.teal   { background:#ccfbf1; color:#115e59; }
+    .perm-chip.purple { background:#ede9fe; color:#6d28d9; }
+
+    /* Data card */
+    .dc { background: #fff; border-radius: 14px; border: 1px solid #e9eef4; box-shadow: 0 1px 4px rgba(0,0,0,0.04), 0 6px 20px rgba(0,0,0,0.04); overflow: hidden; }
+
+    .dc-head {
+        padding: 1rem 1.375rem; border-bottom: 1px solid #f1f5f9; background: #fafbfc;
+        display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap;
+    }
+
+    .dc-title { font-size: 0.9rem; font-weight: 700; color: #1e293b; display: flex; align-items: center; gap: 0.5rem; }
+    .dc-title i { color: #15803d; }
+
+    .cc-lrg {
+        display: inline-flex; align-items: center; gap: 0.375rem;
+        background: #d1fae5; color: #065f46;
+        font-size: 0.8rem; font-weight: 700;
+        padding: 0.3rem 0.75rem; border-radius: 20px;
+    }
+
+    /* Search */
+    .srch-wrap { position: relative; }
+    .srch-wrap i { position: absolute; left: 0.875rem; top: 50%; transform: translateY(-50%); color: #94a3b8; font-size: 0.9rem; pointer-events: none; }
+    .srch-input {
+        width: 260px; padding: 0.58rem 0.875rem 0.58rem 2.375rem;
+        border: 1.5px solid #e2e8f0; border-radius: 9px;
+        font-size: 0.845rem; color: #1e293b; background: #fff;
+        outline: none; transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    .srch-input:focus { border-color: #667eea; box-shadow: 0 0 0 3px rgba(102,126,234,0.1); }
+    .srch-input::placeholder { color: #cbd5e1; }
+    .btn-srch {
+        padding: 0.58rem 1rem; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: #fff; border: none; border-radius: 9px; font-size: 0.845rem;
+        font-weight: 600; cursor: pointer; transition: opacity 0.2s;
+        display: inline-flex; align-items: center; gap: 0.375rem;
+    }
+    .btn-srch:hover { opacity: 0.9; }
+    .btn-clr {
+        padding: 0.58rem 0.875rem; background: #f1f5f9; color: #64748b;
+        border: 1.5px solid #e2e8f0; border-radius: 9px; font-size: 0.845rem;
+        font-weight: 500; cursor: pointer; text-decoration: none;
+        display: inline-flex; align-items: center; gap: 0.3rem; transition: all 0.18s;
+    }
+    .btn-clr:hover { background: #e2e8f0; color: #334155; }
+
+    /* Table */
+    .tbl-wrap { overflow-x: auto; }
+    .dt { width: 100%; border-collapse: collapse; }
+    .dt thead th {
+        padding: 0.75rem 1.125rem; font-size: 0.7rem; font-weight: 700;
+        color: #64748b; text-transform: uppercase; letter-spacing: 0.09em;
+        background: #f8fafc; border-bottom: 1px solid #f0f4f8; white-space: nowrap;
+    }
+    .dt tbody td {
+        padding: 0.875rem 1.125rem; font-size: 0.855rem; color: #374151;
+        border-bottom: 1px solid #f8fafc; vertical-align: middle;
+    }
+    .dt tbody tr:last-child td { border-bottom: none; }
+    .dt tbody tr { transition: background 0.15s; }
+    .dt tbody tr:hover td { background: #fafbff; }
+
+    .rn { color: #cbd5e1; font-size: 0.8rem; font-weight: 600; }
+    .cn-main { font-weight: 600; color: #1e293b; font-family: 'Consolas','Monaco',monospace; font-size: 0.84rem; }
+
+    /* Module label */
+    .mod-lbl {
+        display: inline-flex; align-items: center; gap: 0.3rem;
+        background: #ede9fe; color: #6d28d9;
+        font-size: 0.74rem; font-weight: 600;
+        padding: 0.25rem 0.6rem; border-radius: 6px;
+    }
+
+    /* Footer + pagination */
+    .dc-foot {
+        padding: 0.9rem 1.375rem; border-top: 1px solid #f1f5f9; background: #fafbfc;
+        display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.75rem;
+    }
+    .ri { font-size: 0.82rem; color: #94a3b8; }
+    .ri strong { color: #374151; }
+    .pgn { display: flex; align-items: center; gap: 0.25rem; }
+    .pb {
+        display: flex; align-items: center; justify-content: center;
+        min-width: 32px; height: 32px; padding: 0 0.5rem;
+        border: 1.5px solid #e2e8f0; border-radius: 7px; font-size: 0.8rem;
+        font-weight: 500; color: #64748b; text-decoration: none;
+        transition: all 0.18s; background: #fff;
+    }
+    .pb:hover { background: #f8fafc; color: #334155; border-color: #cbd5e1; }
+    .pb.cur   { background: linear-gradient(135deg, #667eea, #764ba2); color: #fff; border-color: transparent; font-weight: 700; }
+    .pb.off   { opacity: 0.35; pointer-events: none; }
+    .pb.wide  { padding: 0 0.875rem; }
+    .pgn-dots { padding: 0 0.25rem; color: #cbd5e1; font-size: 0.82rem; }
+
+    /* Empty state */
+    .es { text-align: center; padding: 3.5rem 2rem; }
+    .es-icon { font-size: 2.75rem; color: #e2e8f0; margin-bottom: 0.875rem; display: block; }
+    .es h6   { font-weight: 600; color: #64748b; margin: 0 0 0.375rem; }
+    .es p    { font-size: 0.845rem; color: #94a3b8; margin: 0; }
+
+    /* Nav buttons */
+    .btn-back {
+        display: inline-flex; align-items: center; gap: 0.375rem;
+        padding: 0.5rem 1rem; background: #f1f5f9; color: #475569;
+        border: 1.5px solid #e2e8f0; border-radius: 9px; font-size: 0.845rem;
+        font-weight: 600; text-decoration: none; transition: all 0.18s;
+    }
+    .btn-back:hover { background: #e2e8f0; color: #334155; }
+
+    /* Legend */
+    .legend { display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap; }
+    .legend-item { display: flex; align-items: center; gap: 0.35rem; font-size: 0.775rem; color: #64748b; }
+
+    @@media (max-width: 576px) {
+        .srch-input { width: 100%; }
+        .dc-head { flex-direction: column; align-items: stretch; }
+        .sub-hero { flex-direction: column; }
+    }
+</style>
+
+<!-- ── Breadcrumb ───────────────────────────────────────────── -->
+<nav class="bcrumb">
+    <a href="/SystemModules"><i class="bi bi-grid-3x3-gap-fill me-1"></i>System Modules</a>
+    <span class="sep"><i class="bi bi-chevron-right" style="font-size:.65rem;"></i></span>
+    @if (Model.Module != null)
+    {
+        <a href="/SystemModules/Details/@Model.Module.Id">@Model.Module.Name</a>
+        <span class="sep"><i class="bi bi-chevron-right" style="font-size:.65rem;"></i></span>
+    }
+    <span class="cur">@Model.Submodule.Name — Permissions</span>
+</nav>
+
+<!-- ── Submodule info card ────────────────────────────────────── -->
+<div class="sub-hero">
+    <div class="sub-hero-icon">
+        <i class="bi @(string.IsNullOrEmpty(Model.Submodule.Icon) ? "bi-circle-half" : Model.Submodule.Icon)"></i>
+    </div>
+    <div class="sub-hero-body">
+        <h5>@Model.Submodule.Name</h5>
+        <div class="sub-hero-meta">
+            @if (!string.IsNullOrEmpty(Model.Submodule.Route))
+            {
+                <div class="sm-item">
+                    <i class="bi bi-link-45deg"></i>
+                    <span class="rtag">/@Model.Submodule.Route</span>
+                </div>
+            }
+            @if (!string.IsNullOrEmpty(Model.Submodule.AccessName))
+            {
+                <div class="sm-item">
+                    <i class="bi bi-key"></i>
+                    <span class="ctag">@Model.Submodule.AccessName</span>
+                </div>
+            }
+            @if (Model.Module != null)
+            {
+                <div class="sm-item">
+                    <i class="bi bi-grid"></i>
+                    <span>Module: <strong>@Model.Module.Name</strong></span>
+                </div>
+            }
+            <div class="sm-item">
+                <i class="bi bi-sort-numeric-up"></i>
+                <span>Order: <strong>@Model.Submodule.Order</strong></span>
+            </div>
+        </div>
+    </div>
+    <div>
+        @if (Model.Module != null)
+        {
+            <a href="/SystemModules/Details/@Model.Module.Id" class="btn-back">
+                <i class="bi bi-arrow-left"></i> Back to @Model.Module.Name
+            </a>
+        }
+        else
+        {
+            <a href="/SystemModules" class="btn-back">
+                <i class="bi bi-arrow-left"></i> Back
+            </a>
+        }
+    </div>
+</div>
+
+<!-- ── Permissions card ───────────────────────────────────────── -->
+<div class="dc">
+
+    <!-- Header -->
+    <div class="dc-head">
+        <div class="d-flex align-items-center gap-2 flex-wrap">
+            <div class="dc-title">
+                <i class="bi bi-shield-fill-check"></i> Permissions
+            </div>
+            <span class="cc-lrg"><i class="bi bi-shield-check"></i> @Model.TotalCount</span>
+            <button class="btn-srch" onclick="openCreatePermission()" style="white-space:nowrap;font-size:.8rem;padding:.5rem .875rem;">
+                <i class="bi bi-plus-circle"></i> Add Permission
+            </button>
+        </div>
+
+        <div class="d-flex align-items-center gap-2 flex-wrap">
+            <form method="get" class="d-flex align-items-center gap-2 flex-wrap">
+                <input type="hidden" name="page" value="1" />
+                <div class="srch-wrap">
+                    <i class="bi bi-search"></i>
+                    <input class="srch-input" type="text" name="search"
+                           value="@Model.SearchTerm"
+                           placeholder="Search permissions…"
+                           autocomplete="off" />
+                </div>
+                <button type="submit" class="btn-srch"><i class="bi bi-search"></i> Search</button>
+                @if (!string.IsNullOrEmpty(Model.SearchTerm))
+                {
+                    <a href="/SystemModules/Permissions/@Model.Submodule.Id" class="btn-clr">
+                        <i class="bi bi-x-circle"></i> Clear
+                    </a>
+                }
+            </form>
+        </div>
+    </div>
+
+    <!-- Colour legend -->
+    @if (Model.Permissions.Any())
+    {
+        <div style="padding: 0.6rem 1.375rem; border-bottom: 1px solid #f1f5f9; background: #fafbfc;">
+            <div class="legend">
+                <span style="font-size:.75rem;color:#94a3b8;font-weight:600;margin-right:.25rem;">Action types:</span>
+                <span class="legend-item"><span class="perm-chip blue" style="padding:.15rem .5rem;">VIEW</span></span>
+                <span class="legend-item"><span class="perm-chip green" style="padding:.15rem .5rem;">CREATE</span></span>
+                <span class="legend-item"><span class="perm-chip amber" style="padding:.15rem .5rem;">EDIT</span></span>
+                <span class="legend-item"><span class="perm-chip red" style="padding:.15rem .5rem;">DELETE</span></span>
+                <span class="legend-item"><span class="perm-chip teal" style="padding:.15rem .5rem;">EXPORT</span></span>
+                <span class="legend-item"><span class="perm-chip purple" style="padding:.15rem .5rem;">OTHER</span></span>
+            </div>
+        </div>
+    }
+
+    <!-- Table -->
+    <div class="tbl-wrap">
+        <table class="dt">
+            <thead>
+                <tr>
+                    <th style="width:48px;">#</th>
+                    <th>Permission Name</th>
+                    <th>Display Name</th>
+                    <th style="width:130px;" class="d-none d-md-table-cell">Module</th>
+                    <th style="width:110px;">Action Type</th>
+                    <th style="width:100px;">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (Model.Permissions.Any())
+                {
+                    @for (int i = 0; i < Model.Permissions.Count; i++)
+                    {
+                        var p = Model.Permissions[i];
+                        var color = ActionColor(p.Name);
+
+                        // Extract the action suffix for the chip label
+                        var parts = p.Name.Split('.');
+                        var actionLabel = parts.Length > 1
+                            ? parts[^1].ToUpperInvariant()
+                            : "—";
+
+                        <tr>
+                            <td><span class="rn">@(Model.From + i)</span></td>
+                            <td>
+                                <div class="cn-main">@p.Name</div>
+                            </td>
+                            <td>
+                                <span style="color:#374151;font-weight:500;">@(string.IsNullOrEmpty(p.DisplayName) ? "—" : p.DisplayName)</span>
+                            </td>
+                            <td class="d-none d-md-table-cell">
+                                @if (!string.IsNullOrEmpty(p.Module))
+                                {
+                                    <span class="mod-lbl"><i class="bi bi-grid" style="font-size:.65rem;"></i>@p.Module</span>
+                                }
+                                else
+                                {
+                                    <span style="color:#e2e8f0;">—</span>
+                                }
+                            </td>
+                            <td>
+                                <span class="perm-chip @color">
+                                    @actionLabel
+                                </span>
+                            </td>
+                            <td>
+                                <div class="d-flex align-items-center gap-1">
+                                    <button class="perm-chip amber" style="padding:.3rem .7rem;font-size:.72rem;cursor:pointer;border:none;" onclick='openEditPermission(@p.Id, "@p.Name", "@p.DisplayName", "@p.Module")'>
+                                        <i class="bi bi-pencil"></i>
+                                    </button>
+                                    <button class="perm-chip red" style="padding:.3rem .7rem;font-size:.72rem;cursor:pointer;border:none;" onclick='openDeletePermission(@p.Id, "@p.Name")'>
+                                        <i class="bi bi-trash3"></i>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                }
+                else
+                {
+                    <tr>
+                        <td colspan="6">
+                            <div class="es">
+                                <i class="bi bi-shield-slash es-icon"></i>
+                                <h6>
+                                    @(string.IsNullOrEmpty(Model.SearchTerm)
+                                        ? "No permissions found"
+                                        : "No permissions match your search")
+                                </h6>
+                                <p>
+                                    @(string.IsNullOrEmpty(Model.SearchTerm)
+                                        ? $"No permissions are configured for the \"{Model.Submodule.AccessName}\" access key."
+                                        : "Try a different keyword or clear the filter.")
+                                </p>
+                            </div>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Footer -->
+    @if (Model.TotalCount > 0)
+    {
+        <div class="dc-foot">
+            <div class="ri">
+                Showing <strong>@Model.From</strong>–<strong>@Model.To</strong>
+                of <strong>@Model.TotalCount</strong> permission@(Model.TotalCount != 1 ? "s" : "")
+            </div>
+
+            @if (Model.TotalPages > 1)
+            {
+                <nav class="pgn">
+                    @if (Model.Page > 1)
+                    {
+                        <a class="pb wide" href="?search=@Model.SearchTerm&page=@(Model.Page - 1)&pageSize=@Model.PageSize">
+                            <i class="bi bi-chevron-left" style="font-size:.7rem;"></i> Prev
+                        </a>
+                    }
+                    else
+                    {
+                        <span class="pb wide off"><i class="bi bi-chevron-left" style="font-size:.7rem;"></i> Prev</span>
+                    }
+
+                    @{
+                        int tp = Model.TotalPages, cp = Model.Page;
+                        var pages = new List<int?>();
+                        if (tp <= 7) { for (int p = 1; p <= tp; p++) pages.Add(p); }
+                        else
+                        {
+                            pages.Add(1);
+                            if (cp > 3) pages.Add(null);
+                            for (int p = Math.Max(2, cp - 1); p <= Math.Min(tp - 1, cp + 1); p++) pages.Add(p);
+                            if (cp < tp - 2) pages.Add(null);
+                            pages.Add(tp);
+                        }
+                    }
+                    @foreach (var pn in pages)
+                    {
+                        if (pn == null) { <span class="pgn-dots">…</span> }
+                        else { <a class="pb @(pn == Model.Page ? "cur" : "")" href="?search=@Model.SearchTerm&page=@pn&pageSize=@Model.PageSize">@pn</a> }
+                    }
+
+                    @if (Model.Page < Model.TotalPages)
+                    {
+                        <a class="pb wide" href="?search=@Model.SearchTerm&page=@(Model.Page + 1)&pageSize=@Model.PageSize">
+                            Next <i class="bi bi-chevron-right" style="font-size:.7rem;"></i>
+                        </a>
+                    }
+                    else
+                    {
+                        <span class="pb wide off">Next <i class="bi bi-chevron-right" style="font-size:.7rem;"></i></span>
+                    }
+                </nav>
+            }
+        </div>
+    }
+</div>
+
+<!-- Toast -->
+<div style="position:fixed;bottom:1.75rem;right:1.75rem;z-index:9999;display:flex;flex-direction:column;gap:.5rem;pointer-events:none;" id="toastWrap"></div>
+
+<!-- Permission Modal -->
+<div class="modal fade" id="permissionModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content" style="border-radius:14px;border:none;box-shadow:0 20px 60px rgba(0,0,0,.2);">
+            <div class="modal-header" style="border-bottom:1px solid #f1f5f9;">
+                <h5 class="modal-title" id="permissionModalTitle">Add Permission</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="p_id" value="0" />
+                <div class="mb-3">
+                    <label class="form-label">Permission Name <span style="color:#ef4444;">*</span></label>
+                    <input type="text" class="form-control" id="p_name" placeholder="e.g. countries.create" />
+                    <small class="text-muted">Use format: module.action (e.g., countries.view, countries.create)</small>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Display Name <span style="color:#ef4444;">*</span></label>
+                    <input type="text" class="form-control" id="p_display" placeholder="e.g. Create Country" />
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Module <span style="color:#ef4444;">*</span></label>
+                    <input type="text" class="form-control" id="p_module" placeholder="e.g. Configuration" value="@(Model.Module?.Name ?? "")" />
+                </div>
+            </div>
+            <div class="modal-footer" style="border-top:1px solid #f1f5f9;">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" id="savePermissionBtn" onclick="savePermission()">Save Permission</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Delete Permission Modal -->
+<div class="modal fade" id="deletePermissionModal" tabindex="-1">
+    <div class="modal-dialog modal-sm">
+        <div class="modal-content" style="border-radius:14px;border:none;">
+            <div class="modal-header border-0">
+                <h5 class="modal-title text-danger">Delete Permission</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body text-center">
+                <input type="hidden" id="dp_id" />
+                <i class="bi bi-trash3 text-danger" style="font-size:3rem;"></i>
+                <p class="mt-3">Delete <strong id="dp_name"></strong>?</p>
+                <p class="text-muted small">This action cannot be undone.</p>
+            </div>
+            <div class="modal-footer border-0">
+                <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-danger btn-sm" onclick="confirmDeletePermission()">Delete</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function openCreatePermission() {
+    document.getElementById('p_id').value = '0';
+    document.getElementById('p_name').value = '';
+    document.getElementById('p_display').value = '';
+    document.getElementById('p_module').value = '@(Model.Module?.Name ?? "")';
+    document.getElementById('permissionModalTitle').textContent = 'Add Permission';
+    new bootstrap.Modal(document.getElementById('permissionModal')).show();
+}
+
+function openEditPermission(id, name, display, module) {
+    document.getElementById('p_id').value = id;
+    document.getElementById('p_name').value = name;
+    document.getElementById('p_display').value = display;
+    document.getElementById('p_module').value = module;
+    document.getElementById('permissionModalTitle').textContent = 'Edit Permission';
+    new bootstrap.Modal(document.getElementById('permissionModal')).show();
+}
+
+async function savePermission() {
+    const id = parseInt(document.getElementById('p_id').value);
+    const payload = {
+        name: document.getElementById('p_name').value.trim(),
+        displayName: document.getElementById('p_display').value.trim(),
+        module: document.getElementById('p_module').value.trim()
+    };
+    if (!payload.name) { showToast('Permission Name is required', 'error'); return; }
+    if (!payload.displayName) { showToast('Display Name is required', 'error'); return; }
+    if (!payload.module) { showToast('Module is required', 'error'); return; }
+    
+    const btn = document.getElementById('savePermissionBtn');
+    btn.disabled = true;
+    btn.textContent = 'Saving...';
+    
+    try {
+        const url = id > 0 ? `/SystemModules/UpdatePermission/${id}` : '/SystemModules/CreatePermission';
+        const res = await fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+        if (data.success) {
+            showToast(data.message || 'Saved!', 'success');
+            bootstrap.Modal.getInstance(document.getElementById('permissionModal')).hide();
+            setTimeout(() => location.reload(), 800);
+        } else {
+            showToast(data.message || 'Failed', 'error');
+        }
+    } catch { showToast('Network error', 'error'); }
+    finally { btn.disabled = false; btn.textContent = 'Save Permission'; }
+}
+
+function openDeletePermission(id, name) {
+    document.getElementById('dp_id').value = id;
+    document.getElementById('dp_name').textContent = name;
+    new bootstrap.Modal(document.getElementById('deletePermissionModal')).show();
+}
+
+async function confirmDeletePermission() {
+    const id = document.getElementById('dp_id').value;
+    try {
+        const res = await fetch(`/SystemModules/DeletePermission/${id}`, { method: 'POST' });
+        const data = await res.json();
+        if (data.success) {
+            showToast(data.message || 'Deleted', 'success');
+            bootstrap.Modal.getInstance(document.getElementById('deletePermissionModal')).hide();
+            setTimeout(() => location.reload(), 800);
+        } else {
+            showToast(data.message || 'Failed', 'error');
+        }
+    } catch { showToast('Network error', 'error'); }
+}
+
+function showToast(msg, type) {
+    const wrap = document.getElementById('toastWrap');
+    const el = document.createElement('div');
+    el.className = `alert alert-${type === 'success' ? 'success' : 'danger'} alert-dismissible fade show`;
+    el.style.cssText = 'pointer-events:all;box-shadow:0 8px 32px rgba(0,0,0,.15);';
+    el.innerHTML = `${msg}<button type="button" class="btn-close" data-bs-dismiss="alert"></button>`;
+    wrap.appendChild(el);
+    setTimeout(() => el.remove(), 3500);
+}
+</script>

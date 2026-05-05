@@ -1,0 +1,2085 @@
+@model Dog.Portal.Models.DogsListViewModel
+@{
+    Layout = "_AdminLayout";
+    ViewData["Title"] = "Dogs";
+    var totalAll      = Model.TotalCount;
+    var activeCount   = Model.Doglist.Count(u => bool.Equals(u.IsActive,true));
+    var inactiveCount = Model.Doglist.Count(u => bool.Equals(u.IsActive,false));
+   
+}
+<style>
+.page-hdr h4{font-size:1.15rem;font-weight:800;color:#0f172a;margin:0 0 .25rem;letter-spacing:-.02em}
+.page-hdr p{font-size:.845rem;color:#64748b;margin:0}
+.page-hdr-row{display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;flex-wrap:wrap;margin-bottom:1.5rem}
+.total-chip{display:inline-flex;align-items:center;gap:.375rem;background:#ede9fe;color:#6d28d9;font-size:.8rem;font-weight:700;padding:.35rem .875rem;border-radius:20px;white-space:nowrap}
+.hdr-actions{display:flex;align-items:center;gap:.625rem;flex-wrap:wrap}
+.btn-add{display:inline-flex;align-items:center;gap:.4rem;padding:.6rem 1.25rem;background:linear-gradient(135deg,#667eea,#764ba2);color:#fff;border:none;border-radius:9px;font-size:.845rem;font-weight:600;cursor:pointer;transition:all .2s;box-shadow:0 2px 8px rgba(102,126,234,.3)}
+.btn-add:hover{opacity:.9;transform:translateY(-1px)}
+
+/* Stats */
+.stats-row{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:.875rem;margin-bottom:1.5rem}
+.stat-card{background:#fff;border-radius:12px;border:1px solid #e9eef4;box-shadow:0 1px 4px rgba(0,0,0,.04);padding:1rem 1.25rem;display:flex;align-items:center;gap:.875rem}
+.stat-icon{width:42px;height:42px;border-radius:11px;display:flex;align-items:center;justify-content:center;font-size:1.1rem;flex-shrink:0}
+.si-total{background:linear-gradient(135deg,#ede9fe,#ddd6fe);color:#7c3aed}
+.si-active{background:linear-gradient(135deg,#d1fae5,#a7f3d0);color:#065f46}
+.si-inactive{background:linear-gradient(135deg,#fee2e2,#fecaca);color:#991b1b}
+.si-roles{background:linear-gradient(135deg,#dbeafe,#bfdbfe);color:#1d4ed8}
+.stat-body .val{font-size:1.35rem;font-weight:800;color:#0f172a;line-height:1}
+.stat-body .lbl{font-size:.75rem;color:#94a3b8;font-weight:500;margin-top:.2rem}
+
+/* Data card */
+.dc{background:#fff;border-radius:14px;border:1px solid #e9eef4;box-shadow:0 1px 4px rgba(0,0,0,.04),0 6px 20px rgba(0,0,0,.04);overflow:hidden}
+.dc-head{padding:1rem 1.375rem;border-bottom:1px solid #f1f5f9;background:#fafbfc;display:flex;align-items:center;gap:.625rem;flex-wrap:wrap}
+
+/* Search & filters */
+.srch-wrap{position:relative;flex:1;min-width:180px;max-width:280px}
+.srch-wrap i{position:absolute;left:.875rem;top:50%;transform:translateY(-50%);color:#94a3b8;font-size:.9rem;pointer-events:none}
+.srch-input{width:100%;padding:.6rem .875rem .6rem 2.375rem;border:1.5px solid #e2e8f0;border-radius:9px;font-size:.845rem;color:#1e293b;background:#fff;outline:none;transition:border-color .2s,box-shadow .2s}
+.srch-input:focus{border-color:#667eea;box-shadow:0 0 0 3px rgba(102,126,234,.1)}
+.srch-input::placeholder{color:#cbd5e1}
+.filter-sel{padding:.6rem .875rem;border:1.5px solid #e2e8f0;border-radius:9px;font-size:.845rem;color:#374151;background:#fff;outline:none;cursor:pointer;transition:border-color .2s;min-width:130px}
+.filter-sel:focus{border-color:#667eea;box-shadow:0 0 0 3px rgba(102,126,234,.1)}
+.btn-srch{padding:.6rem 1.125rem;background:linear-gradient(135deg,#667eea,#764ba2);color:#fff;border:none;border-radius:9px;font-size:.845rem;font-weight:600;cursor:pointer;transition:opacity .2s;display:inline-flex;align-items:center;gap:.375rem;white-space:nowrap}
+.btn-srch:hover{opacity:.9}
+.btn-clr{padding:.6rem .875rem;background:#f1f5f9;color:#64748b;border:1.5px solid #e2e8f0;border-radius:9px;font-size:.845rem;font-weight:500;cursor:pointer;text-decoration:none;display:inline-flex;align-items:center;gap:.3rem;transition:all .18s;white-space:nowrap}
+.btn-clr:hover{background:#e2e8f0;color:#334155}
+
+/* Table */
+.tbl-wrap{overflow-x:auto;min-height:400px;}
+.dt{width:100%;border-collapse:collapse;table-layout:fixed;}
+.dt thead th{padding:.75rem 1.125rem;font-size:.7rem;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.09em;background:#f8fafc;border-bottom:1px solid #f0f4f8;white-space:nowrap}
+.dt tbody td{padding:.875rem 1.125rem;font-size:.855rem;color:#374151;border-bottom:1px solid #f8fafc;vertical-align:middle}
+.dt tbody tr:last-child td{border-bottom:none}
+.dt tbody tr{transition:background .15s}
+.dt tbody tr:hover td{background:#fafbff}
+.rn{color:#cbd5e1;font-size:.8rem;font-weight:600}
+
+/* User avatar */
+.u-av{width:38px;height:38px;border-radius:10px;background:linear-gradient(135deg,#667eea,#764ba2);display:flex;align-items:center;justify-content:center;color:#fff;font-size:.8rem;font-weight:800;flex-shrink:0;box-shadow:0 2px 8px rgba(102,126,234,.2)}
+.u-name{font-weight:700;color:#1e293b;font-size:.875rem}
+.u-email{font-size:.75rem;color:#94a3b8}
+
+/* Photo thumbnail */
+.photo-thumb{width:40px;height:40px;object-fit:cover;border-radius:6px;border:1px solid #e2e8f0;}
+.photo-placeholder{width:40px;height:40px;border-radius:6px;border:1px solid #e2e8f0;background:#f8fafc;display:flex;align-items:center;justify-content:center;font-size:1rem;color:#cbd5e1;}
+
+/* Status badge */
+.s-badge{display:inline-flex;align-items:center;gap:.3rem;font-size:.74rem;font-weight:700;padding:.25rem .65rem;border-radius:20px}
+.s-active{background:#d1fae5;color:#065f46}
+.s-inactive{background:#fee2e2;color:#991b1b}
+.s-other{background:#f1f5f9;color:#475569}
+
+/* Role chip */
+.role-chip{display:inline-block;background:#ede9fe;color:#6d28d9;font-size:.74rem;font-weight:600;padding:.2rem .6rem;border-radius:6px}
+
+/* Action menu */
+.act-wrap{position:relative;display:inline-block}
+.act-btn{width:32px;height:32px;border:1.5px solid #e2e8f0;border-radius:8px;background:#fff;color:#64748b;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all .18s;font-size:.9rem}
+.act-btn:hover{background:#f8fafc;border-color:#cbd5e1;color:#334155}
+.act-menu{position:fixed;background:#fff;border:1px solid #e2e8f0;border-radius:11px;box-shadow:0 12px 40px rgba(0,0,0,.18),0 0 0 1px rgba(0,0,0,.02);min-width:200px;z-index:1045;padding:.375rem;display:none}
+.act-menu.open{display:block}
+.act-item{display:flex;align-items:center;gap:.625rem;padding:.5rem .75rem;border-radius:7px;font-size:.835rem;font-weight:500;color:#374151;cursor:pointer;transition:background .15s;border:none;background:none;width:100%;text-align:left}
+.act-item:hover{background:#f8fafc;color:#1e293b}
+.act-item.danger{color:#dc2626}
+.act-item.danger:hover{background:#fef2f2}
+.act-item i{width:16px;text-align:center;font-size:.85rem}
+.act-divider{height:1px;background:#f1f5f9;margin:.25rem 0}
+
+/* Footer / pagination */
+.dc-foot{padding:.9rem 1.375rem;border-top:1px solid #f1f5f9;background:#fafbfc;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.75rem}
+.ri{font-size:.82rem;color:#94a3b8}
+.ri strong{color:#374151}
+.pgn{display:flex;align-items:center;gap:.25rem}
+.pb{display:flex;align-items:center;justify-content:center;min-width:32px;height:32px;padding:0 .5rem;border:1.5px solid #e2e8f0;border-radius:7px;font-size:.8rem;font-weight:500;color:#64748b;text-decoration:none;transition:all .18s;background:#fff}
+.pb:hover{background:#f8fafc;color:#334155;border-color:#cbd5e1}
+.pb.cur{background:linear-gradient(135deg,#667eea,#764ba2);color:#fff;border-color:transparent;font-weight:700}
+.pb.off{opacity:.35;pointer-events:none}
+.pb.wide{padding:0 .875rem}
+.pgn-dots{padding:0 .25rem;color:#cbd5e1;font-size:.82rem}
+
+/* Empty state */
+.es{text-align:center;padding:4rem 2rem}
+.es-icon{font-size:3rem;color:#e2e8f0;margin-bottom:1rem;display:block}
+.es h6{font-weight:600;color:#64748b;margin:0 0 .375rem}
+.es p{font-size:.845rem;color:#94a3b8;margin:0}
+
+/* Alert */
+.alert-err{background:#fef2f2;border:1px solid #fecaca;border-radius:10px;padding:.875rem 1.125rem;color:#dc2626;font-size:.845rem;display:flex;align-items:center;gap:.625rem;margin-bottom:1.25rem}
+
+/* -- Modals ---------------------------------------- */
+.modal-backdrop-custom{position:fixed;inset:0;background:rgba(15,23,42,.45);backdrop-filter:blur(3px);z-index:1050;display:none;align-items:center;justify-content:center;padding:1rem}
+.modal-backdrop-custom.open{display:flex}
+.modal-box{background:#fff;border-radius:16px;box-shadow:0 20px 60px rgba(0,0,0,.2);width:100%;max-width:480px;max-height:90vh;overflow-y:auto;animation:mslide .22s ease}
+.modal-box.wide{max-width:560px}
+@@keyframes mslide{from{opacity:0;transform:translateY(-16px)}to{opacity:1;transform:translateY(0)}}
+.modal-hdr{display:flex;align-items:center;justify-content:space-between;padding:1.25rem 1.5rem;border-bottom:1px solid #f1f5f9}
+.modal-hdr h5{font-size:1rem;font-weight:800;color:#0f172a;margin:0;display:flex;align-items:center;gap:.5rem}
+.modal-close{width:30px;height:30px;border:none;background:#f1f5f9;border-radius:7px;color:#64748b;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:.9rem;transition:all .15s}
+.modal-close:hover{background:#e2e8f0;color:#334155}
+.modal-body{padding:1.375rem 1.5rem}
+.modal-foot{padding:1rem 1.5rem;border-top:1px solid #f1f5f9;display:flex;align-items:center;justify-content:flex-end;gap:.625rem}
+
+/* Form fields */
+.frow{margin-bottom:1rem}
+.frow label{display:block;font-size:.8rem;font-weight:600;color:#374151;margin-bottom:.375rem}
+.frow label span.req{color:#ef4444;margin-left:.2rem}
+.finput{width:100%;padding:.65rem .875rem;border:1.5px solid #e2e8f0;border-radius:9px;font-size:.855rem;color:#1e293b;background:#fff;outline:none;transition:border-color .2s,box-shadow .2s}
+.finput:focus{border-color:#667eea;box-shadow:0 0 0 3px rgba(102,126,234,.1)}
+.finput::placeholder{color:#cbd5e1}
+.finput[type="file"]{padding:.4rem .875rem}
+.frow-2{display:grid;grid-template-columns:1fr 1fr;gap:.875rem}
+.fhint{font-size:.75rem;color:#94a3b8;margin-top:.3rem}
+.ferr{font-size:.75rem;color:#dc2626;margin-top:.3rem;display:none}
+
+/* Buttons */
+.btn-cancel{padding:.65rem 1.25rem;background:#f1f5f9;color:#64748b;border:1.5px solid #e2e8f0;border-radius:9px;font-size:.855rem;font-weight:600;cursor:pointer;transition:all .18s}
+.btn-cancel:hover{background:#e2e8f0;color:#334155}
+.btn-primary{padding:.65rem 1.5rem;background:linear-gradient(135deg,#667eea,#764ba2);color:#fff;border:none;border-radius:9px;font-size:.855rem;font-weight:700;cursor:pointer;transition:all .2s;box-shadow:0 2px 8px rgba(102,126,234,.3);display:inline-flex;align-items:center;gap:.4rem;min-width:120px;justify-content:center}
+.btn-primary:hover:not(:disabled){opacity:.9;transform:translateY(-1px)}
+.btn-primary:disabled{opacity:.6;cursor:not-allowed;transform:none}
+.btn-danger{padding:.65rem 1.5rem;background:linear-gradient(135deg,#ef4444,#dc2626);color:#fff;border:none;border-radius:9px;font-size:.855rem;font-weight:700;cursor:pointer;transition:all .2s;box-shadow:0 2px 8px rgba(239,68,68,.3);display:inline-flex;align-items:center;gap:.4rem;min-width:120px;justify-content:center}
+.btn-danger:hover:not(:disabled){opacity:.9}
+.btn-danger:disabled{opacity:.6;cursor:not-allowed}
+
+/* Delete confirm */
+.del-icon{width:60px;height:60px;border-radius:50%;background:#fef2f2;display:flex;align-items:center;justify-content:center;margin:0 auto 1rem;font-size:1.5rem;color:#dc2626}
+.del-name{font-weight:700;color:#1e293b}
+
+/* Password strength */
+.pw-wrap{position:relative}
+.pw-toggle{position:absolute;right:.875rem;top:50%;transform:translateY(-50%);background:none;border:none;color:#94a3b8;cursor:pointer;font-size:.9rem;padding:0}
+.pw-toggle:hover{color:#64748b}
+.pw-strength{height:4px;border-radius:2px;margin-top:.5rem;background:#f1f5f9;overflow:hidden}
+.pw-bar{height:100%;border-radius:2px;transition:width .3s,background .3s;width:0}
+
+/* Toast */
+.toast-wrap{position:fixed;bottom:1.75rem;right:1.75rem;z-index:9999;display:flex;flex-direction:column;gap:.5rem;pointer-events:none}
+.toast-msg{display:flex;align-items:center;gap:.625rem;padding:.875rem 1.25rem;border-radius:12px;font-size:.855rem;font-weight:600;box-shadow:0 8px 32px rgba(0,0,0,.15);pointer-events:all;transform:translateX(120%);transition:transform .3s cubic-bezier(.4,0,.2,1);max-width:320px}
+.toast-msg.show{transform:translateX(0)}
+.toast-success{background:#065f46;color:#fff}
+.toast-error{background:#991b1b;color:#fff}
+.spin{width:14px;height:14px;border:2px solid rgba(255,255,255,.35);border-top-color:#fff;border-radius:50%;animation:spin .65s linear infinite;flex-shrink:0}
+@@keyframes spin{to{transform:rotate(360deg)}}
+
+@@media(max-width:576px){.frow-2{grid-template-columns:1fr}.dc-head{flex-direction:column;align-items:stretch}.srch-wrap{max-width:100%}}
+</style>
+
+<!-- Toast -->
+<div class="toast-wrap" id="toastWrap"></div>
+
+<!-- Page header -->
+<div class="page-hdr-row">
+    <div class="page-hdr">
+        <h4><i class="bi bi-people-fill me-2" style="color:#667eea;"></i>Dogs</h4>
+        <p>Manage Dogs.</p>
+    </div>
+    <div class="hdr-actions">
+        @if (Model.TotalCount > 0)
+        {
+            <span class="total-chip"><i class="bi bi-people"></i> @Model.TotalCount Dogs@(Model.TotalCount != 1 ? "s" : "")</span>
+        }
+        <button class="btn-add" onclick="openCreateModal()">
+            <i class="bi bi-person-plus-fill"></i> Add Dog
+        </button>
+    </div>
+</div>
+
+@if (!string.IsNullOrEmpty(ViewBag.FetchError as string))
+{
+    <div class="alert-err"><i class="bi bi-exclamation-circle-fill"></i>@ViewBag.FetchError</div>
+}
+
+<!-- Stat cards -->
+<div class="stats-row">
+    <div class="stat-card">
+        <div class="stat-icon si-total"><i class="bi bi-people-fill"></i></div>
+        <div class="stat-body"><div class="val">@Model.TotalCount</div><div class="lbl">Total Dogs</div></div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon si-active"><i class="bi bi-person-check-fill"></i></div>
+        <div class="stat-body"><div class="val">@activeCount</div><div class="lbl">Active</div></div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon si-inactive"><i class="bi bi-person-x-fill"></i></div>
+        <div class="stat-body"><div class="val">@inactiveCount</div><div class="lbl">Inactive</div></div>
+    </div>
+  
+</div>
+
+<!-- Data card -->
+<div class="dc">
+    <!-- Filters -->
+    <div class="dc-head">
+        <form method="get" action="/Dogs" style="display:contents;">
+            <div class="srch-wrap">
+                <i class="bi bi-search"></i>
+                <input class="srch-input" name="search" type="text" placeholder="Search name..."
+                       value="@Model.SearchTerm" autocomplete="off" />
+            </div>
+
+            <select class="filter-sel" name="status">
+                <option value="">All Status</option>
+                <option value="active" selected="@(ViewBag.StatusFilter == "active")">Active Only</option>
+                <option value="inactive" selected="@(ViewBag.StatusFilter == "inactive")">Inactive Only</option>
+            </select>
+
+            <select class="filter-sel" name="gender">
+                <option value="">All Genders</option>
+                <option value="Male" selected="@(ViewBag.GenderFilter == "Male")">Male</option>
+                <option value="Female" selected="@(ViewBag.GenderFilter == "Female")">Female</option>
+            </select>
+          
+            <input type="hidden" name="page" value="1" />
+            <button type="submit" class="btn-srch"><i class="bi bi-funnel-fill"></i> Filter</button>
+            @if (!string.IsNullOrEmpty(Model.SearchTerm) || !string.IsNullOrEmpty(ViewBag.StatusFilter as string) || !string.IsNullOrEmpty(ViewBag.GenderFilter as string))
+            {
+                <a href="/Dogs" class="btn-clr"><i class="bi bi-x"></i> Clear</a>
+            }
+        </form>
+    </div>
+
+    <!-- Table -->
+    <div class="tbl-wrap">
+        @if (Model.Doglist.Any())
+        {
+            <table class="dt">
+                <thead>
+                    <tr>
+                        <th style="width:40px;">#</th>
+                        <th style="width:60px;">Photo</th>
+                        <th style="min-width:120px;max-width:150px;">Name</th>
+                        <th style="min-width:120px;max-width:180px;">Breed</th>
+                        <th style="min-width:100px;max-width:120px;">Color</th>
+                        <th style="min-width:110px;max-width:130px;">Birth Date</th>
+                        <th style="min-width:80px;max-width:100px;">Gender</th>
+                        <th style="min-width:100px;max-width:120px;">Father</th>
+                        <th style="min-width:100px;max-width:120px;">Mother</th>
+                        <th style="min-width:140px;max-width:160px;">Microchip</th>
+                        <th style="min-width:80px;max-width:100px;">Status</th>
+                        <th style="width:50px;text-align:center;">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @{ int rowNum = Model.From; }
+                    @foreach (var u in Model.Doglist)
+                    {
+                        var statusClass = u.IsActive ? "s-active" :
+                                          u.IsActive == false ? "s-inactive" : "s-other";
+                        var statusDot   = u.IsActive ? "bi-circle-fill" : "bi-circle";
+                        var statusDotName   = u.IsActive ? "Active" : "Blocked";
+
+                        <tr>
+                            <td><span class="rn">@rowNum</span></td>
+                            <td style="text-align:center;">
+                                @if (!string.IsNullOrEmpty(u.PhotoUrl))
+                                {
+                                    <img src="@u.PhotoUrl" alt="Dog photo" class="photo-thumb" />
+                                }
+                                else
+                                {
+                                    <div class="photo-placeholder">
+                                        <i class="bi bi-camera"></i>
+                                    </div>
+                                }
+                            </td>
+                            <td style="color:#64748b;font-size:.835rem;max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="@(u.Name ?? "—")">@(u.Name ?? "—")</td>
+                            <td style="color:#64748b;font-size:.835rem;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="@(u.Breed ?? "—")">@(u.Breed ?? "—")</td>
+                            <td style="color:#64748b;font-size:.835rem;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="@(u.Color ?? "—")">@(u.Color ?? "—")</td>
+                            <td style="color:#64748b;font-size:.835rem;max-width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">@(u.DateOfBirth.ToString("yyyy-MM-dd"))</td>
+                            <td style="color:#64748b;font-size:.835rem;max-width:100px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="@(u.Gender ?? "—")">@(u.Gender ?? "—")</td>
+                            <td style="color:#64748b;font-size:.835rem;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="@(u.SireName ?? "—")">@(u.SireName ?? "—")</td>
+                            <td style="color:#64748b;font-size:.835rem;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="@(u.DamName ?? "—")">@(u.DamName ?? "—")</td>
+                            <td style="color:#64748b;font-size:.75rem;font-family:monospace;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="@(u.MicrochipNumber ?? "—")">@(u.MicrochipNumber ?? "—")</td>
+                            <td>
+                                <span class="s-badge @statusClass">
+                                    <i class="bi @statusDot" style="font-size:.5rem;"></i>
+                                    @statusDotName 
+                                </span>
+                            </td>
+                            <td style="text-align:center;">
+                                 <div class="act-wrap">
+                                     <button class="act-btn" onclick="toggleActMenu(this)" title="Actions">
+                                         <i class="bi bi-three-dots-vertical"></i>
+                                     </button>
+                                      <div class="act-menu"
+                                           data-id="@u.Id"
+                                           data-name="@u.Name"
+                                           data-breed="@u.Breed"
+                                           data-color="@u.Color"
+                                           data-dateofbirth="@u.DateOfBirth.ToString("yyyy-MM-dd")"
+                                           data-dateofdeath="@(u.DateOfDeath.HasValue ? u.DateOfDeath.Value.ToString("yyyy-MM-dd") : "")"
+                                           data-gender="@u.Gender"
+                                           data-microchipnumber="@u.MicrochipNumber"
+                                           data-photourl="@u.PhotoUrl"
+                                           data-sireid="@u.SireId"
+                                           data-damid="@u.DamId"
+                                           data-status="@u.IsActive">
+                                          <a href="/Dogs/Details/@u.Id" class="act-item" style="text-decoration:none;color:inherit;">
+                                              <i class="bi bi-eye-fill" style="color:#667eea;"></i> View Details
+                                          </a>
+
+                                          <button class="act-item" onclick="openEdit(this.closest('.act-menu'))">
+                                              <i class="bi bi-pencil-fill" style="color:#667eea;"></i> Edit Dog
+                                          </button>
+
+                                          <div class="act-divider"></div>
+
+                                          <button class="act-item" onclick="openVaccineModal(this.closest('.act-menu'))">
+                                              <i class="bi bi-shield-fill-check" style="color:#059669;"></i> Add Vaccination
+                                          </button>
+
+                                          <button class="act-item" onclick="openMatingModal(this.closest('.act-menu'))">
+                                              <i class="bi bi-heart-fill" style="color:#dc2626;"></i> Add Mating Record
+                                          </button>
+
+                                          <button class="act-item" onclick="openLitterModal(this.closest('.act-menu'))">
+                                              <i class="bi bi-people-fill" style="color:#7c3aed;"></i> Add Litter
+                                          </button>
+
+                                          <button class="act-item" onclick="openPuppyModal(this.closest('.act-menu'))">
+                                              <i class="bi bi-heart-eyes-fill" style="color:#f59e0b;"></i> Add Puppy
+                                          </button>
+
+                                          <div class="act-divider"></div>
+
+                                          <button class="act-item" onclick="printCertificate(this.closest('.act-menu'))">
+                                              <i class="bi bi-award-fill" style="color:#f59e0b;"></i> Print Certificate
+                                          </button>
+
+                                          <button class="act-item" onclick="toggleStatus(this.closest('.act-menu'))">
+                                              <i class="bi bi-toggle-on" style="color:#059669;"></i> @(u.IsActive == true ? "Deactivate" : "Activate")
+                                          </button>
+
+                                          <div class="act-divider"></div>
+                                          <button class="act-item danger" onclick="openDelete(this.closest('.act-menu'))">
+                                              <i class="bi bi-trash3-fill"></i> Delete Dog
+                                          </button>
+                                     </div>
+                                 </div>
+                            </td>
+                        </tr>
+                        rowNum++;
+                    }
+                </tbody>
+            </table>
+        }
+        else
+        {
+            <div class="es">
+                <i class="bi bi-people es-icon"></i>
+                <h6>No dogs found</h6>
+                <p>@(string.IsNullOrEmpty(Model.SearchTerm)
+                    ? "No dogs have been created yet. Click \"Add Dog\" to get started."
+                    : "No dogs match your dog filters. Try adjusting your search.")</p>
+            </div>
+        }
+    </div>
+
+    <!-- Pagination -->
+    @if (Model.TotalPages > 1)
+    {
+        <div class="dc-foot">
+            <div class="ri">
+                Showing <strong>@Model.From�@Model.To</strong> of <strong>@Model.TotalCount</strong> users
+            </div>
+            <nav class="pgn">
+                @{
+                    var prevPage = Model.Page - 1;
+                    var nextPage = Model.Page + 1;
+                    var baseUrl  = $"/Dogs?search={Model.SearchTerm}&status={ViewBag.StatusFilter}&gender={ViewBag.GenderFilter}&pageSize={Model.PageSize}";
+                }
+                <a class="pb wide @(Model.Page <= 1 ? "off" : "")" href="@baseUrl&page=@prevPage">
+                    <i class="bi bi-chevron-left" style="font-size:.7rem;"></i>
+                </a>
+                @for (int p = 1; p <= Model.TotalPages; p++)
+                {
+                    if (p == 1 || p == Model.TotalPages || (p >= Model.Page - 2 && p <= Model.Page + 2))
+                    {
+                        <a class="pb @(p == Model.Page ? "cur" : "")" href="@baseUrl&page=@p">@p</a>
+                    }
+                    else if (p == Model.Page - 3 || p == Model.Page + 3)
+                    {
+                        <span class="pgn-dots">�</span>
+                    }
+                }
+                <a class="pb wide @(Model.Page >= Model.TotalPages ? "off" : "")" href="@baseUrl&page=@nextPage">
+                    <i class="bi bi-chevron-right" style="font-size:.7rem;"></i>
+                </a>
+            </nav>
+        </div>
+    }
+    else if (Model.TotalCount > 0)
+    {
+        <div class="dc-foot">
+            <div class="ri">Showing <strong>@Model.TotalCount</strong> Dog @(Model.TotalCount != 1 ? "s" : "")</div>
+        </div>
+    }
+</div>
+
+<!-- -- CREATE MODAL ------------------------------------------- -->
+<div class="modal-backdrop-custom" id="createModal">
+    <div class="modal-box wide">
+        <div class="modal-hdr">
+            <h5><i class="bi bi-person-plus-fill" style="color:#667eea;"></i> Add New Dog</h5>
+            <button class="modal-close" onclick="closeModal('createModal')"><i class="bi bi-x-lg"></i></button>
+        </div>
+        <div class="modal-body">
+            <div class="frow">
+                <label> Name <span class="req">*</span></label>
+                <input class="finput" id="c_name" type="text" placeholder="Name" />
+                <div class="ferr" id="c_name_err"></div>
+            </div>
+            <div class="frow">
+                <label> Breed <span class="req">*</span></label>
+                <select class="finput" id="c_breed">
+                    <option value="">-- Select Breed --</option>
+                    <optgroup label="Sporting">
+                        <option>American Cocker Spaniel</option>
+                        <option>American Water Spaniel</option>
+                        <option>Boykin Spaniel</option>
+                        <option>Brittany</option>
+                        <option>Chesapeake Bay Retriever</option>
+                        <option>Clumber Spaniel</option>
+                        <option>Cocker Spaniel</option>
+                        <option>Curly-Coated Retriever</option>
+                        <option>English Cocker Spaniel</option>
+                        <option>English Setter</option>
+                        <option>English Springer Spaniel</option>
+                        <option>Field Spaniel</option>
+                        <option>Flat-Coated Retriever</option>
+                        <option>German Shorthaired Pointer</option>
+                        <option>German Wirehaired Pointer</option>
+                        <option>Golden Retriever</option>
+                        <option>Gordon Setter</option>
+                        <option>Irish Red and White Setter</option>
+                        <option>Irish Setter</option>
+                        <option>Irish Water Spaniel</option>
+                        <option>Labrador Retriever</option>
+                        <option>Nova Scotia Duck Tolling Retriever</option>
+                        <option>Pointer</option>
+                        <option>Spinone Italiano</option>
+                        <option>Sussex Spaniel</option>
+                        <option>Vizsla</option>
+                        <option>Weimaraner</option>
+                        <option>Welsh Springer Spaniel</option>
+                        <option>Wirehaired Pointing Griffon</option>
+                        <option>Wirehaired Vizsla</option>
+                    </optgroup>
+                    <optgroup label="Hound">
+                        <option>Afghan Hound</option>
+                        <option>American English Coonhound</option>
+                        <option>American Foxhound</option>
+                        <option>Basenji</option>
+                        <option>Basset Hound</option>
+                        <option>Beagle</option>
+                        <option>Black and Tan Coonhound</option>
+                        <option>Bloodhound</option>
+                        <option>Bluetick Coonhound</option>
+                        <option>Borzoi</option>
+                        <option>Cirneco dell'Etna</option>
+                        <option>Dachshund</option>
+                        <option>English Foxhound</option>
+                        <option>Greyhound</option>
+                        <option>Harrier</option>
+                        <option>Ibizan Hound</option>
+                        <option>Irish Wolfhound</option>
+                        <option>Norwegian Elkhound</option>
+                        <option>Otterhound</option>
+                        <option>Petit Basset Griffon Vend�en</option>
+                        <option>Pharaoh Hound</option>
+                        <option>Plott Hound</option>
+                        <option>Portuguese Podengo Pequeno</option>
+                        <option>Redbone Coonhound</option>
+                        <option>Rhodesian Ridgeback</option>
+                        <option>Saluki</option>
+                        <option>Scottish Deerhound</option>
+                        <option>Sloughi</option>
+                        <option>Treeing Walker Coonhound</option>
+                        <option>Whippet</option>
+                    </optgroup>
+                    <optgroup label="Working">
+                        <option>Akita</option>
+                        <option>Alaskan Malamute</option>
+                        <option>Anatolian Shepherd Dog</option>
+                        <option>Bernese Mountain Dog</option>
+                        <option>Black Russian Terrier</option>
+                        <option>Boerboel</option>
+                        <option>Boxer</option>
+                        <option>Bullmastiff</option>
+                        <option>Cane Corso</option>
+                        <option>Chinook</option>
+                        <option>Doberman Pinscher</option>
+                        <option>Dogo Argentino</option>
+                        <option>Dogue de Bordeaux</option>
+                        <option>German Pinscher</option>
+                        <option>Giant Schnauzer</option>
+                        <option>Great Dane</option>
+                        <option>Great Pyrenees</option>
+                        <option>Greater Swiss Mountain Dog</option>
+                        <option>Komondor</option>
+                        <option>Kuvasz</option>
+                        <option>Leonberger</option>
+                        <option>Mastiff</option>
+                        <option>Neapolitan Mastiff</option>
+                        <option>Newfoundland</option>
+                        <option>Portuguese Water Dog</option>
+                        <option>Rottweiler</option>
+                        <option>Saint Bernard</option>
+                        <option>Samoyed</option>
+                        <option>Siberian Husky</option>
+                        <option>Standard Schnauzer</option>
+                        <option>Tibetan Mastiff</option>
+                    </optgroup>
+                    <optgroup label="Terrier">
+                        <option>Airedale Terrier</option>
+                        <option>American Hairless Terrier</option>
+                        <option>American Staffordshire Terrier</option>
+                        <option>Australian Terrier</option>
+                        <option>Bedlington Terrier</option>
+                        <option>Border Terrier</option>
+                        <option>Bull Terrier</option>
+                        <option>Cairn Terrier</option>
+                        <option>Cesky Terrier</option>
+                        <option>Dandie Dinmont Terrier</option>
+                        <option>Glen of Imaal Terrier</option>
+                        <option>Irish Terrier</option>
+                        <option>Kerry Blue Terrier</option>
+                        <option>Lakeland Terrier</option>
+                        <option>Manchester Terrier</option>
+                        <option>Miniature Bull Terrier</option>
+                        <option>Miniature Schnauzer</option>
+                        <option>Norfolk Terrier</option>
+                        <option>Norwich Terrier</option>
+                        <option>Parson Russell Terrier</option>
+                        <option>Rat Terrier</option>
+                        <option>Russell Terrier</option>
+                        <option>Scottish Terrier</option>
+                        <option>Sealyham Terrier</option>
+                        <option>Skye Terrier</option>
+                        <option>Smooth Fox Terrier</option>
+                        <option>Soft Coated Wheaten Terrier</option>
+                        <option>Staffordshire Bull Terrier</option>
+                        <option>Welsh Terrier</option>
+                        <option>West Highland White Terrier</option>
+                        <option>Wire Fox Terrier</option>
+                    </optgroup>
+                    <optgroup label="Toy">
+                        <option>Affenpinscher</option>
+                        <option>Brussels Griffon</option>
+                        <option>Cavalier King Charles Spaniel</option>
+                        <option>Chihuahua</option>
+                        <option>Chinese Crested</option>
+                        <option>English Toy Spaniel</option>
+                        <option>Havanese</option>
+                        <option>Italian Greyhound</option>
+                        <option>Japanese Chin</option>
+                        <option>Maltese</option>
+                        <option>Miniature Pinscher</option>
+                        <option>Papillon</option>
+                        <option>Pekingese</option>
+                        <option>Pomeranian</option>
+                        <option>Poodle (Toy)</option>
+                        <option>Pug</option>
+                        <option>Shih Tzu</option>
+                        <option>Silky Terrier</option>
+                        <option>Toy Fox Terrier</option>
+                        <option>Yorkshire Terrier</option>
+                    </optgroup>
+                    <optgroup label="Non-Sporting">
+                        <option>American Eskimo Dog</option>
+                        <option>Bichon Frise</option>
+                        <option>Boston Terrier</option>
+                        <option>Bulldog</option>
+                        <option>Chinese Shar-Pei</option>
+                        <option>Chow Chow</option>
+                        <option>Coton de Tulear</option>
+                        <option>Dalmatian</option>
+                        <option>Finnish Spitz</option>
+                        <option>French Bulldog</option>
+                        <option>Keeshond</option>
+                        <option>Lhasa Apso</option>
+                        <option>L�wchen</option>
+                        <option>Norwegian Lundehund</option>
+                        <option>Poodle (Miniature)</option>
+                        <option>Poodle (Standard)</option>
+                        <option>Schipperke</option>
+                        <option>Shiba Inu</option>
+                        <option>Tibetan Spaniel</option>
+                        <option>Tibetan Terrier</option>
+                        <option>Xoloitzcuintli</option>
+                    </optgroup>
+                    <optgroup label="Herding">
+                        <option>Australian Cattle Dog</option>
+                        <option>Australian Shepherd</option>
+                        <option>Bearded Collie</option>
+                        <option>Beauceron</option>
+                        <option>Belgian Laekenois</option>
+                        <option>Belgian Malinois</option>
+                        <option>Belgian Sheepdog</option>
+                        <option>Belgian Tervuren</option>
+                        <option>Bergamasco Sheepdog</option>
+                        <option>Berger Picard</option>
+                        <option>Border Collie</option>
+                        <option>Bouvier des Flandres</option>
+                        <option>Briard</option>
+                        <option>Canaan Dog</option>
+                        <option>Cardigan Welsh Corgi</option>
+                        <option>Collie</option>
+                        <option>Entlebucher Mountain Dog</option>
+                        <option>Finnish Lapphund</option>
+                        <option>German Shepherd Dog</option>
+                        <option>Icelandic Sheepdog</option>
+                        <option>Miniature American Shepherd</option>
+                        <option>Norwegian Buhund</option>
+                        <option>Old English Sheepdog</option>
+                        <option>Pembroke Welsh Corgi</option>
+                        <option>Polish Lowland Sheepdog</option>
+                        <option>Puli</option>
+                        <option>Pumi</option>
+                        <option>Pyrenean Shepherd</option>
+                        <option>Shetland Sheepdog</option>
+                        <option>Spanish Water Dog</option>
+                        <option>Swedish Vallhund</option>
+                    </optgroup>
+                    <optgroup label="Miscellaneous / Other">
+                        <option>Mixed Breed</option>
+                        <option>Other</option>
+                    </optgroup>
+                </select>
+                <div class="ferr" id="c_breed_err"></div>
+            </div>
+            <div class="frow">
+                <label> Color <span class="req">*</span></label>
+                <select class="finput" id="c_color">
+                    <option value="">-- Select Color --</option>
+                    <optgroup label="Solid Colors">
+                        <option>Black</option>
+                        <option>White</option>
+                        <option>Brown</option>
+                        <option>Chocolate</option>
+                        <option>Red</option>
+                        <option>Yellow</option>
+                        <option>Cream</option>
+                        <option>Fawn</option>
+                        <option>Blue</option>
+                        <option>Silver</option>
+                        <option>Gray</option>
+                        <option>Liver</option>
+                        <option>Gold</option>
+                        <option>Apricot</option>
+                        <option>Orange</option>
+                        <option>Tan</option>
+                        <option>Buff</option>
+                        <option>Sand</option>
+                        <option>Wheaten</option>
+                        <option>Rust</option>
+                    </optgroup>
+                    <optgroup label="Multi-Color">
+                        <option>Black and White</option>
+                        <option>Black and Tan</option>
+                        <option>Black and Brown</option>
+                        <option>Brown and White</option>
+                        <option>Red and White</option>
+                        <option>Blue and Tan</option>
+                        <option>Liver and White</option>
+                        <option>Chocolate and Tan</option>
+                        <option>Fawn and White</option>
+                        <option>Gold and White</option>
+                        <option>Tricolor (Black, White, Tan)</option>
+                        <option>Tricolor (Brown, White, Tan)</option>
+                    </optgroup>
+                    <optgroup label="Patterns">
+                        <option>Brindle</option>
+                        <option>Brindle and White</option>
+                        <option>Blue Merle</option>
+                        <option>Red Merle</option>
+                        <option>Harlequin</option>
+                        <option>Spotted</option>
+                        <option>Ticked</option>
+                        <option>Roan</option>
+                        <option>Sable</option>
+                        <option>Grizzle</option>
+                        <option>Dapple</option>
+                        <option>Piebald</option>
+                    </optgroup>
+                    <optgroup label="Other">
+                        <option>Mixed</option>
+                        <option>Other</option>
+                    </optgroup>
+                </select>
+                <div class="ferr" id="c_color_err"></div>
+            </div>
+            <div class="frow">
+                <label> Date Of Birth <span class="req">*</span></label>
+                <input class="finput" id="c_dateOfBirth" type="date" />
+                <div class="ferr" id="c_dateOfBirth_err"></div>
+            </div>
+            <!-- <div class="frow">
+                <label> Date Of Death</label>
+                <input class="finput" id="c_dateOfDeath" type="date" />
+                <div class="ferr" id="c_dateOfDeath_err"></div>
+            </div> -->
+            <div class="frow">
+                <label> Gender</label>
+                <select class="finput" id="c_gender">
+                    <option value="">-- Select Gender --</option>
+                    <option value="Male">Male</option>
+                    <option value="Female">Female</option>
+                </select>
+                <div class="ferr" id="c_gender_err"></div>
+            </div>
+            <div class="frow">
+                <label> Microchip Number</label>
+                <input class="finput" id="c_microchipNumber" type="text" placeholder="Auto-generated" readonly style="background:#f8fafc;color:#64748b;cursor:default;" />
+                <div class="fhint">Auto-generated and incremented from the last registered microchip.</div>
+                <div class="ferr" id="c_microchipNumber_err"></div>
+            </div>
+            <div class="frow">
+                <label> Photo</label>
+                <input class="finput" id="c_photoUrl" type="file" accept="image/*" />
+                <div class="ferr" id="c_photoUrl_err"></div>
+                <div class="fhint">Allowed formats: JPG, PNG, GIF (max 5MB)</div>
+            </div>
+            <div class="frow">
+                <label> Sire ID (Father)</label>
+                <select class="finput" id="c_sireId">
+                    <option value="">-- Select Sire --</option>
+                </select>
+                <div class="ferr" id="c_sireId_err"></div>
+            </div>
+            <div class="frow">
+                <label> Dam ID (Mother)</label>
+                <select class="finput" id="c_damId">
+                    <option value="">-- Select Dam --</option>
+                </select>
+                <div class="ferr" id="c_damId_err"></div>
+            </div>
+        </div>
+        <div class="modal-foot">
+            <button class="btn-cancel" onclick="closeModal('createModal')">Cancel</button>
+            <button class="btn-primary" id="createBtn" onclick="submitCreate()">
+                <i class="bi bi-person-plus-fill"></i> Create Dog
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Fetch animals for Sire/Dam dropdowns -->
+<script>
+    // Fetch all animals for Sire/Dam dropdowns
+    async function loadAnimalsForDropdowns() {
+        try {
+            const response = await fetch('/Dogs/GetAnimalsForDropdown');
+            if (!response.ok) throw new Error('Failed to load animals');
+            const data = await response.json();
+            return Array.isArray(data) ? data : (data.data || []);
+        } catch (error) {
+            console.error('Error loading animals:', error);
+            return [];
+        }
+    }
+</script>
+
+<!-- -- EDIT MODAL -------------------------------------------- -->
+<div class="modal-backdrop-custom" id="editModal">
+    <div class="modal-box wide">
+        <div class="modal-hdr">
+            <h5><i class="bi bi-pencil-fill" style="color:#667eea;"></i> Edit Dog</h5>
+            <button class="modal-close" onclick="closeModal('editModal')"><i class="bi bi-x-lg"></i></button>
+        </div>
+        <div class="modal-body">
+            <input type="hidden" id="e_id" />
+            <div class="frow">
+                <label> Name <span class="req">*</span></label>
+                <input class="finput" id="e_name" type="text"/>
+                <div class="ferr" id="e_name_err"></div>
+            </div>
+            <div class="frow">
+                <label> Breed <span class="req">*</span></label>
+                <select class="finput" id="e_breed">
+                    <option value="">-- Select Breed --</option>
+                    <optgroup label="Sporting">
+                        <option>American Cocker Spaniel</option>
+                        <option>American Water Spaniel</option>
+                        <option>Boykin Spaniel</option>
+                        <option>Brittany</option>
+                        <option>Chesapeake Bay Retriever</option>
+                        <option>Clumber Spaniel</option>
+                        <option>Cocker Spaniel</option>
+                        <option>Curly-Coated Retriever</option>
+                        <option>English Cocker Spaniel</option>
+                        <option>English Setter</option>
+                        <option>English Springer Spaniel</option>
+                        <option>Field Spaniel</option>
+                        <option>Flat-Coated Retriever</option>
+                        <option>German Shorthaired Pointer</option>
+                        <option>German Wirehaired Pointer</option>
+                        <option>Golden Retriever</option>
+                        <option>Gordon Setter</option>
+                        <option>Irish Red and White Setter</option>
+                        <option>Irish Setter</option>
+                        <option>Irish Water Spaniel</option>
+                        <option>Labrador Retriever</option>
+                        <option>Nova Scotia Duck Tolling Retriever</option>
+                        <option>Pointer</option>
+                        <option>Spinone Italiano</option>
+                        <option>Sussex Spaniel</option>
+                        <option>Vizsla</option>
+                        <option>Weimaraner</option>
+                        <option>Welsh Springer Spaniel</option>
+                        <option>Wirehaired Pointing Griffon</option>
+                        <option>Wirehaired Vizsla</option>
+                    </optgroup>
+                    <optgroup label="Hound">
+                        <option>Afghan Hound</option>
+                        <option>American English Coonhound</option>
+                        <option>American Foxhound</option>
+                        <option>Basenji</option>
+                        <option>Basset Hound</option>
+                        <option>Beagle</option>
+                        <option>Black and Tan Coonhound</option>
+                        <option>Bloodhound</option>
+                        <option>Bluetick Coonhound</option>
+                        <option>Borzoi</option>
+                        <option>Cirneco dell'Etna</option>
+                        <option>Dachshund</option>
+                        <option>English Foxhound</option>
+                        <option>Greyhound</option>
+                        <option>Harrier</option>
+                        <option>Ibizan Hound</option>
+                        <option>Irish Wolfhound</option>
+                        <option>Norwegian Elkhound</option>
+                        <option>Otterhound</option>
+                        <option>Petit Basset Griffon Vend�en</option>
+                        <option>Pharaoh Hound</option>
+                        <option>Plott Hound</option>
+                        <option>Portuguese Podengo Pequeno</option>
+                        <option>Redbone Coonhound</option>
+                        <option>Rhodesian Ridgeback</option>
+                        <option>Saluki</option>
+                        <option>Scottish Deerhound</option>
+                        <option>Sloughi</option>
+                        <option>Treeing Walker Coonhound</option>
+                        <option>Whippet</option>
+                    </optgroup>
+                    <optgroup label="Working">
+                        <option>Akita</option>
+                        <option>Alaskan Malamute</option>
+                        <option>Anatolian Shepherd Dog</option>
+                        <option>Bernese Mountain Dog</option>
+                        <option>Black Russian Terrier</option>
+                        <option>Boerboel</option>
+                        <option>Boxer</option>
+                        <option>Bullmastiff</option>
+                        <option>Cane Corso</option>
+                        <option>Chinook</option>
+                        <option>Doberman Pinscher</option>
+                        <option>Dogo Argentino</option>
+                        <option>Dogue de Bordeaux</option>
+                        <option>German Pinscher</option>
+                        <option>Giant Schnauzer</option>
+                        <option>Great Dane</option>
+                        <option>Great Pyrenees</option>
+                        <option>Greater Swiss Mountain Dog</option>
+                        <option>Komondor</option>
+                        <option>Kuvasz</option>
+                        <option>Leonberger</option>
+                        <option>Mastiff</option>
+                        <option>Neapolitan Mastiff</option>
+                        <option>Newfoundland</option>
+                        <option>Portuguese Water Dog</option>
+                        <option>Rottweiler</option>
+                        <option>Saint Bernard</option>
+                        <option>Samoyed</option>
+                        <option>Siberian Husky</option>
+                        <option>Standard Schnauzer</option>
+                        <option>Tibetan Mastiff</option>
+                    </optgroup>
+                    <optgroup label="Terrier">
+                        <option>Airedale Terrier</option>
+                        <option>American Hairless Terrier</option>
+                        <option>American Staffordshire Terrier</option>
+                        <option>Australian Terrier</option>
+                        <option>Bedlington Terrier</option>
+                        <option>Border Terrier</option>
+                        <option>Bull Terrier</option>
+                        <option>Cairn Terrier</option>
+                        <option>Cesky Terrier</option>
+                        <option>Dandie Dinmont Terrier</option>
+                        <option>Glen of Imaal Terrier</option>
+                        <option>Irish Terrier</option>
+                        <option>Kerry Blue Terrier</option>
+                        <option>Lakeland Terrier</option>
+                        <option>Manchester Terrier</option>
+                        <option>Miniature Bull Terrier</option>
+                        <option>Miniature Schnauzer</option>
+                        <option>Norfolk Terrier</option>
+                        <option>Norwich Terrier</option>
+                        <option>Parson Russell Terrier</option>
+                        <option>Rat Terrier</option>
+                        <option>Russell Terrier</option>
+                        <option>Scottish Terrier</option>
+                        <option>Sealyham Terrier</option>
+                        <option>Skye Terrier</option>
+                        <option>Smooth Fox Terrier</option>
+                        <option>Soft Coated Wheaten Terrier</option>
+                        <option>Staffordshire Bull Terrier</option>
+                        <option>Welsh Terrier</option>
+                        <option>West Highland White Terrier</option>
+                        <option>Wire Fox Terrier</option>
+                    </optgroup>
+                    <optgroup label="Toy">
+                        <option>Affenpinscher</option>
+                        <option>Brussels Griffon</option>
+                        <option>Cavalier King Charles Spaniel</option>
+                        <option>Chihuahua</option>
+                        <option>Chinese Crested</option>
+                        <option>English Toy Spaniel</option>
+                        <option>Havanese</option>
+                        <option>Italian Greyhound</option>
+                        <option>Japanese Chin</option>
+                        <option>Maltese</option>
+                        <option>Miniature Pinscher</option>
+                        <option>Papillon</option>
+                        <option>Pekingese</option>
+                        <option>Pomeranian</option>
+                        <option>Poodle (Toy)</option>
+                        <option>Pug</option>
+                        <option>Shih Tzu</option>
+                        <option>Silky Terrier</option>
+                        <option>Toy Fox Terrier</option>
+                        <option>Yorkshire Terrier</option>
+                    </optgroup>
+                    <optgroup label="Non-Sporting">
+                        <option>American Eskimo Dog</option>
+                        <option>Bichon Frise</option>
+                        <option>Boston Terrier</option>
+                        <option>Bulldog</option>
+                        <option>Chinese Shar-Pei</option>
+                        <option>Chow Chow</option>
+                        <option>Coton de Tulear</option>
+                        <option>Dalmatian</option>
+                        <option>Finnish Spitz</option>
+                        <option>French Bulldog</option>
+                        <option>Keeshond</option>
+                        <option>Lhasa Apso</option>
+                        <option>L�wchen</option>
+                        <option>Norwegian Lundehund</option>
+                        <option>Poodle (Miniature)</option>
+                        <option>Poodle (Standard)</option>
+                        <option>Schipperke</option>
+                        <option>Shiba Inu</option>
+                        <option>Tibetan Spaniel</option>
+                        <option>Tibetan Terrier</option>
+                        <option>Xoloitzcuintli</option>
+                    </optgroup>
+                    <optgroup label="Herding">
+                        <option>Australian Cattle Dog</option>
+                        <option>Australian Shepherd</option>
+                        <option>Bearded Collie</option>
+                        <option>Beauceron</option>
+                        <option>Belgian Laekenois</option>
+                        <option>Belgian Malinois</option>
+                        <option>Belgian Sheepdog</option>
+                        <option>Belgian Tervuren</option>
+                        <option>Bergamasco Sheepdog</option>
+                        <option>Berger Picard</option>
+                        <option>Border Collie</option>
+                        <option>Bouvier des Flandres</option>
+                        <option>Briard</option>
+                        <option>Canaan Dog</option>
+                        <option>Cardigan Welsh Corgi</option>
+                        <option>Collie</option>
+                        <option>Entlebucher Mountain Dog</option>
+                        <option>Finnish Lapphund</option>
+                        <option>German Shepherd Dog</option>
+                        <option>Icelandic Sheepdog</option>
+                        <option>Miniature American Shepherd</option>
+                        <option>Norwegian Buhund</option>
+                        <option>Old English Sheepdog</option>
+                        <option>Pembroke Welsh Corgi</option>
+                        <option>Polish Lowland Sheepdog</option>
+                        <option>Puli</option>
+                        <option>Pumi</option>
+                        <option>Pyrenean Shepherd</option>
+                        <option>Shetland Sheepdog</option>
+                        <option>Spanish Water Dog</option>
+                        <option>Swedish Vallhund</option>
+                    </optgroup>
+                    <optgroup label="Miscellaneous / Other">
+                        <option>Mixed Breed</option>
+                        <option>Other</option>
+                    </optgroup>
+                </select>
+                <div class="ferr" id="e_breed_err"></div>
+            </div>
+            <div class="frow">
+                <label> Color <span class="req">*</span></label>
+                <input class="finput" id="e_color" type="text"/>
+                <div class="ferr" id="e_color_err"></div>
+            </div>
+            <div class="frow">
+                <label> Date Of Birth <span class="req">*</span></label>
+                <input class="finput" id="e_dateOfBirth" type="date"/>
+                <div class="ferr" id="e_dateOfBirth_err"></div>
+            </div>
+            <div class="frow">
+                <label> Date Of Death</label>
+                <input class="finput" id="e_dateOfDeath" type="date"/>
+                <div class="ferr" id="e_dateOfDeath_err"></div>
+            </div>
+            <div class="frow">
+                <label> Gender</label>
+                <select class="finput" id="e_gender">
+                    <option value="">-- Select Gender --</option>
+                    <option value="Male">Male</option>
+                    <option value="Female">Female</option>
+                </select>
+                <div class="ferr" id="e_gender_err"></div>
+            </div>
+            <div class="frow">
+                <label> Microchip Number</label>
+                <input class="finput" id="e_microchipNumber" type="text"/>
+                <div class="ferr" id="e_microchipNumber_err"></div>
+            </div>
+            <div class="frow">
+                <label> Photo</label>
+                <input class="finput" id="e_photoUrl" type="file" accept="image/*" />
+                <div class="ferr" id="e_photoUrl_err"></div>
+                <div class="fhint">Allowed formats: JPG, PNG, GIF (max 5MB)</div>
+            </div>
+            <div class="frow">
+                <label> Sire ID (Father)</label>
+                <select class="finput" id="e_sireId">
+                    <option value="">-- Select Sire --</option>
+                </select>
+                <div class="ferr" id="e_sireId_err"></div>
+            </div>
+            <div class="frow">
+                <label> Dam ID (Mother)</label>
+                <select class="finput" id="e_damId">
+                    <option value="">-- Select Dam --</option>
+                </select>
+                <div class="ferr" id="e_damId_err"></div>
+            </div>
+        </div>
+        <div class="modal-foot">
+            <button class="btn-cancel" onclick="closeModal('editModal')">Cancel</button>
+            <button class="btn-primary" id="editBtn" onclick="submitEdit()">
+                <i class="bi bi-check2-circle"></i> Save Changes
+            </button>
+        </div>
+    </div>
+</div>
+<!-- -- DELETE MODAL ------------------------------------------ -->
+<div class="modal-backdrop-custom" id="deleteModal">
+    <div class="modal-box">
+        <div class="modal-hdr">
+            <h5><i class="bi bi-trash3-fill" style="color:#dc2626;"></i> Delete Dog</h5>
+            <button class="modal-close" onclick="closeModal('deleteModal')"><i class="bi bi-x-lg"></i></button>
+        </div>
+        <div class="modal-body" style="text-align:center;padding-top:1.75rem;">
+            <input type="hidden" id="d_id" />
+            <div class="del-icon"><i class="bi bi-person-x-fill"></i></div>
+            <p style="font-size:.9rem;color:#374151;margin-bottom:.5rem;">
+                Are you sure you want to delete
+            </p>
+            <p class="del-name" id="d_name" style="font-size:1rem;margin-bottom:.5rem;"></p>
+            <p style="font-size:.82rem;color:#94a3b8;margin:0;">
+                This action cannot be undone. The user will be permanently removed.
+            </p>
+        </div>
+        <div class="modal-foot">
+            <button class="btn-cancel" onclick="closeModal('deleteModal')">Cancel</button>
+            <button class="btn-danger" id="deleteBtn" onclick="submitDelete()">
+                <i class="bi bi-trash3-fill"></i> Delete
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- -- VACCINATION MODAL ------------------------------------------ -->
+<div class="modal-backdrop-custom" id="vaccineModal">
+    <div class="modal-box">
+        <div class="modal-hdr">
+            <h5><i class="bi bi-shield-fill-check" style="color:#059669;"></i> Add Vaccination Record</h5>
+            <button class="modal-close" onclick="closeModal('vaccineModal')"><i class="bi bi-x-lg"></i></button>
+        </div>
+        <div class="modal-body">
+            <input type="hidden" id="v_dogId" />
+            <div class="frow">
+                <label>Vaccine Name <span class="req">*</span></label>
+                <input class="finput" id="v_name" type="text" placeholder="e.g., Rabies, DHPP, Bordetella" />
+                <div class="ferr" id="v_name_err"></div>
+            </div>
+            <div class="frow">
+                <label>Vaccine Type</label>
+                <select class="finput" id="v_vaccType">
+                    <option value="">-- Select Type --</option>
+                    <option>Core Vaccine</option>
+                    <option>Non-Core Vaccine</option>
+                    <option>Rabies</option>
+                    <option>DHPP (Distemper, Hepatitis, Parvovirus, Parainfluenza)</option>
+                    <option>Bordetella</option>
+                    <option>Lyme Disease</option>
+                    <option>Canine Influenza</option>
+                    <option>Other</option>
+                </select>
+                <div class="ferr" id="v_vaccType_err"></div>
+            </div>
+            <div class="frow">
+                <label>Vaccination Date <span class="req">*</span></label>
+                <input class="finput" id="v_vaccinationDate" type="date" />
+                <div class="ferr" id="v_vaccinationDate_err"></div>
+            </div>
+            <div class="frow">
+                <label>Next Due Date</label>
+                <input class="finput" id="v_nextVaccinationDate" type="date" />
+                <div class="ferr" id="v_nextVaccinationDate_err"></div>
+            </div>
+            <div class="frow">
+                <label>Veterinary Clinic</label>
+                <input class="finput" id="v_vetclinicName" type="text" placeholder="Clinic name" />
+                <div class="ferr" id="v_vetclinicName_err"></div>
+            </div>
+            <div class="frow">
+                <label>Batch Number</label>
+                <input class="finput" id="v_batchNumber" type="text" placeholder="Vaccine batch number" />
+                <div class="ferr" id="v_batchNumber_err"></div>
+            </div>
+            <div class="frow">
+                <label>Notes</label>
+                <textarea class="finput" id="v_notes" rows="3" placeholder="Additional notes..."></textarea>
+                <div class="ferr" id="v_notes_err"></div>
+            </div>
+        </div>
+        <div class="modal-foot">
+            <button class="btn-cancel" onclick="closeModal('vaccineModal')">Cancel</button>
+            <button class="btn-primary" id="vaccineBtn" onclick="submitVaccination()">
+                <i class="bi bi-shield-fill-check"></i> Add Vaccination
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- -- MATING MODAL ------------------------------------------ -->
+<div class="modal-backdrop-custom" id="matingModal">
+    <div class="modal-box">
+        <div class="modal-hdr">
+            <h5><i class="bi bi-heart-fill" style="color:#dc2626;"></i> Add Mating Record</h5>
+            <button class="modal-close" onclick="closeModal('matingModal')"><i class="bi bi-x-lg"></i></button>
+        </div>
+        <div class="modal-body">
+            <input type="hidden" id="m_sireId" />
+            <input type="hidden" id="m_damId" />
+            <div class="frow">
+                <label>Sire (Father) <span class="req">*</span></label>
+                <select class="finput" id="m_sire">
+                    <option value="">-- Select Sire --</option>
+                </select>
+                <div class="ferr" id="m_sire_err"></div>
+            </div>
+            <div class="frow">
+                <label>Dam (Mother) <span class="req">*</span></label>
+                <select class="finput" id="m_dam">
+                    <option value="">-- Select Dam --</option>
+                </select>
+                <div class="ferr" id="m_dam_err"></div>
+            </div>
+            <div class="frow">
+                <label>Mating Date <span class="req">*</span></label>
+                <input class="finput" id="m_matingDate" type="date" />
+                <div class="ferr" id="m_matingDate_err"></div>
+            </div>
+            <div class="frow">
+                <label>Location</label>
+                <input class="finput" id="m_location" type="text" placeholder="Breeding location" />
+                <div class="ferr" id="m_location_err"></div>
+            </div>
+            <div class="frow">
+                <label>Notes</label>
+                <textarea class="finput" id="m_notes" rows="3" placeholder="Breeding notes..."></textarea>
+                <div class="ferr" id="m_notes_err"></div>
+            </div>
+        </div>
+        <div class="modal-foot">
+            <button class="btn-cancel" onclick="closeModal('matingModal')">Cancel</button>
+            <button class="btn-primary" id="matingBtn" onclick="submitMating()">
+                <i class="bi bi-heart-fill"></i> Add Mating Record
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- -- LITTER MODAL ------------------------------------------ -->
+<div class="modal-backdrop-custom" id="litterModal">
+    <div class="modal-box wide">
+        <div class="modal-hdr">
+            <h5><i class="bi bi-people-fill" style="color:#7c3aed;"></i> Add Litter</h5>
+            <button class="modal-close" onclick="closeModal('litterModal')"><i class="bi bi-x-lg"></i></button>
+        </div>
+        <div class="modal-body">
+            <input type="hidden" id="l_matingRecordId" />
+            <div class="frow">
+                <label>Mating Record <span class="req">*</span></label>
+                <select class="finput" id="l_matingRecord">
+                    <option value="">-- Select Mating Record --</option>
+                </select>
+                <div class="ferr" id="l_matingRecord_err"></div>
+            </div>
+            <div class="frow-2">
+                <div class="frow">
+                    <label>Birth Date <span class="req">*</span></label>
+                    <input class="finput" id="l_birthDate" type="date" />
+                    <div class="ferr" id="l_birthDate_err"></div>
+                </div>
+                <div class="frow">
+                    <label>Total Born <span class="req">*</span></label>
+                    <input class="finput" id="l_totalBorn" type="number" min="0" placeholder="0" />
+                    <div class="ferr" id="l_totalBorn_err"></div>
+                </div>
+            </div>
+            <div class="frow-2">
+                <div class="frow">
+                    <label>Survived Count <span class="req">*</span></label>
+                    <input class="finput" id="l_survivedCount" type="number" min="0" placeholder="0" />
+                    <div class="ferr" id="l_survivedCount_err"></div>
+                </div>
+                <div class="frow">
+                    <label>Died Count</label>
+                    <input class="finput" id="l_diedCount" type="number" min="0" placeholder="0" />
+                    <div class="ferr" id="l_diedCount_err"></div>
+                </div>
+            </div>
+            <div class="frow">
+                <label>Notes</label>
+                <textarea class="finput" id="l_notes" rows="3" placeholder="Litter notes..."></textarea>
+                <div class="ferr" id="l_notes_err"></div>
+            </div>
+        </div>
+        <div class="modal-foot">
+            <button class="btn-cancel" onclick="closeModal('litterModal')">Cancel</button>
+            <button class="btn-primary" id="litterBtn" onclick="submitLitter()">
+                <i class="bi bi-people-fill"></i> Add Litter
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- -- PUPPY MODAL ------------------------------------------ -->
+<div class="modal-backdrop-custom" id="puppyModal">
+    <div class="modal-box wide">
+        <div class="modal-hdr">
+            <h5><i class="bi bi-heart-eyes-fill" style="color:#f59e0b;"></i> Add Puppy</h5>
+            <button class="modal-close" onclick="closeModal('puppyModal')"><i class="bi bi-x-lg"></i></button>
+        </div>
+        <div class="modal-body">
+            <input type="hidden" id="p_litterId" />
+            <div class="frow">
+                <label>Litter <span class="req">*</span></label>
+                <select class="finput" id="p_litter">
+                    <option value="">-- Select Litter --</option>
+                </select>
+                <div class="ferr" id="p_litter_err"></div>
+            </div>
+            <div class="frow-2">
+                <div class="frow">
+                    <label>Puppy Name <span class="req">*</span></label>
+                    <input class="finput" id="p_name" type="text" placeholder="Puppy name" />
+                    <div class="ferr" id="p_name_err"></div>
+                </div>
+                <div class="frow">
+                    <label>Gender</label>
+                    <select class="finput" id="p_gender">
+                        <option value="">-- Select Gender --</option>
+                        <option value="Male">Male</option>
+                        <option value="Female">Female</option>
+                    </select>
+                    <div class="ferr" id="p_gender_err"></div>
+                </div>
+            </div>
+            <div class="frow">
+                <label>Color <span class="req">*</span></label>
+                <select class="finput" id="p_color">
+                    <option value="">-- Select Color --</option>
+                    <optgroup label="Solid Colors">
+                        <option>Black</option>
+                        <option>White</option>
+                        <option>Brown</option>
+                        <option>Red</option>
+                        <option>Yellow</option>
+                        <option>Cream</option>
+                        <option>Fawn</option>
+                        <option>Blue</option>
+                        <option>Silver</option>
+                        <option>Gray</option>
+                        <option>Gold</option>
+                        <option>Tan</option>
+                    </optgroup>
+                    <optgroup label="Multi-Color">
+                        <option>Black and White</option>
+                        <option>Black and Tan</option>
+                        <option>Brown and White</option>
+                        <option>Red and White</option>
+                        <option>Tricolor</option>
+                    </optgroup>
+                    <optgroup label="Patterns">
+                        <option>Brindle</option>
+                        <option>Spotted</option>
+                        <option>Merle</option>
+                        <option>Other</option>
+                    </optgroup>
+                </select>
+                <div class="ferr" id="p_color_err"></div>
+            </div>
+            <div class="frow-2">
+                <div class="frow">
+                    <label>Date of Birth <span class="req">*</span></label>
+                    <input class="finput" id="p_dateOfBirth" type="date" />
+                    <div class="ferr" id="p_dateOfBirth_err"></div>
+                </div>
+                <div class="frow">
+                    <label>Date of Death</label>
+                    <input class="finput" id="p_dateOfDeath" type="date" />
+                    <div class="ferr" id="p_dateOfDeath_err"></div>
+                </div>
+            </div>
+        </div>
+        <div class="modal-foot">
+            <button class="btn-cancel" onclick="closeModal('puppyModal')">Cancel</button>
+            <button class="btn-primary" id="puppyBtn" onclick="submitPuppy()">
+                <i class="bi bi-heart-eyes-fill"></i> Add Puppy
+            </button>
+        </div>
+    </div>
+</div>
+
+<script>
+    // -- Modal helpers -----------------------------------------
+    function openModal(id) {
+        document.getElementById(id).classList.add('open');
+        document.body.style.overflow = 'hidden';
+    }
+
+    async function openCreateModal() {
+        // Auto-generate next microchip number from existing dogs
+        const allMicrochips = Array.from(document.querySelectorAll('.act-menu[data-microchipnumber]'))
+            .map(el => el.dataset.microchipnumber)
+            .filter(v => v && /^\d+$/.test(v.trim()))
+            .map(v => BigInt(v.trim()));
+
+        let nextMicrochip;
+        if (allMicrochips.length > 0) {
+            const maxChip = allMicrochips.reduce((a, b) => a > b ? a : b);
+            nextMicrochip = String(maxChip + 1n);
+        } else {
+            // Base microchip if no dogs exist yet
+            nextMicrochip = '981000123456789900';
+        }
+        document.getElementById('c_microchipNumber').value = nextMicrochip;
+
+        // Load dropdowns for create modal
+        const animals = await loadAnimalsForDropdowns();
+
+        // Populate Sire dropdown
+        const sireSelect = document.getElementById('c_sireId');
+        sireSelect.innerHTML = '<option value="">-- Select Sire --</option>';
+        animals.forEach(animal => {
+            const option = document.createElement('option');
+            option.value = animal.id;
+            option.textContent = animal.name;
+            sireSelect.appendChild(option);
+        });
+
+        // Populate Dam dropdown
+        const damSelect = document.getElementById('c_damId');
+        damSelect.innerHTML = '<option value="">-- Select Dam --</option>';
+        animals.forEach(animal => {
+            const option = document.createElement('option');
+            option.value = animal.id;
+            option.textContent = animal.name;
+            damSelect.appendChild(option);
+        });
+
+        openModal('createModal');
+    }
+    function closeModal(id) {
+        document.getElementById(id).classList.remove('open');
+        document.body.style.overflow = '';
+    }
+    // Close on backdrop click
+    document.querySelectorAll('.modal-backdrop-custom').forEach(bd => {
+        bd.addEventListener('click', e => { if (e.target === bd) closeModal(bd.id); });
+    });
+    // Close on Escape
+    document.addEventListener('keydown', e => {
+        if (e.key === 'Escape') {
+            document.querySelectorAll('.modal-backdrop-custom.open').forEach(m => closeModal(m.id));
+        }
+    });
+
+    // -- Action menu (fixed-position, escapes overflow containers) -
+    function toggleActMenu(btn) {
+        const menu = btn.nextElementSibling;
+        const isOpen = menu.classList.contains('open');
+        closeAllActMenus();
+        if (!isOpen) {
+            positionActMenu(btn, menu);
+            menu.classList.add('open');
+        }
+    }
+
+    function closeAllActMenus() {
+        document.querySelectorAll('.act-menu.open').forEach(m => {
+            m.classList.remove('open');
+            m.style.top = ''; m.style.left = ''; m.style.right = '';
+        });
+    }
+
+    function positionActMenu(btn, menu) {
+        // Temporarily show (invisibly) to measure
+        menu.style.visibility = 'hidden';
+        menu.style.display = 'block';
+        const menuRect = menu.getBoundingClientRect();
+        menu.style.display = '';
+        menu.style.visibility = '';
+
+        const btnRect = btn.getBoundingClientRect();
+        const pad = 8;
+
+        // Align right edge of menu with right edge of button
+        let right = window.innerWidth - btnRect.right;
+        if (right < pad) right = pad;
+
+        // Default: open below
+        let top = btnRect.bottom + 4;
+        // If not enough room below, open upward
+        if (top + menuRect.height > window.innerHeight - pad) {
+            const upTop = btnRect.top - menuRect.height - 4;
+            if (upTop >= pad) top = upTop;
+            else top = Math.max(pad, window.innerHeight - menuRect.height - pad);
+        }
+
+        menu.style.top   = top + 'px';
+        menu.style.right = right + 'px';
+        menu.style.left  = 'auto';
+    }
+
+    // Close on outside click
+    document.addEventListener('click', e => {
+        if (!e.target.closest('.act-wrap')) closeAllActMenus();
+    });
+    // Close on any scroll (fixed-position won't follow content scroll)
+    window.addEventListener('scroll', closeAllActMenus, true);
+    window.addEventListener('resize', closeAllActMenus);
+
+
+     // -- Open Edit ---------------------------------------------
+     async function openEdit(menu) {
+         menu.classList.remove('open');
+
+         // Load animals for dropdowns
+         const animals = await loadAnimalsForDropdowns();
+         const currentDogId = menu.dataset.id;
+
+         // Populate Sire dropdown
+         const sireSelect = document.getElementById('e_sireId');
+         sireSelect.innerHTML = '<option value="">-- Select Sire --</option>';
+         animals.forEach(animal => {
+             // Don't include current dog in sire options to prevent circular references
+             if (animal.id != currentDogId) {
+                 const option = document.createElement('option');
+                 option.value = animal.id;
+                 option.textContent = animal.name;
+                 sireSelect.appendChild(option);
+             }
+         });
+
+         // Populate Dam dropdown
+         const damSelect = document.getElementById('e_damId');
+         damSelect.innerHTML = '<option value="">-- Select Dam --</option>';
+         animals.forEach(animal => {
+             // Don't include current dog in dam options to prevent circular references
+             if (animal.id != currentDogId) {
+                 const option = document.createElement('option');
+                 option.value = animal.id;
+                 option.textContent = animal.name;
+                 damSelect.appendChild(option);
+             }
+         });
+
+         // Set form values
+         document.getElementById('e_id').value            = menu.dataset.id;
+         document.getElementById('e_name').value          = menu.dataset.name  || '';
+         document.getElementById('e_breed').value         = menu.dataset.breed  || '';
+         document.getElementById('e_color').value         = menu.dataset.color  || '';
+         document.getElementById('e_dateOfBirth').value   = menu.dataset.dateofbirth  || '';
+         document.getElementById('e_dateOfDeath').value   = menu.dataset.dateofdeath  || '';
+         document.getElementById('e_gender').value        = menu.dataset.gender  || '';
+         document.getElementById('e_microchipNumber').value = menu.dataset.microchipnumber  || '';
+         // Note: File input cannot be pre-populated, so we leave it empty
+         // If there's an existing photo, it will be displayed elsewhere
+         document.getElementById('e_sireId').value        = menu.dataset.sireid  || '';
+         document.getElementById('e_damId').value         = menu.dataset.damid  || '';
+
+         console.log('Edit modal opened for dog ID:', menu.dataset.id);
+         console.log('Form data:', {
+             name: menu.dataset.name,
+             breed: menu.dataset.breed,
+             sireId: menu.dataset.sireid,
+             damId: menu.dataset.damid
+         });
+
+         openModal('editModal');
+     }
+
+   
+
+    // -- Toggle Status -----------------------------------------
+    async function toggleStatus(menu) {
+        menu.classList.remove('open');
+        const id = menu.dataset.id;
+        const currentStatus = menu.dataset.status === 'true';
+
+        try {
+            const res = await fetch(`/Dogs/ToggleStatus/${id}`, { method: 'POST' });
+            const data = await res.json();
+            if (data.success) {
+                showToast(data.message || 'Status updated successfully!', 'success');
+                setTimeout(() => location.reload(), 900);
+            } else {
+                showToast(data.message || 'Failed to update status.', 'error');
+            }
+        } catch (error) {
+            showToast('Network error. Please try again.', 'error');
+        }
+    }
+
+    // -- Open Delete -------------------------------------------
+    function openDelete(menu) {
+        menu.classList.remove('open');
+        document.getElementById('d_id').value = menu.dataset.id;
+        document.getElementById('d_name').textContent = menu.dataset.name;
+        openModal('deleteModal');
+    }
+
+  
+
+
+    // -- Loading state -----------------------------------------
+    function setLoading(btnId, loading, restoreHtml) {
+        const btn = document.getElementById(btnId);
+        btn.disabled = loading;
+        if (loading) btn.innerHTML = '<span class="spin"></span> Saving�';
+        else if (restoreHtml) btn.innerHTML = restoreHtml;
+    }
+
+    // -- Toast -------------------------------------------------
+    function showToast(msg, type) {
+        const wrap = document.getElementById('toastWrap');
+        const el   = document.createElement('div');
+        el.className = `toast-msg toast-${type}`;
+        el.innerHTML = `<i class="bi ${type === 'success' ? 'bi-check-circle-fill' : 'bi-exclamation-circle-fill'}"></i>${msg}`;
+        wrap.appendChild(el);
+        requestAnimationFrame(() => el.classList.add('show'));
+        setTimeout(() => { el.classList.remove('show'); setTimeout(() => el.remove(), 350); }, 3500);
+    }
+
+    // -- Validation helper -------------------------------------
+    function showErr(id, msg) {
+        const el = document.getElementById(id);
+        if (!el) return;
+        el.textContent = msg;
+        el.style.display = msg ? 'block' : 'none';
+    }
+    function clearErrs(...ids) { ids.forEach(id => showErr(id, '')); }
+
+     // -- Submit Create -----------------------------------------
+     async function submitCreate() {
+
+           clearErrs('c_name_err', 'c_breed_err', 'c_color_err', 'c_dateOfBirth_err', 'c_dateOfDeath_err', 'c_gender_err', 'c_microchipNumber_err', 'c_photoUrl_err', 'c_sireId_err', 'c_damId_err');
+         const name  = document.getElementById('c_name').value.trim();
+         const breed = document.getElementById('c_breed').value.trim();
+         const color = document.getElementById('c_color').value.trim();
+         const dateOfBirth = document.getElementById('c_dateOfBirth').value;
+         const dateOfDeath = null;
+         const gender = document.getElementById('c_gender').value;
+         const microchipNumber = document.getElementById('c_microchipNumber').value.trim();
+         const sireId = document.getElementById('c_sireId').value;
+         const damId = document.getElementById('c_damId').value;
+         const photoFile = document.getElementById('c_photoUrl').files[0];
+
+         let valid = true;
+         if (!name) { showErr('c_name_err','name is required'); valid = false; }
+         if (!breed) { showErr('c_breed_err','breed is required'); valid = false; }
+         if (!color) { showErr('c_color_err','color is required'); valid = false; }
+         if (!dateOfBirth) { showErr('c_dateOfBirth_err','date of birth is required'); valid = false; }
+
+         if (!valid) return;
+
+         setLoading('createBtn', true);
+         try {
+             let photoUrl = null;
+
+             // Convert photo to base64 and send with the create request (avoids separate upload + antiforgery issues)
+             if (photoFile) {
+                 photoUrl = await new Promise((resolve, reject) => {
+                     const reader = new FileReader();
+                     reader.onload = () => resolve(reader.result);
+                     reader.onerror = () => reject(new Error('Failed to read photo file'));
+                     reader.readAsDataURL(photoFile);
+                 });
+             }
+
+             // Send everything in one JSON request
+             const res  = await fetch('/Dogs/Create', {
+                 method: 'POST',
+                 headers: { 'Content-Type': 'application/json' },
+                 body: JSON.stringify({
+                     Name: name,
+                     Breed: breed,
+                     Color: color,
+                     DateOfBirth: dateOfBirth || null,
+                     DateOfDeath: dateOfDeath || null,
+                     Gender: gender || null,
+                     MicrochipNumber: microchipNumber || null,
+                     PhotoBase64: photoUrl || null,
+                     SireId: sireId ? parseInt(sireId, 10) : null,
+                     DamId: damId ? parseInt(damId, 10) : null
+                 })
+             });
+             const data = await res.json();
+             if (data.success) {
+                 showToast(data.message || 'Dog created successfully!', 'success');
+                 closeModal('createModal');
+                 setTimeout(() => location.reload(), 900);
+             } else {
+                 showToast(data.message || 'Failed to create Dog.', 'error');
+             }
+         } catch (error) {
+             showToast(error.message || 'Network error. Please try again.', 'error');
+         } finally {
+             setLoading('createBtn', false, '<i class="bi bi-person-plus-fill"></i> Create Dog');
+         }
+     }
+     // -- Submit Edit -------------------------------------------
+     async function submitEdit() {
+
+         const id = document.getElementById('e_id').value;
+         const name = document.getElementById('e_name').value.trim();
+         const breed = document.getElementById('e_breed').value.trim();
+         const color = document.getElementById('e_color').value.trim();
+         const dateOfBirth = document.getElementById('e_dateOfBirth').value;
+         const dateOfDeath = document.getElementById('e_dateOfDeath').value;
+         const gender = document.getElementById('e_gender').value;
+         const microchipNumber = document.getElementById('e_microchipNumber').value.trim();
+         const sireId = document.getElementById('e_sireId').value;
+         const damId = document.getElementById('e_damId').value;
+         const photoFile = document.getElementById('e_photoUrl').files[0];
+
+         // if (!fn || !ln) { showToast('First and last name are required.', 'error'); return; }
+
+         setLoading('editBtn', true);
+         try {
+             let photoUrl = null;
+
+             // Upload photo first if provided
+             if (photoFile) {
+                 const photoFormData = new FormData();
+                 photoFormData.append('file', photoFile);
+
+                 const uploadRes = await fetch('/Dogs/UploadPhoto', {
+                     method: 'POST',
+                     body: photoFormData
+                 });
+                 const uploadData = await uploadRes.json();
+                 if (!uploadData.success) {
+                     throw new Error(uploadData.message || 'Photo upload failed');
+                 }
+                 photoUrl = uploadData.url;
+             }
+
+             // Now update the dog with the photo URL
+             const res  = await fetch(`/Dogs/Update/${id}`, {
+                 method: 'POST',
+                 headers: { 'Content-Type': 'application/json' },
+                 body: JSON.stringify({
+                     Id: id,
+                     Name: name,
+                     Breed: breed,
+                     Color: color,
+                     DateOfBirth: dateOfBirth,
+                     DateOfDeath: dateOfDeath,
+                     Gender: gender,
+                     MicrochipNumber: microchipNumber,
+                     PhotoUrl: photoUrl,
+                     SireId: sireId,
+                     DamId: damId
+                 })
+             });
+             const data = await res.json();
+             if (data.success) {
+                 showToast(data.message || 'Dog updated!', 'success');
+                 closeModal('editModal');
+                 setTimeout(() => location.reload(), 900);
+             } else {
+                 showToast(data.message || 'Failed to update Dog.', 'error');
+             }
+         } catch (error) {
+             showToast(error.message || 'Network error. Please try again.', 'error');
+         } finally {
+             setLoading('editBtn', false, '<i class="bi bi-check2-circle"></i> Save Changes');
+         }
+     }
+
+
+    // -- Submit Delete -----------------------------------------
+    async function submitDelete() {
+        const id = document.getElementById('d_id').value;
+        setLoading('deleteBtn', true);
+        try {
+            const res  = await fetch(`/Dogs/Delete/${id}`, { method: 'POST' });
+            const data = await res.json();
+            if (data.success) {
+                showToast(data.message || 'Dog deleted.', 'success');
+                closeModal('deleteModal');
+                setTimeout(() => location.reload(), 900);
+            } else {
+                showToast(data.message || 'Failed to delete Dog.', 'error');
+            }
+        } catch { showToast('Network error. Please try again.', 'error'); }
+        finally { setLoading('deleteBtn', false, '<i class="bi bi-trash3-fill"></i> Delete'); }
+    }
+
+    // -- Open Vaccination Modal -----------------------------------
+    async function openVaccineModal(menu) {
+        menu.classList.remove('open');
+        document.getElementById('v_dogId').value = menu.dataset.id;
+        
+        // Set default vaccination date to today
+        document.getElementById('v_vaccinationDate').value = new Date().toISOString().split('T')[0];
+        
+        openModal('vaccineModal');
+    }
+
+    // -- Open Mating Modal ----------------------------------------
+    async function openMatingModal(menu) {
+        menu.classList.remove('open');
+        
+        // Load animals for dropdowns
+        const animals = await loadAnimalsForDropdowns();
+        
+        // Populate Sire dropdown
+        const sireSelect = document.getElementById('m_sire');
+        sireSelect.innerHTML = '<option value="">-- Select Sire --</option>';
+        animals.forEach(animal => {
+            const option = document.createElement('option');
+            option.value = animal.id;
+            option.textContent = animal.name;
+            sireSelect.appendChild(option);
+        });
+
+        // Populate Dam dropdown
+        const damSelect = document.getElementById('m_dam');
+        damSelect.innerHTML = '<option value="">-- Select Dam --</option>';
+        animals.forEach(animal => {
+            const option = document.createElement('option');
+            option.value = animal.id;
+            option.textContent = animal.name;
+            damSelect.appendChild(option);
+        });
+
+        // Pre-select current dog if it matches gender
+        const currentDogId = menu.dataset.id;
+        const currentDogGender = menu.dataset.gender;
+        
+        if (currentDogGender === 'Male') {
+            document.getElementById('m_sire').value = currentDogId;
+        } else if (currentDogGender === 'Female') {
+            document.getElementById('m_dam').value = currentDogId;
+        }
+        
+        // Set default mating date to today
+        document.getElementById('m_matingDate').value = new Date().toISOString().split('T')[0];
+        
+        openModal('matingModal');
+    }
+
+    // -- Open Litter Modal ----------------------------------------
+    async function openLitterModal(menu) {
+        menu.classList.remove('open');
+        
+        // Load mating records for dropdown
+        try {
+            const response = await fetch('/Dogs/GetMatingRecords');
+            if (!response.ok) throw new Error('Failed to load mating records');
+            const data = await response.json();
+            const matingRecords = Array.isArray(data) ? data : (data.data || []);
+            
+            const matingSelect = document.getElementById('l_matingRecord');
+            matingSelect.innerHTML = '<option value="">-- Select Mating Record --</option>';
+            matingRecords.forEach(record => {
+                const option = document.createElement('option');
+                option.value = record.id;
+                option.textContent = `${record.sireName} × ${record.damName} (${record.matingDate})`;
+                matingSelect.appendChild(option);
+            });
+        } catch (error) {
+            console.error('Error loading mating records:', error);
+        }
+        
+        // Set default birth date to today
+        document.getElementById('l_birthDate').value = new Date().toISOString().split('T')[0];
+        
+        openModal('litterModal');
+    }
+
+    // -- Submit Vaccination ----------------------------------------
+    async function submitVaccination() {
+        clearErrs('v_name_err', 'v_vaccType_err', 'v_vaccinationDate_err', 'v_nextVaccinationDate_err', 'v_vetclinicName_err', 'v_batchNumber_err', 'v_notes_err');
+        
+        const dogId = document.getElementById('v_dogId').value;
+        const name = document.getElementById('v_name').value.trim();
+        const vaccType = document.getElementById('v_vaccType').value;
+        const vaccinationDate = document.getElementById('v_vaccinationDate').value;
+        const nextVaccinationDate = document.getElementById('v_nextVaccinationDate').value;
+        const vetclinicName = document.getElementById('v_vetclinicName').value.trim();
+        const batchNumber = document.getElementById('v_batchNumber').value.trim();
+        const notes = document.getElementById('v_notes').value.trim();
+
+        let valid = true;
+        if (!name) { showErr('v_name_err', 'Vaccine name is required'); valid = false; }
+        if (!vaccinationDate) { showErr('v_vaccinationDate_err', 'Vaccination date is required'); valid = false; }
+
+        if (!valid) return;
+
+        setLoading('vaccineBtn', true);
+        try {
+            const res = await fetch('/Dogs/AddVaccination', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    DogId: parseInt(dogId),
+                    Name: name,
+                    VaccType: vaccType || null,
+                    VaccinationDate: vaccinationDate,
+                    NextVaccinationDate: nextVaccinationDate || null,
+                    VetclinicName: vetclinicName || null,
+                    BatchNumber: batchNumber || null,
+                    Notes: notes || null
+                })
+            });
+            const data = await res.json();
+            if (data.success) {
+                showToast(data.message || 'Vaccination record added successfully!', 'success');
+                closeModal('vaccineModal');
+                setTimeout(() => location.reload(), 900);
+            } else {
+                showToast(data.message || 'Failed to add vaccination record.', 'error');
+            }
+        } catch (error) {
+            showToast(error.message || 'Network error. Please try again.', 'error');
+        } finally {
+            setLoading('vaccineBtn', false, '<i class="bi bi-shield-fill-check"></i> Add Vaccination');
+        }
+    }
+
+    // -- Submit Mating -----------------------------------------
+    async function submitMating() {
+        clearErrs('m_sire_err', 'm_dam_err', 'm_matingDate_err', 'm_location_err', 'm_notes_err');
+        
+        const sireId = document.getElementById('m_sire').value;
+        const damId = document.getElementById('m_dam').value;
+        const matingDate = document.getElementById('m_matingDate').value;
+        const location = document.getElementById('m_location').value.trim();
+        const notes = document.getElementById('m_notes').value.trim();
+
+        let valid = true;
+        if (!sireId) { showErr('m_sire_err', 'Sire is required'); valid = false; }
+        if (!damId) { showErr('m_dam_err', 'Dam is required'); valid = false; }
+        if (!matingDate) { showErr('m_matingDate_err', 'Mating date is required'); valid = false; }
+
+        if (!valid) return;
+
+        setLoading('matingBtn', true);
+        try {
+            const res = await fetch('/Dogs/AddMatingRecord', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    SireId: parseInt(sireId),
+                    DamId: parseInt(damId),
+                    MatingDate: matingDate,
+                    Location: location || null,
+                    Notes: notes || null
+                })
+            });
+            const data = await res.json();
+            if (data.success) {
+                showToast(data.message || 'Mating record added successfully!', 'success');
+                closeModal('matingModal');
+                setTimeout(() => location.reload(), 900);
+            } else {
+                showToast(data.message || 'Failed to add mating record.', 'error');
+            }
+        } catch (error) {
+            showToast(error.message || 'Network error. Please try again.', 'error');
+        } finally {
+            setLoading('matingBtn', false, '<i class="bi bi-heart-fill"></i> Add Mating Record');
+        }
+    }
+
+    // -- Submit Litter -----------------------------------------
+    async function submitLitter() {
+        clearErrs('l_matingRecord_err', 'l_birthDate_err', 'l_totalBorn_err', 'l_survivedCount_err', 'l_diedCount_err', 'l_notes_err');
+        
+        const matingRecordId = document.getElementById('l_matingRecord').value;
+        const birthDate = document.getElementById('l_birthDate').value;
+        const totalBorn = document.getElementById('l_totalBorn').value;
+        const survivedCount = document.getElementById('l_survivedCount').value;
+        const diedCount = document.getElementById('l_diedCount').value;
+        const notes = document.getElementById('l_notes').value.trim();
+
+        let valid = true;
+        if (!matingRecordId) { showErr('l_matingRecord_err', 'Mating record is required'); valid = false; }
+        if (!birthDate) { showErr('l_birthDate_err', 'Birth date is required'); valid = false; }
+        if (!totalBorn) { showErr('l_totalBorn_err', 'Total born is required'); valid = false; }
+        if (!survivedCount) { showErr('l_survivedCount_err', 'Survived count is required'); valid = false; }
+
+        if (!valid) return;
+
+        setLoading('litterBtn', true);
+        try {
+            const res = await fetch('/Dogs/AddLitter', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    MatingRecordId: parseInt(matingRecordId),
+                    BirthDate: birthDate,
+                    TotalBorn: parseInt(totalBorn),
+                    SurvivedCount: parseInt(survivedCount),
+                    DiedCount: parseInt(diedCount) || 0,
+                    Notes: notes || null
+                })
+            });
+            const data = await res.json();
+            if (data.success) {
+                showToast(data.message || 'Litter record added successfully!', 'success');
+                closeModal('litterModal');
+                setTimeout(() => location.reload(), 900);
+            } else {
+                showToast(data.message || 'Failed to add litter record.', 'error');
+            }
+        } catch (error) {
+            showToast(error.message || 'Network error. Please try again.', 'error');
+        } finally {
+            setLoading('litterBtn', false, '<i class="bi bi-people-fill"></i> Add Litter');
+        }
+    }
+
+    // -- Open Puppy Modal -----------------------------------------
+    async function openPuppyModal(menu) {
+        menu.classList.remove('open');
+        
+        // Load litters for dropdown
+        try {
+            const response = await fetch('/Dogs/GetLitters');
+            if (!response.ok) throw new Error('Failed to load litters');
+            const data = await response.json();
+            const litters = Array.isArray(data) ? data : (data.data || []);
+            
+            const litterSelect = document.getElementById('p_litter');
+            litterSelect.innerHTML = '<option value="">-- Select Litter --</option>';
+            litters.forEach(litter => {
+                const option = document.createElement('option');
+                option.value = litter.id;
+                option.textContent = `${litter.sireName} × ${litter.damName} - ${litter.birthDate} (${litter.totalBorn} born)`;
+                litterSelect.appendChild(option);
+            });
+        } catch (error) {
+            console.error('Error loading litters:', error);
+        }
+        
+        // Set default birth date to today
+        document.getElementById('p_dateOfBirth').value = new Date().toISOString().split('T')[0];
+        
+        openModal('puppyModal');
+    }
+
+    // -- Submit Puppy ------------------------------------------
+    async function submitPuppy() {
+        clearErrs('p_litter_err', 'p_name_err', 'p_gender_err', 'p_color_err', 'p_dateOfBirth_err', 'p_dateOfDeath_err');
+        
+        const litterId = document.getElementById('p_litter').value;
+        const name = document.getElementById('p_name').value.trim();
+        const gender = document.getElementById('p_gender').value;
+        const color = document.getElementById('p_color').value;
+        const dateOfBirth = document.getElementById('p_dateOfBirth').value;
+        const dateOfDeath = document.getElementById('p_dateOfDeath').value;
+
+        let valid = true;
+        if (!litterId) { showErr('p_litter_err', 'Litter is required'); valid = false; }
+        if (!name) { showErr('p_name_err', 'Puppy name is required'); valid = false; }
+        if (!color) { showErr('p_color_err', 'Color is required'); valid = false; }
+        if (!dateOfBirth) { showErr('p_dateOfBirth_err', 'Date of birth is required'); valid = false; }
+
+        if (!valid) return;
+
+        setLoading('puppyBtn', true);
+        try {
+            const res = await fetch('/Dogs/AddPuppy', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    LitterId: parseInt(litterId),
+                    Name: name,
+                    Gender: gender || null,
+                    Color: color,
+                    DateOfBirth: dateOfBirth,
+                    DateOfDeath: dateOfDeath || null
+                })
+            });
+            const data = await res.json();
+            if (data.success) {
+                showToast(data.message || 'Puppy added successfully!', 'success');
+                closeModal('puppyModal');
+                setTimeout(() => location.reload(), 900);
+            } else {
+                showToast(data.message || 'Failed to add puppy.', 'error');
+            }
+        } catch (error) {
+            showToast(error.message || 'Network error. Please try again.', 'error');
+        } finally {
+            setLoading('puppyBtn', false, '<i class="bi bi-heart-eyes-fill"></i> Add Puppy');
+        }
+    }
+
+    // -- Check for edit parameter on page load -------------------
+    document.addEventListener('DOMContentLoaded', function() {
+        const urlParams = new URLSearchParams(window.location.search);
+        const editId = urlParams.get('edit');
+        if (editId) {
+            // Find the dog row and trigger edit
+            const actionMenu = document.querySelector(`.act-menu[data-id="${editId}"]`);
+            if (actionMenu) {
+                openEdit(actionMenu);
+            }
+        }
+    });
+
+    // -- Print Certificate -----------------------------------------
+    function printCertificate(menu) {
+        menu.classList.remove('open');
+        const dogId = menu.dataset.id;
+        const dogName = menu.dataset.name;
+        
+        try {
+            // Open certificate in new window/tab
+            window.open(`/Reports/DogCertificate/${dogId}`, '_blank');
+            showToast(`Certificate for ${dogName} opened in new tab`, 'success');
+        } catch (error) {
+            console.error('Error opening certificate:', error);
+            showToast('Failed to open certificate', 'error');
+        }
+    }
+</script>

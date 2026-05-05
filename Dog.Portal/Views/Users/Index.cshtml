@@ -1,0 +1,1008 @@
+@model Dog.Portal.Models.UsersListViewModel
+@{
+    Layout = "_AdminLayout";
+    ViewData["Title"] = "Users";
+    var totalAll      = Model.TotalCount;
+    var activeCount   = Model.Users.Count(u => string.Equals(u.Status,"ACTIVE",StringComparison.OrdinalIgnoreCase));
+    var inactiveCount = Model.Users.Count(u => !string.Equals(u.Status,"ACTIVE",StringComparison.OrdinalIgnoreCase));
+    var roleCount     = Model.AllRoles.Count;
+}
+<style>
+.page-hdr h4{font-size:1.15rem;font-weight:800;color:#0f172a;margin:0 0 .25rem;letter-spacing:-.02em}
+.page-hdr p{font-size:.845rem;color:#64748b;margin:0}
+.page-hdr-row{display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;flex-wrap:wrap;margin-bottom:1.5rem}
+.total-chip{display:inline-flex;align-items:center;gap:.375rem;background:#ede9fe;color:#6d28d9;font-size:.8rem;font-weight:700;padding:.35rem .875rem;border-radius:20px;white-space:nowrap}
+.hdr-actions{display:flex;align-items:center;gap:.625rem;flex-wrap:wrap}
+.btn-add{display:inline-flex;align-items:center;gap:.4rem;padding:.6rem 1.25rem;background:linear-gradient(135deg,#667eea,#764ba2);color:#fff;border:none;border-radius:9px;font-size:.845rem;font-weight:600;cursor:pointer;transition:all .2s;box-shadow:0 2px 8px rgba(102,126,234,.3)}
+.btn-add:hover{opacity:.9;transform:translateY(-1px)}
+
+/* Stats */
+.stats-row{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:.875rem;margin-bottom:1.5rem}
+.stat-card{background:#fff;border-radius:12px;border:1px solid #e9eef4;box-shadow:0 1px 4px rgba(0,0,0,.04);padding:1rem 1.25rem;display:flex;align-items:center;gap:.875rem}
+.stat-icon{width:42px;height:42px;border-radius:11px;display:flex;align-items:center;justify-content:center;font-size:1.1rem;flex-shrink:0}
+.si-total{background:linear-gradient(135deg,#ede9fe,#ddd6fe);color:#7c3aed}
+.si-active{background:linear-gradient(135deg,#d1fae5,#a7f3d0);color:#065f46}
+.si-inactive{background:linear-gradient(135deg,#fee2e2,#fecaca);color:#991b1b}
+.si-roles{background:linear-gradient(135deg,#dbeafe,#bfdbfe);color:#1d4ed8}
+.stat-body .val{font-size:1.35rem;font-weight:800;color:#0f172a;line-height:1}
+.stat-body .lbl{font-size:.75rem;color:#94a3b8;font-weight:500;margin-top:.2rem}
+
+/* Data card */
+.dc{background:#fff;border-radius:14px;border:1px solid #e9eef4;box-shadow:0 1px 4px rgba(0,0,0,.04),0 6px 20px rgba(0,0,0,.04);overflow:hidden}
+.dc-head{padding:1rem 1.375rem;border-bottom:1px solid #f1f5f9;background:#fafbfc;display:flex;align-items:center;gap:.625rem;flex-wrap:wrap}
+
+/* Search & filters */
+.srch-wrap{position:relative;flex:1;min-width:180px;max-width:280px}
+.srch-wrap i{position:absolute;left:.875rem;top:50%;transform:translateY(-50%);color:#94a3b8;font-size:.9rem;pointer-events:none}
+.srch-input{width:100%;padding:.6rem .875rem .6rem 2.375rem;border:1.5px solid #e2e8f0;border-radius:9px;font-size:.845rem;color:#1e293b;background:#fff;outline:none;transition:border-color .2s,box-shadow .2s}
+.srch-input:focus{border-color:#667eea;box-shadow:0 0 0 3px rgba(102,126,234,.1)}
+.srch-input::placeholder{color:#cbd5e1}
+.filter-sel{padding:.6rem .875rem;border:1.5px solid #e2e8f0;border-radius:9px;font-size:.845rem;color:#374151;background:#fff;outline:none;cursor:pointer;transition:border-color .2s;min-width:130px}
+.filter-sel:focus{border-color:#667eea;box-shadow:0 0 0 3px rgba(102,126,234,.1)}
+.btn-srch{padding:.6rem 1.125rem;background:linear-gradient(135deg,#667eea,#764ba2);color:#fff;border:none;border-radius:9px;font-size:.845rem;font-weight:600;cursor:pointer;transition:opacity .2s;display:inline-flex;align-items:center;gap:.375rem;white-space:nowrap}
+.btn-srch:hover{opacity:.9}
+.btn-clr{padding:.6rem .875rem;background:#f1f5f9;color:#64748b;border:1.5px solid #e2e8f0;border-radius:9px;font-size:.845rem;font-weight:500;cursor:pointer;text-decoration:none;display:inline-flex;align-items:center;gap:.3rem;transition:all .18s;white-space:nowrap}
+.btn-clr:hover{background:#e2e8f0;color:#334155}
+
+/* Table */
+.tbl-wrap{overflow-x:auto}
+.dt{width:100%;border-collapse:collapse}
+.dt thead th{padding:.75rem 1.125rem;font-size:.7rem;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.09em;background:#f8fafc;border-bottom:1px solid #f0f4f8;white-space:nowrap}
+.dt tbody td{padding:.875rem 1.125rem;font-size:.855rem;color:#374151;border-bottom:1px solid #f8fafc;vertical-align:middle}
+.dt tbody tr:last-child td{border-bottom:none}
+.dt tbody tr{transition:background .15s}
+.dt tbody tr:hover td{background:#fafbff}
+.rn{color:#cbd5e1;font-size:.8rem;font-weight:600}
+
+/* User avatar */
+.u-av{width:38px;height:38px;border-radius:10px;background:linear-gradient(135deg,#667eea,#764ba2);display:flex;align-items:center;justify-content:center;color:#fff;font-size:.8rem;font-weight:800;flex-shrink:0;box-shadow:0 2px 8px rgba(102,126,234,.2)}
+.u-name{font-weight:700;color:#1e293b;font-size:.875rem}
+.u-email{font-size:.75rem;color:#94a3b8}
+
+/* Status badge */
+.s-badge{display:inline-flex;align-items:center;gap:.3rem;font-size:.74rem;font-weight:700;padding:.25rem .65rem;border-radius:20px}
+.s-active{background:#d1fae5;color:#065f46}
+.s-inactive{background:#fee2e2;color:#991b1b}
+.s-other{background:#f1f5f9;color:#475569}
+
+/* Role chip */
+.role-chip{display:inline-block;background:#ede9fe;color:#6d28d9;font-size:.74rem;font-weight:600;padding:.2rem .6rem;border-radius:6px}
+
+/* Action menu */
+.act-wrap{position:relative;display:inline-block}
+.act-btn{width:32px;height:32px;border:1.5px solid #e2e8f0;border-radius:8px;background:#fff;color:#64748b;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all .18s;font-size:.9rem}
+.act-btn:hover{background:#f8fafc;border-color:#cbd5e1;color:#334155}
+.act-menu{position:fixed;background:#fff;border:1px solid #e2e8f0;border-radius:11px;box-shadow:0 12px 40px rgba(0,0,0,.18),0 0 0 1px rgba(0,0,0,.02);min-width:200px;z-index:1045;padding:.375rem;display:none}
+.act-menu.open{display:block}
+.act-item{display:flex;align-items:center;gap:.625rem;padding:.5rem .75rem;border-radius:7px;font-size:.835rem;font-weight:500;color:#374151;cursor:pointer;transition:background .15s;border:none;background:none;width:100%;text-align:left}
+.act-item:hover{background:#f8fafc;color:#1e293b}
+.act-item.danger{color:#dc2626}
+.act-item.danger:hover{background:#fef2f2}
+.act-item i{width:16px;text-align:center;font-size:.85rem}
+.act-divider{height:1px;background:#f1f5f9;margin:.25rem 0}
+
+/* Footer / pagination */
+.dc-foot{padding:.9rem 1.375rem;border-top:1px solid #f1f5f9;background:#fafbfc;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.75rem}
+.ri{font-size:.82rem;color:#94a3b8}
+.ri strong{color:#374151}
+.pgn{display:flex;align-items:center;gap:.25rem}
+.pb{display:flex;align-items:center;justify-content:center;min-width:32px;height:32px;padding:0 .5rem;border:1.5px solid #e2e8f0;border-radius:7px;font-size:.8rem;font-weight:500;color:#64748b;text-decoration:none;transition:all .18s;background:#fff}
+.pb:hover{background:#f8fafc;color:#334155;border-color:#cbd5e1}
+.pb.cur{background:linear-gradient(135deg,#667eea,#764ba2);color:#fff;border-color:transparent;font-weight:700}
+.pb.off{opacity:.35;pointer-events:none}
+.pb.wide{padding:0 .875rem}
+.pgn-dots{padding:0 .25rem;color:#cbd5e1;font-size:.82rem}
+
+/* Empty state */
+.es{text-align:center;padding:4rem 2rem}
+.es-icon{font-size:3rem;color:#e2e8f0;margin-bottom:1rem;display:block}
+.es h6{font-weight:600;color:#64748b;margin:0 0 .375rem}
+.es p{font-size:.845rem;color:#94a3b8;margin:0}
+
+/* Alert */
+.alert-err{background:#fef2f2;border:1px solid #fecaca;border-radius:10px;padding:.875rem 1.125rem;color:#dc2626;font-size:.845rem;display:flex;align-items:center;gap:.625rem;margin-bottom:1.25rem}
+
+/* ── Modals ──────────────────────────────────────── */
+.modal-backdrop-custom{position:fixed;inset:0;background:rgba(15,23,42,.45);backdrop-filter:blur(3px);z-index:1050;display:none;align-items:center;justify-content:center;padding:1rem}
+.modal-backdrop-custom.open{display:flex}
+.modal-box{background:#fff;border-radius:16px;box-shadow:0 20px 60px rgba(0,0,0,.2);width:100%;max-width:480px;max-height:90vh;overflow-y:auto;animation:mslide .22s ease}
+.modal-box.wide{max-width:560px}
+@@keyframes mslide{from{opacity:0;transform:translateY(-16px)}to{opacity:1;transform:translateY(0)}}
+.modal-hdr{display:flex;align-items:center;justify-content:space-between;padding:1.25rem 1.5rem;border-bottom:1px solid #f1f5f9}
+.modal-hdr h5{font-size:1rem;font-weight:800;color:#0f172a;margin:0;display:flex;align-items:center;gap:.5rem}
+.modal-close{width:30px;height:30px;border:none;background:#f1f5f9;border-radius:7px;color:#64748b;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:.9rem;transition:all .15s}
+.modal-close:hover{background:#e2e8f0;color:#334155}
+.modal-body{padding:1.375rem 1.5rem}
+.modal-foot{padding:1rem 1.5rem;border-top:1px solid #f1f5f9;display:flex;align-items:center;justify-content:flex-end;gap:.625rem}
+
+/* Form fields */
+.frow{margin-bottom:1rem}
+.frow label{display:block;font-size:.8rem;font-weight:600;color:#374151;margin-bottom:.375rem}
+.frow label span.req{color:#ef4444;margin-left:.2rem}
+.finput{width:100%;padding:.65rem .875rem;border:1.5px solid #e2e8f0;border-radius:9px;font-size:.855rem;color:#1e293b;background:#fff;outline:none;transition:border-color .2s,box-shadow .2s}
+.finput:focus{border-color:#667eea;box-shadow:0 0 0 3px rgba(102,126,234,.1)}
+.finput::placeholder{color:#cbd5e1}
+.frow-2{display:grid;grid-template-columns:1fr 1fr;gap:.875rem}
+.fhint{font-size:.75rem;color:#94a3b8;margin-top:.3rem}
+.ferr{font-size:.75rem;color:#dc2626;margin-top:.3rem;display:none}
+
+/* Buttons */
+.btn-cancel{padding:.65rem 1.25rem;background:#f1f5f9;color:#64748b;border:1.5px solid #e2e8f0;border-radius:9px;font-size:.855rem;font-weight:600;cursor:pointer;transition:all .18s}
+.btn-cancel:hover{background:#e2e8f0;color:#334155}
+.btn-primary{padding:.65rem 1.5rem;background:linear-gradient(135deg,#667eea,#764ba2);color:#fff;border:none;border-radius:9px;font-size:.855rem;font-weight:700;cursor:pointer;transition:all .2s;box-shadow:0 2px 8px rgba(102,126,234,.3);display:inline-flex;align-items:center;gap:.4rem;min-width:120px;justify-content:center}
+.btn-primary:hover:not(:disabled){opacity:.9;transform:translateY(-1px)}
+.btn-primary:disabled{opacity:.6;cursor:not-allowed;transform:none}
+.btn-danger{padding:.65rem 1.5rem;background:linear-gradient(135deg,#ef4444,#dc2626);color:#fff;border:none;border-radius:9px;font-size:.855rem;font-weight:700;cursor:pointer;transition:all .2s;box-shadow:0 2px 8px rgba(239,68,68,.3);display:inline-flex;align-items:center;gap:.4rem;min-width:120px;justify-content:center}
+.btn-danger:hover:not(:disabled){opacity:.9}
+.btn-danger:disabled{opacity:.6;cursor:not-allowed}
+
+/* Delete confirm */
+.del-icon{width:60px;height:60px;border-radius:50%;background:#fef2f2;display:flex;align-items:center;justify-content:center;margin:0 auto 1rem;font-size:1.5rem;color:#dc2626}
+.del-name{font-weight:700;color:#1e293b}
+
+/* Password strength */
+.pw-wrap{position:relative}
+.pw-toggle{position:absolute;right:.875rem;top:50%;transform:translateY(-50%);background:none;border:none;color:#94a3b8;cursor:pointer;font-size:.9rem;padding:0}
+.pw-toggle:hover{color:#64748b}
+.pw-strength{height:4px;border-radius:2px;margin-top:.5rem;background:#f1f5f9;overflow:hidden}
+.pw-bar{height:100%;border-radius:2px;transition:width .3s,background .3s;width:0}
+
+/* Toast */
+.toast-wrap{position:fixed;bottom:1.75rem;right:1.75rem;z-index:9999;display:flex;flex-direction:column;gap:.5rem;pointer-events:none}
+.toast-msg{display:flex;align-items:center;gap:.625rem;padding:.875rem 1.25rem;border-radius:12px;font-size:.855rem;font-weight:600;box-shadow:0 8px 32px rgba(0,0,0,.15);pointer-events:all;transform:translateX(120%);transition:transform .3s cubic-bezier(.4,0,.2,1);max-width:320px}
+.toast-msg.show{transform:translateX(0)}
+.toast-success{background:#065f46;color:#fff}
+.toast-error{background:#991b1b;color:#fff}
+.spin{width:14px;height:14px;border:2px solid rgba(255,255,255,.35);border-top-color:#fff;border-radius:50%;animation:spin .65s linear infinite;flex-shrink:0}
+@@keyframes spin{to{transform:rotate(360deg)}}
+
+@@media(max-width:576px){.frow-2{grid-template-columns:1fr}.dc-head{flex-direction:column;align-items:stretch}.srch-wrap{max-width:100%}}
+</style>
+
+<!-- Toast -->
+<div class="toast-wrap" id="toastWrap"></div>
+
+<!-- Page header -->
+<div class="page-hdr-row">
+    <div class="page-hdr">
+        <h4><i class="bi bi-people-fill me-2" style="color:#667eea;"></i>Users</h4>
+        <p>Manage user accounts, roles, passwords and company assignments.</p>
+    </div>
+    <div class="hdr-actions">
+        @if (Model.TotalCount > 0)
+        {
+            <span class="total-chip"><i class="bi bi-people"></i> @Model.TotalCount user@(Model.TotalCount != 1 ? "s" : "")</span>
+        }
+        <button class="btn-add" onclick="openModal('createModal')">
+            <i class="bi bi-person-plus-fill"></i> Add User
+        </button>
+    </div>
+</div>
+
+@if (!string.IsNullOrEmpty(ViewBag.FetchError as string))
+{
+    <div class="alert-err"><i class="bi bi-exclamation-circle-fill"></i>@ViewBag.FetchError</div>
+}
+
+<!-- Stat cards -->
+<div class="stats-row">
+    <div class="stat-card">
+        <div class="stat-icon si-total"><i class="bi bi-people-fill"></i></div>
+        <div class="stat-body"><div class="val">@Model.TotalCount</div><div class="lbl">Total Users</div></div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon si-active"><i class="bi bi-person-check-fill"></i></div>
+        <div class="stat-body"><div class="val">@activeCount</div><div class="lbl">Active</div></div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon si-inactive"><i class="bi bi-person-x-fill"></i></div>
+        <div class="stat-body"><div class="val">@inactiveCount</div><div class="lbl">Inactive</div></div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon si-roles"><i class="bi bi-person-badge-fill"></i></div>
+        <div class="stat-body"><div class="val">@roleCount</div><div class="lbl">Roles</div></div>
+    </div>
+</div>
+
+<!-- Data card -->
+<div class="dc">
+    <!-- Filters -->
+    <div class="dc-head">
+        <form method="get" action="/Users" style="display:contents;">
+            <div class="srch-wrap">
+                <i class="bi bi-search"></i>
+                <input class="srch-input" name="search" type="text" placeholder="Search name, email, phone…"
+                       value="@Model.SearchTerm" autocomplete="off" />
+            </div>
+            <select class="filter-sel" name="status">
+                <option value="">All Statuses</option>
+                <option value="ACTIVE"   selected="@(Model.StatusFilter == "ACTIVE")">Active</option>
+                <option value="INACTIVE" selected="@(Model.StatusFilter == "INACTIVE")">Inactive</option>
+            </select>
+            <select class="filter-sel" name="role">
+                <option value="">All Roles</option>
+                @foreach (var r in Model.AllRoles)
+                {
+                    <option value="@r.Name" selected="@(Model.RoleFilter == r.Name)">@r.Name</option>
+                }
+            </select>
+            <input type="hidden" name="page" value="1" />
+            <button type="submit" class="btn-srch"><i class="bi bi-funnel-fill"></i> Filter</button>
+            @if (!string.IsNullOrEmpty(Model.SearchTerm) || !string.IsNullOrEmpty(Model.StatusFilter) || !string.IsNullOrEmpty(Model.RoleFilter))
+            {
+                <a href="/Users" class="btn-clr"><i class="bi bi-x"></i> Clear</a>
+            }
+        </form>
+    </div>
+
+    <!-- Table -->
+    <div class="tbl-wrap">
+        @if (Model.Users.Any())
+        {
+            <table class="dt">
+                <thead>
+                    <tr>
+                        <th style="width:40px;">#</th>
+                        <th>User</th>
+                        <th>Phone</th>
+                        <th>Role</th>
+                        <th>Status</th>
+                        <th>Last Login</th>
+                        <th>Joined</th>
+                        <th style="width:50px;text-align:center;">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @{ int rowNum = Model.From; }
+                    @foreach (var u in Model.Users)
+                    {
+                        var statusClass = u.Status?.ToUpper() == "ACTIVE" ? "s-active" :
+                                          u.Status?.ToUpper() == "INACTIVE" ? "s-inactive" : "s-other";
+                        var statusDot   = u.Status?.ToUpper() == "ACTIVE" ? "bi-circle-fill" : "bi-circle";
+                        <tr>
+                            <td><span class="rn">@rowNum</span></td>
+                            <td>
+                                <div style="display:flex;align-items:center;gap:.75rem;">
+                                    <div class="u-av">@u.Initials</div>
+                                    <div>
+                                        <div class="u-name">@u.FullName</div>
+                                        <div class="u-email">@u.Email</div>
+                                    </div>
+                                </div>
+                            </td>
+                            <td style="color:#64748b;font-size:.835rem;">@(u.PhoneNumber ?? "—")</td>
+                            <td>
+                                @if (!string.IsNullOrEmpty(u.RoleName))
+                                {
+                                    <span class="role-chip">@u.RoleName</span>
+                                }
+                                else { <span style="color:#cbd5e1;font-size:.8rem;">No role</span> }
+                            </td>
+                            <td>
+                                <span class="s-badge @statusClass">
+                                    <i class="bi @statusDot" style="font-size:.5rem;"></i>
+                                    @(u.Status ?? "Unknown")
+                                </span>
+                            </td>
+                            <td style="color:#64748b;font-size:.82rem;white-space:nowrap;">
+                                @(u.LastLoginDate.HasValue ? u.LastLoginDate.Value.ToString("dd MMM yyyy") : "Never")
+                            </td>
+                            <td style="color:#64748b;font-size:.82rem;white-space:nowrap;">
+                                @u.CreatedAt.ToString("dd MMM yyyy")
+                            </td>
+                            <td style="text-align:center;">
+                                <div class="act-wrap">
+                                    <button class="act-btn" onclick="toggleActMenu(this)" title="Actions">
+                                        <i class="bi bi-three-dots-vertical"></i>
+                                    </button>
+                                    <div class="act-menu"
+                                         data-id="@u.Id"
+                                         data-name="@u.FullName"
+                                         data-firstname="@u.Name"
+                                         data-lastname="@u.Surname"
+                                         data-email="@u.Email"
+                                         data-phone="@u.PhoneNumber"
+                                         data-status="@u.Status"
+                                         data-role="@u.RoleName"
+                                         data-company="@u.CompanyId">
+                                        <button class="act-item" onclick="openEdit(this.closest('.act-menu'))">
+                                            <i class="bi bi-pencil-fill" style="color:#667eea;"></i> Edit User
+                                        </button>
+                                        <button class="act-item" onclick="openChangeRole(this.closest('.act-menu'))">
+                                            <i class="bi bi-person-badge-fill" style="color:#7c3aed;"></i> Change Role
+                                        </button>
+                                        <button class="act-item" onclick="openChangeCompany(this.closest('.act-menu'))">
+                                            <i class="bi bi-building-fill" style="color:#1d4ed8;"></i> Change Branch
+                                        </button>
+                                        <button class="act-item" onclick="openResetPw(this.closest('.act-menu'))">
+                                            <i class="bi bi-key-fill" style="color:#f59e0b;"></i> Change Password
+                                        </button>
+                                        <div class="act-divider"></div>
+                                        <button class="act-item danger" onclick="openDelete(this.closest('.act-menu'))">
+                                            <i class="bi bi-trash3-fill"></i> Delete User
+                                        </button>
+                                    </div>
+                                </div>
+                            </td>
+                        </tr>
+                        rowNum++;
+                    }
+                </tbody>
+            </table>
+        }
+        else
+        {
+            <div class="es">
+                <i class="bi bi-people es-icon"></i>
+                <h6>No users found</h6>
+                <p>@(string.IsNullOrEmpty(Model.SearchTerm) && string.IsNullOrEmpty(Model.StatusFilter) && string.IsNullOrEmpty(Model.RoleFilter)
+                    ? "No users have been created yet. Click \"Add User\" to get started."
+                    : "No users match your current filters. Try adjusting your search.")</p>
+            </div>
+        }
+    </div>
+
+    <!-- Pagination -->
+    @if (Model.TotalPages > 1)
+    {
+        <div class="dc-foot">
+            <div class="ri">
+                Showing <strong>@Model.From–@Model.To</strong> of <strong>@Model.TotalCount</strong> users
+            </div>
+            <nav class="pgn">
+                @{
+                    var prevPage = Model.Page - 1;
+                    var nextPage = Model.Page + 1;
+                    var baseUrl  = $"/Users?search={Model.SearchTerm}&status={Model.StatusFilter}&role={Model.RoleFilter}&pageSize={Model.PageSize}";
+                }
+                <a class="pb wide @(Model.Page <= 1 ? "off" : "")" href="@baseUrl&page=@prevPage">
+                    <i class="bi bi-chevron-left" style="font-size:.7rem;"></i>
+                </a>
+                @for (int p = 1; p <= Model.TotalPages; p++)
+                {
+                    if (p == 1 || p == Model.TotalPages || (p >= Model.Page - 2 && p <= Model.Page + 2))
+                    {
+                        <a class="pb @(p == Model.Page ? "cur" : "")" href="@baseUrl&page=@p">@p</a>
+                    }
+                    else if (p == Model.Page - 3 || p == Model.Page + 3)
+                    {
+                        <span class="pgn-dots">…</span>
+                    }
+                }
+                <a class="pb wide @(Model.Page >= Model.TotalPages ? "off" : "")" href="@baseUrl&page=@nextPage">
+                    <i class="bi bi-chevron-right" style="font-size:.7rem;"></i>
+                </a>
+            </nav>
+        </div>
+    }
+    else if (Model.TotalCount > 0)
+    {
+        <div class="dc-foot">
+            <div class="ri">Showing <strong>@Model.TotalCount</strong> user@(Model.TotalCount != 1 ? "s" : "")</div>
+        </div>
+    }
+</div>
+
+<!-- ══ CREATE MODAL ══════════════════════════════════════════ -->
+<div class="modal-backdrop-custom" id="createModal">
+    <div class="modal-box wide">
+        <div class="modal-hdr">
+            <h5><i class="bi bi-person-plus-fill" style="color:#667eea;"></i> Add New User</h5>
+            <button class="modal-close" onclick="closeModal('createModal')"><i class="bi bi-x-lg"></i></button>
+        </div>
+        <div class="modal-body">
+            <div class="frow-2">
+                <div class="frow">
+                    <label>First Name <span class="req">*</span></label>
+                    <input class="finput" id="c_firstName" type="text" placeholder="John" />
+                    <div class="ferr" id="c_firstName_err"></div>
+                </div>
+                <div class="frow">
+                    <label>Last Name <span class="req">*</span></label>
+                    <input class="finput" id="c_lastName" type="text" placeholder="Doe" />
+                    <div class="ferr" id="c_lastName_err"></div>
+                </div>
+            </div>
+            <div class="frow">
+                <label>Email Address <span class="req">*</span></label>
+                <input class="finput" id="c_email" type="email" placeholder="john@example.com" />
+                <div class="ferr" id="c_email_err"></div>
+            </div>
+            <div class="frow">
+                <label>Phone Number</label>
+                <input class="finput" id="c_phone" type="tel" placeholder="+1 234 567 8900" />
+            </div>
+            <div class="frow">
+                <label>Password <span class="req">*</span></label>
+                <div class="pw-wrap">
+                    <input class="finput" id="c_password" type="password" placeholder="Min 8 characters"
+                           oninput="checkStrength(this,'c_pwbar')" style="padding-right:2.5rem;" />
+                    <button type="button" class="pw-toggle" onclick="togglePw('c_password',this)">
+                        <i class="bi bi-eye"></i>
+                    </button>
+                </div>
+                <div class="pw-strength"><div class="pw-bar" id="c_pwbar"></div></div>
+                <div class="ferr" id="c_password_err"></div>
+            </div>
+            <div class="frow-2">
+                <div class="frow">
+                    <label>Role <span class="req">*</span></label>
+                    <select class="finput filter-sel" id="c_role" style="width:100%;">
+                        <option value="">— Select Role —</option>
+                        @foreach (var r in Model.AllRoles)
+                        {
+                            <option value="@r.Name">@r.Name</option>
+                        }
+                    </select>
+                    <div class="ferr" id="c_role_err"></div>
+                </div>
+                <div class="frow">
+                    <label>Company / Branch <span class="req">*</span></label>
+                    <select class="finput filter-sel" id="c_company" style="width:100%;">
+                        <option value="">— Select Company —</option>
+                        @foreach (var c in Model.AllCompanies)
+                        {
+                            <option value="@c.Id">[@c.CompanyType] @c.CompanyName</option>
+                        }
+                    </select>
+                    <div class="ferr" id="c_company_err"></div>
+                </div>
+            </div>
+        </div>
+        <div class="modal-foot">
+            <button class="btn-cancel" onclick="closeModal('createModal')">Cancel</button>
+            <button class="btn-primary" id="createBtn" onclick="submitCreate()">
+                <i class="bi bi-person-plus-fill"></i> Create User
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- ══ EDIT MODAL ═══════════════════════════════════════════ -->
+<div class="modal-backdrop-custom" id="editModal">
+    <div class="modal-box wide">
+        <div class="modal-hdr">
+            <h5><i class="bi bi-pencil-fill" style="color:#667eea;"></i> Edit User</h5>
+            <button class="modal-close" onclick="closeModal('editModal')"><i class="bi bi-x-lg"></i></button>
+        </div>
+        <div class="modal-body">
+            <input type="hidden" id="e_id" />
+            <div class="frow-2">
+                <div class="frow">
+                    <label>First Name <span class="req">*</span></label>
+                    <input class="finput" id="e_firstName" type="text" />
+                </div>
+                <div class="frow">
+                    <label>Last Name <span class="req">*</span></label>
+                    <input class="finput" id="e_lastName" type="text" />
+                </div>
+            </div>
+            <div class="frow">
+                <label>Phone Number</label>
+                <input class="finput" id="e_phone" type="tel" />
+            </div>
+            <div class="frow-2">
+                <div class="frow">
+                    <label>Role <span class="req">*</span></label>
+                    <select class="finput filter-sel" id="e_role" style="width:100%;">
+                        <option value="">— Select Role —</option>
+                        @foreach (var r in Model.AllRoles)
+                        {
+                            <option value="@r.Name">@r.Name</option>
+                        }
+                    </select>
+                </div>
+                <div class="frow">
+                    <label>Status</label>
+                    <select class="finput filter-sel" id="e_status" style="width:100%;">
+                        <option value="ACTIVE">Active</option>
+                        <option value="INACTIVE">Inactive</option>
+                    </select>
+                </div>
+            </div>
+            <div class="frow">
+                <label>Company / Branch</label>
+                <select class="finput filter-sel" id="e_company" style="width:100%;">
+                    <option value="0">— Select Company —</option>
+                    @foreach (var c in Model.AllCompanies)
+                    {
+                        <option value="@c.Id">[@c.CompanyType] @c.CompanyName</option>
+                    }
+                </select>
+            </div>
+        </div>
+        <div class="modal-foot">
+            <button class="btn-cancel" onclick="closeModal('editModal')">Cancel</button>
+            <button class="btn-primary" id="editBtn" onclick="submitEdit()">
+                <i class="bi bi-check2-circle"></i> Save Changes
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- ══ CHANGE ROLE MODAL ════════════════════════════════════ -->
+<div class="modal-backdrop-custom" id="roleModal">
+    <div class="modal-box">
+        <div class="modal-hdr">
+            <h5><i class="bi bi-person-badge-fill" style="color:#7c3aed;"></i> Change Role</h5>
+            <button class="modal-close" onclick="closeModal('roleModal')"><i class="bi bi-x-lg"></i></button>
+        </div>
+        <div class="modal-body">
+            <input type="hidden" id="r_id" />
+            <p style="font-size:.845rem;color:#64748b;margin-bottom:1rem;">
+                Changing role for <strong id="r_name"></strong>
+            </p>
+            <div class="frow">
+                <label>New Role <span class="req">*</span></label>
+                <select class="finput filter-sel" id="r_role" style="width:100%;">
+                    <option value="">— Select Role —</option>
+                    @foreach (var r in Model.AllRoles)
+                    {
+                        <option value="@r.Name">@r.Name</option>
+                    }
+                </select>
+            </div>
+        </div>
+        <div class="modal-foot">
+            <button class="btn-cancel" onclick="closeModal('roleModal')">Cancel</button>
+            <button class="btn-primary" id="roleBtn" onclick="submitChangeRole()">
+                <i class="bi bi-person-badge-fill"></i> Update Role
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- ══ CHANGE COMPANY MODAL ═════════════════════════════════ -->
+<div class="modal-backdrop-custom" id="companyModal">
+    <div class="modal-box">
+        <div class="modal-hdr">
+            <h5><i class="bi bi-building-fill" style="color:#1d4ed8;"></i> Change Branch</h5>
+            <button class="modal-close" onclick="closeModal('companyModal')"><i class="bi bi-x-lg"></i></button>
+        </div>
+        <div class="modal-body">
+            <input type="hidden" id="co_id" />
+            <p style="font-size:.845rem;color:#64748b;margin-bottom:1rem;">
+                Changing company / branch for <strong id="co_name"></strong>
+            </p>
+            <div class="frow">
+                <label>Company / Branch <span class="req">*</span></label>
+                <select class="finput filter-sel" id="co_company" style="width:100%;">
+                    <option value="">— Select Company —</option>
+                    @foreach (var c in Model.AllCompanies)
+                    {
+                        <option value="@c.Id">[@c.CompanyType] @c.CompanyName</option>
+                    }
+                </select>
+            </div>
+        </div>
+        <div class="modal-foot">
+            <button class="btn-cancel" onclick="closeModal('companyModal')">Cancel</button>
+            <button class="btn-primary" id="companyBtn" onclick="submitChangeCompany()">
+                <i class="bi bi-building-fill"></i> Update Branch
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- ══ RESET PASSWORD MODAL ═════════════════════════════════ -->
+<div class="modal-backdrop-custom" id="pwModal">
+    <div class="modal-box">
+        <div class="modal-hdr">
+            <h5><i class="bi bi-key-fill" style="color:#f59e0b;"></i> Change Password</h5>
+            <button class="modal-close" onclick="closeModal('pwModal')"><i class="bi bi-x-lg"></i></button>
+        </div>
+        <div class="modal-body">
+            <input type="hidden" id="pw_id" />
+            <p style="font-size:.845rem;color:#64748b;margin-bottom:1rem;">
+                Setting new password for <strong id="pw_name"></strong>
+            </p>
+            <div class="frow">
+                <label>New Password <span class="req">*</span></label>
+                <div class="pw-wrap">
+                    <input class="finput" id="pw_password" type="password" placeholder="Min 8 characters"
+                           oninput="checkStrength(this,'pw_pwbar')" style="padding-right:2.5rem;" />
+                    <button type="button" class="pw-toggle" onclick="togglePw('pw_password',this)">
+                        <i class="bi bi-eye"></i>
+                    </button>
+                </div>
+                <div class="pw-strength"><div class="pw-bar" id="pw_pwbar"></div></div>
+                <div class="ferr" id="pw_err"></div>
+            </div>
+            <div class="frow">
+                <label>Confirm Password <span class="req">*</span></label>
+                <div class="pw-wrap">
+                    <input class="finput" id="pw_confirm" type="password" placeholder="Repeat password"
+                           style="padding-right:2.5rem;" />
+                    <button type="button" class="pw-toggle" onclick="togglePw('pw_confirm',this)">
+                        <i class="bi bi-eye"></i>
+                    </button>
+                </div>
+                <div class="ferr" id="pw_confirm_err"></div>
+            </div>
+        </div>
+        <div class="modal-foot">
+            <button class="btn-cancel" onclick="closeModal('pwModal')">Cancel</button>
+            <button class="btn-primary" id="pwBtn" onclick="submitResetPw()">
+                <i class="bi bi-key-fill"></i> Set Password
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- ══ DELETE MODAL ══════════════════════════════════════════ -->
+<div class="modal-backdrop-custom" id="deleteModal">
+    <div class="modal-box">
+        <div class="modal-hdr">
+            <h5><i class="bi bi-trash3-fill" style="color:#dc2626;"></i> Delete User</h5>
+            <button class="modal-close" onclick="closeModal('deleteModal')"><i class="bi bi-x-lg"></i></button>
+        </div>
+        <div class="modal-body" style="text-align:center;padding-top:1.75rem;">
+            <input type="hidden" id="d_id" />
+            <div class="del-icon"><i class="bi bi-person-x-fill"></i></div>
+            <p style="font-size:.9rem;color:#374151;margin-bottom:.5rem;">
+                Are you sure you want to delete
+            </p>
+            <p class="del-name" id="d_name" style="font-size:1rem;margin-bottom:.5rem;"></p>
+            <p style="font-size:.82rem;color:#94a3b8;margin:0;">
+                This action cannot be undone. The user will be permanently removed.
+            </p>
+        </div>
+        <div class="modal-foot">
+            <button class="btn-cancel" onclick="closeModal('deleteModal')">Cancel</button>
+            <button class="btn-danger" id="deleteBtn" onclick="submitDelete()">
+                <i class="bi bi-trash3-fill"></i> Delete
+            </button>
+        </div>
+    </div>
+</div>
+
+<script>
+    // ── Modal helpers ─────────────────────────────────────────
+    function openModal(id) {
+        document.getElementById(id).classList.add('open');
+        document.body.style.overflow = 'hidden';
+    }
+    function closeModal(id) {
+        document.getElementById(id).classList.remove('open');
+        document.body.style.overflow = '';
+    }
+    // Close on backdrop click
+    document.querySelectorAll('.modal-backdrop-custom').forEach(bd => {
+        bd.addEventListener('click', e => { if (e.target === bd) closeModal(bd.id); });
+    });
+    // Close on Escape
+    document.addEventListener('keydown', e => {
+        if (e.key === 'Escape') {
+            document.querySelectorAll('.modal-backdrop-custom.open').forEach(m => closeModal(m.id));
+        }
+    });
+
+    // ── Action menu (fixed-position, escapes overflow containers) ─
+    function toggleActMenu(btn) {
+        const menu = btn.nextElementSibling;
+        const isOpen = menu.classList.contains('open');
+        closeAllActMenus();
+        if (!isOpen) {
+            positionActMenu(btn, menu);
+            menu.classList.add('open');
+        }
+    }
+
+    function closeAllActMenus() {
+        document.querySelectorAll('.act-menu.open').forEach(m => {
+            m.classList.remove('open');
+            m.style.top = ''; m.style.left = ''; m.style.right = '';
+        });
+    }
+
+    function positionActMenu(btn, menu) {
+        // Temporarily show (invisibly) to measure
+        menu.style.visibility = 'hidden';
+        menu.style.display = 'block';
+        const menuRect = menu.getBoundingClientRect();
+        menu.style.display = '';
+        menu.style.visibility = '';
+
+        const btnRect = btn.getBoundingClientRect();
+        const pad = 8;
+
+        // Align right edge of menu with right edge of button
+        let right = window.innerWidth - btnRect.right;
+        if (right < pad) right = pad;
+
+        // Default: open below
+        let top = btnRect.bottom + 4;
+        // If not enough room below, open upward
+        if (top + menuRect.height > window.innerHeight - pad) {
+            const upTop = btnRect.top - menuRect.height - 4;
+            if (upTop >= pad) top = upTop;
+            else top = Math.max(pad, window.innerHeight - menuRect.height - pad);
+        }
+
+        menu.style.top   = top + 'px';
+        menu.style.right = right + 'px';
+        menu.style.left  = 'auto';
+    }
+
+    // Close on outside click
+    document.addEventListener('click', e => {
+        if (!e.target.closest('.act-wrap')) closeAllActMenus();
+    });
+    // Close on any scroll (fixed-position won't follow content scroll)
+    window.addEventListener('scroll', closeAllActMenus, true);
+    window.addEventListener('resize', closeAllActMenus);
+
+    // ── Open Edit ─────────────────────────────────────────────
+    function openEdit(menu) {
+        menu.classList.remove('open');
+        document.getElementById('e_id').value        = menu.dataset.id;
+        document.getElementById('e_firstName').value = menu.dataset.firstname || '';
+        document.getElementById('e_lastName').value  = menu.dataset.lastname  || '';
+        document.getElementById('e_phone').value     = menu.dataset.phone     || '';
+        document.getElementById('e_status').value    = menu.dataset.status    || 'ACTIVE';
+        document.getElementById('e_role').value      = menu.dataset.role      || '';
+        document.getElementById('e_company').value   = menu.dataset.company   || '0';
+        openModal('editModal');
+    }
+
+    // ── Open Change Role ──────────────────────────────────────
+    function openChangeRole(menu) {
+        menu.classList.remove('open');
+        document.getElementById('r_id').value      = menu.dataset.id;
+        document.getElementById('r_name').textContent = menu.dataset.name;
+        document.getElementById('r_role').value    = menu.dataset.role || '';
+        openModal('roleModal');
+    }
+
+    // ── Open Change Company ───────────────────────────────────
+    function openChangeCompany(menu) {
+        menu.classList.remove('open');
+        document.getElementById('co_id').value      = menu.dataset.id;
+        document.getElementById('co_name').textContent = menu.dataset.name;
+        document.getElementById('co_company').value = menu.dataset.company || '';
+        openModal('companyModal');
+    }
+
+    // ── Open Reset Password ───────────────────────────────────
+    function openResetPw(menu) {
+        menu.classList.remove('open');
+        document.getElementById('pw_id').value = menu.dataset.id;
+        document.getElementById('pw_name').textContent = menu.dataset.name;
+        document.getElementById('pw_password').value = '';
+        document.getElementById('pw_confirm').value  = '';
+        document.getElementById('pw_pwbar').style.width = '0';
+        document.getElementById('pw_err').style.display = 'none';
+        document.getElementById('pw_confirm_err').style.display = 'none';
+        openModal('pwModal');
+    }
+
+    // ── Open Delete ───────────────────────────────────────────
+    function openDelete(menu) {
+        menu.classList.remove('open');
+        document.getElementById('d_id').value = menu.dataset.id;
+        document.getElementById('d_name').textContent = menu.dataset.name;
+        openModal('deleteModal');
+    }
+
+    // ── Password helpers ──────────────────────────────────────
+    function togglePw(inputId, btn) {
+        const inp = document.getElementById(inputId);
+        const icon = btn.querySelector('i');
+        if (inp.type === 'password') {
+            inp.type = 'text';
+            icon.className = 'bi bi-eye-slash';
+        } else {
+            inp.type = 'password';
+            icon.className = 'bi bi-eye';
+        }
+    }
+    function checkStrength(inp, barId) {
+        const v = inp.value;
+        const bar = document.getElementById(barId);
+        let score = 0;
+        if (v.length >= 8)  score++;
+        if (/[A-Z]/.test(v)) score++;
+        if (/[0-9]/.test(v)) score++;
+        if (/[^A-Za-z0-9]/.test(v)) score++;
+        const colors = ['#ef4444','#f59e0b','#10b981','#059669'];
+        const widths = ['25%','50%','75%','100%'];
+        bar.style.width     = score > 0 ? widths[score - 1] : '0';
+        bar.style.background = score > 0 ? colors[score - 1] : '';
+    }
+
+    // ── Loading state ─────────────────────────────────────────
+    function setLoading(btnId, loading, restoreHtml) {
+        const btn = document.getElementById(btnId);
+        btn.disabled = loading;
+        if (loading) btn.innerHTML = '<span class="spin"></span> Saving…';
+        else if (restoreHtml) btn.innerHTML = restoreHtml;
+    }
+
+    // ── Toast ─────────────────────────────────────────────────
+    function showToast(msg, type) {
+        const wrap = document.getElementById('toastWrap');
+        const el   = document.createElement('div');
+        el.className = `toast-msg toast-${type}`;
+        el.innerHTML = `<i class="bi ${type === 'success' ? 'bi-check-circle-fill' : 'bi-exclamation-circle-fill'}"></i>${msg}`;
+        wrap.appendChild(el);
+        requestAnimationFrame(() => el.classList.add('show'));
+        setTimeout(() => { el.classList.remove('show'); setTimeout(() => el.remove(), 350); }, 3500);
+    }
+
+    // ── Validation helper ─────────────────────────────────────
+    function showErr(id, msg) {
+        const el = document.getElementById(id);
+        if (!el) return;
+        el.textContent = msg;
+        el.style.display = msg ? 'block' : 'none';
+    }
+    function clearErrs(...ids) { ids.forEach(id => showErr(id, '')); }
+
+    // ── Submit Create ─────────────────────────────────────────
+    async function submitCreate() {
+        clearErrs('c_firstName_err','c_lastName_err','c_email_err','c_password_err','c_role_err','c_company_err');
+        const fn  = document.getElementById('c_firstName').value.trim();
+        const ln  = document.getElementById('c_lastName').value.trim();
+        const em  = document.getElementById('c_email').value.trim();
+        const pw  = document.getElementById('c_password').value;
+        const rl  = document.getElementById('c_role').value;
+        const co  = document.getElementById('c_company').value;
+        const ph  = document.getElementById('c_phone').value.trim();
+
+        let valid = true;
+        if (!fn) { showErr('c_firstName_err','First name is required'); valid = false; }
+        if (!ln) { showErr('c_lastName_err','Last name is required'); valid = false; }
+        if (!em || !/^[^\s@@]+@@[^\s@@]+\.[^\s@@]+$/.test(em)) { showErr('c_email_err','Valid email is required'); valid = false; }
+        if (!pw || pw.length < 8) { showErr('c_password_err','Password must be at least 8 characters'); valid = false; }
+        if (!rl) { showErr('c_role_err','Please select a role'); valid = false; }
+        if (!co) { showErr('c_company_err','Please select a company'); valid = false; }
+        if (!valid) return;
+
+        setLoading('createBtn', true);
+        try {
+            const res  = await fetch('/Users/Create', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ firstName: fn, lastName: ln, email: em, password: pw, phoneNumber: ph || null, roleName: rl, companyId: parseInt(co) })
+            });
+            const data = await res.json();
+            if (data.success) {
+                showToast(data.message || 'User created successfully!', 'success');
+                closeModal('createModal');
+                setTimeout(() => location.reload(), 900);
+            } else {
+                showToast(data.message || 'Failed to create user.', 'error');
+            }
+        } catch { showToast('Network error. Please try again.', 'error'); }
+        finally { setLoading('createBtn', false, '<i class="bi bi-person-plus-fill"></i> Create User'); }
+    }
+
+    // ── Submit Edit ───────────────────────────────────────────
+    async function submitEdit() {
+        const id = document.getElementById('e_id').value;
+        const fn = document.getElementById('e_firstName').value.trim();
+        const ln = document.getElementById('e_lastName').value.trim();
+        const ph = document.getElementById('e_phone').value.trim();
+        const st = document.getElementById('e_status').value;
+        const rl = document.getElementById('e_role').value;
+        const co = document.getElementById('e_company').value;
+
+        if (!fn || !ln) { showToast('First and last name are required.', 'error'); return; }
+
+        setLoading('editBtn', true);
+        try {
+            const res  = await fetch(`/Users/Update/${id}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ firstName: fn, lastName: ln, phoneNumber: ph || null, status: st, roleName: rl, companyId: parseInt(co) || 0 })
+            });
+            const data = await res.json();
+            if (data.success) {
+                showToast(data.message || 'User updated!', 'success');
+                closeModal('editModal');
+                setTimeout(() => location.reload(), 900);
+            } else {
+                showToast(data.message || 'Failed to update user.', 'error');
+            }
+        } catch { showToast('Network error. Please try again.', 'error'); }
+        finally { setLoading('editBtn', false, '<i class="bi bi-check2-circle"></i> Save Changes'); }
+    }
+
+    // ── Submit Change Role ────────────────────────────────────
+    async function submitChangeRole() {
+        const id = document.getElementById('r_id').value;
+        const rl = document.getElementById('r_role').value;
+        if (!rl) { showToast('Please select a role.', 'error'); return; }
+
+        setLoading('roleBtn', true);
+        try {
+            const res  = await fetch(`/Users/ChangeRole/${id}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ roleName: rl })
+            });
+            const data = await res.json();
+            if (data.success) {
+                showToast(data.message || 'Role updated!', 'success');
+                closeModal('roleModal');
+                setTimeout(() => location.reload(), 900);
+            } else {
+                showToast(data.message || 'Failed to update role.', 'error');
+            }
+        } catch { showToast('Network error. Please try again.', 'error'); }
+        finally { setLoading('roleBtn', false, '<i class="bi bi-person-badge-fill"></i> Update Role'); }
+    }
+
+    // ── Submit Change Company ─────────────────────────────────
+    async function submitChangeCompany() {
+        const id = document.getElementById('co_id').value;
+        const co = document.getElementById('co_company').value;
+        if (!co) { showToast('Please select a company.', 'error'); return; }
+
+        setLoading('companyBtn', true);
+        try {
+            const res  = await fetch(`/Users/ChangeCompany/${id}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ companyId: parseInt(co) })
+            });
+            const data = await res.json();
+            if (data.success) {
+                showToast(data.message || 'Branch updated!', 'success');
+                closeModal('companyModal');
+                setTimeout(() => location.reload(), 900);
+            } else {
+                showToast(data.message || 'Failed to update branch.', 'error');
+            }
+        } catch { showToast('Network error. Please try again.', 'error'); }
+        finally { setLoading('companyBtn', false, '<i class="bi bi-building-fill"></i> Update Branch'); }
+    }
+
+    // ── Submit Reset Password ─────────────────────────────────
+    async function submitResetPw() {
+        clearErrs('pw_err','pw_confirm_err');
+        const id = document.getElementById('pw_id').value;
+        const pw = document.getElementById('pw_password').value;
+        const cf = document.getElementById('pw_confirm').value;
+
+        let valid = true;
+        if (!pw || pw.length < 8) { showErr('pw_err','Password must be at least 8 characters'); valid = false; }
+        if (pw !== cf) { showErr('pw_confirm_err','Passwords do not match'); valid = false; }
+        if (!valid) return;
+
+        setLoading('pwBtn', true);
+        try {
+            const res  = await fetch(`/Users/ResetPassword/${id}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ newPassword: pw })
+            });
+            const data = await res.json();
+            if (data.success) {
+                showToast(data.message || 'Password changed!', 'success');
+                closeModal('pwModal');
+            } else {
+                showToast(data.message || 'Failed to change password.', 'error');
+            }
+        } catch { showToast('Network error. Please try again.', 'error'); }
+        finally { setLoading('pwBtn', false, '<i class="bi bi-key-fill"></i> Set Password'); }
+    }
+
+    // ── Submit Delete ─────────────────────────────────────────
+    async function submitDelete() {
+        const id = document.getElementById('d_id').value;
+        setLoading('deleteBtn', true);
+        try {
+            const res  = await fetch(`/Users/Delete/${id}`, { method: 'POST' });
+            const data = await res.json();
+            if (data.success) {
+                showToast(data.message || 'User deleted.', 'success');
+                closeModal('deleteModal');
+                setTimeout(() => location.reload(), 900);
+            } else {
+                showToast(data.message || 'Failed to delete user.', 'error');
+            }
+        } catch { showToast('Network error. Please try again.', 'error'); }
+        finally { setLoading('deleteBtn', false, '<i class="bi bi-trash3-fill"></i> Delete'); }
+    }
+</script>

@@ -1,0 +1,563 @@
+﻿@model Dog.Portal.Models.SystemLogsListViewModel
+@{
+    Layout = "_AdminLayout";
+    ViewData["Title"] = "System Logs";
+    var totalAll = Model.TotalCount;
+    var resolvedCount = Model.ErrorLogList.Count(u => u.IsResolved);
+    var unresolvedCount = Model.ErrorLogList.Count(u => !u.IsResolved);
+}
+
+<style>
+.page-hdr h4{font-size:1.15rem;font-weight:800;color:#0f172a;margin:0 0 .25rem;letter-spacing:-.02em}
+.page-hdr p{font-size:.845rem;color:#64748b;margin:0}
+.page-hdr-row{display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;flex-wrap:wrap;margin-bottom:1.5rem}
+.total-chip{display:inline-flex;align-items:center;gap:.375rem;background:#ede9fe;color:#6d28d9;font-size:.8rem;font-weight:700;padding:.35rem .875rem;border-radius:20px;white-space:nowrap}
+.hdr-actions{display:flex;align-items:center;gap:.625rem;flex-wrap:wrap}
+
+/* Stats */
+.stats-row{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:.875rem;margin-bottom:1.5rem}
+.stat-card{background:#fff;border-radius:12px;border:1px solid #e9eef4;box-shadow:0 1px 4px rgba(0,0,0,.04);padding:1rem 1.25rem;display:flex;align-items:center;gap:.875rem}
+.stat-icon{width:42px;height:42px;border-radius:11px;display:flex;align-items:center;justify-content:center;font-size:1.1rem;flex-shrink:0}
+.si-total{background:linear-gradient(135deg,#ede9fe,#ddd6fe);color:#7c3aed}
+.si-resolved{background:linear-gradient(135deg,#d1fae5,#a7f3d0);color:#065f46}
+.si-unresolved{background:linear-gradient(135deg,#fee2e2,#fecaca);color:#991b1b}
+.stat-body .val{font-size:1.35rem;font-weight:800;color:#0f172a;line-height:1}
+.stat-body .lbl{font-size:.75rem;color:#94a3b8;font-weight:500;margin-top:.2rem}
+
+/* Data card */
+.dc{background:#fff;border-radius:14px;border:1px solid #e9eef4;box-shadow:0 1px 4px rgba(0,0,0,.04),0 6px 20px rgba(0,0,0,.04);overflow:hidden}
+.dc-head{padding:1rem 1.375rem;border-bottom:1px solid #f1f5f9;background:#fafbfc;display:flex;align-items:center;gap:.625rem;flex-wrap:wrap}
+
+/* Search & filters */
+.srch-wrap{position:relative;flex:1;min-width:180px;max-width:280px}
+.srch-wrap i{position:absolute;left:.875rem;top:50%;transform:translateY(-50%);color:#94a3b8;font-size:.9rem;pointer-events:none}
+.srch-input{width:100%;padding:.6rem .875rem .6rem 2.375rem;border:1.5px solid #e2e8f0;border-radius:9px;font-size:.845rem;color:#1e293b;background:#fff;outline:none;transition:border-color .2s,box-shadow .2s}
+.srch-input:focus{border-color:#667eea;box-shadow:0 0 0 3px rgba(102,126,234,.1)}
+.srch-input::placeholder{color:#cbd5e1}
+.filter-sel{padding:.6rem .875rem;border:1.5px solid #e2e8f0;border-radius:9px;font-size:.845rem;color:#374151;background:#fff;outline:none;cursor:pointer;transition:border-color .2s;min-width:130px}
+.filter-sel:focus{border-color:#667eea;box-shadow:0 0 0 3px rgba(102,126,234,.1)}
+.btn-srch{padding:.6rem 1.125rem;background:linear-gradient(135deg,#667eea,#764ba2);color:#fff;border:none;border-radius:9px;font-size:.845rem;font-weight:600;cursor:pointer;transition:opacity .2s;display:inline-flex;align-items:center;gap:.375rem;white-space:nowrap}
+.btn-srch:hover{opacity:.9}
+.btn-clr{padding:.6rem .875rem;background:#f1f5f9;color:#64748b;border:1.5px solid #e2e8f0;border-radius:9px;font-size:.845rem;font-weight:500;cursor:pointer;text-decoration:none;display:inline-flex;align-items:center;gap:.3rem;transition:all .18s;white-space:nowrap}
+.btn-clr:hover{background:#e2e8f0;color:#334155}
+
+/* Table */
+.tbl-wrap{overflow-x:auto;min-height:400px;}
+.dt{width:100%;border-collapse:collapse;table-layout:fixed;}
+.dt thead th{padding:.75rem 1.125rem;font-size:.7rem;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.09em;background:#f8fafc;border-bottom:1px solid #f0f4f8;white-space:nowrap}
+.dt tbody td{padding:.875rem 1.125rem;font-size:.855rem;color:#374151;border-bottom:1px solid #f8fafc;vertical-align:middle;max-width:200px;text-overflow:ellipsis;overflow:hidden;white-space:nowrap}
+.dt tbody tr:last-child td{border-bottom:none}
+.dt tbody tr{transition:background .15s}
+.dt tbody tr:hover td{background:#fafbff}
+.rn{color:#cbd5e1;font-size:.8rem;font-weight:600}
+
+/* Severity badges */
+.severity-badge{display:inline-flex;align-items:center;gap:.3rem;font-size:.74rem;font-weight:700;padding:.25rem .65rem;border-radius:20px}
+.severity-error{background:#fee2e2;color:#991b1b}
+.severity-warning{background:#fef3c7;color:#92400e}
+.severity-info{background:#dbeafe;color:#1e40af}
+.severity-debug{background:#f3f4f6;color:#374151}
+
+/* Status badge */
+.s-badge{display:inline-flex;align-items:center;gap:.3rem;font-size:.74rem;font-weight:700;padding:.25rem .65rem;border-radius:20px}
+.s-resolved{background:#d1fae5;color:#065f46}
+.s-unresolved{background:#fee2e2;color:#991b1b}
+
+/* Action menu */
+.act-wrap{position:relative;display:inline-block}
+.act-btn{width:32px;height:32px;border:1.5px solid #e2e8f0;border-radius:8px;background:#fff;color:#64748b;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all .18s;font-size:.9rem}
+.act-btn:hover{background:#f8fafc;border-color:#cbd5e1;color:#334155}
+.act-menu{position:fixed;background:#fff;border:1px solid #e2e8f0;border-radius:11px;box-shadow:0 12px 40px rgba(0,0,0,.18),0 0 0 1px rgba(0,0,0,.02);min-width:200px;z-index:1045;padding:.375rem;display:none}
+.act-menu.open{display:block}
+.act-item{display:flex;align-items:center;gap:.625rem;padding:.5rem .75rem;border-radius:7px;font-size:.835rem;font-weight:500;color:#374151;cursor:pointer;transition:background .15s;border:none;background:none;width:100%;text-align:left}
+.act-item:hover{background:#f8fafc;color:#1e293b}
+.act-item.danger{color:#dc2626}
+.act-item.danger:hover{background:#fef2f2}
+.act-item i{width:16px;text-align:center;font-size:.85rem}
+.act-divider{height:1px;background:#f1f5f9;margin:.25rem 0}
+
+/* Footer / pagination */
+.dc-foot{padding:.9rem 1.375rem;border-top:1px solid #f1f5f9;background:#fafbfc;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.75rem}
+.ri{font-size:.82rem;color:#94a3b8}
+.ri strong{color:#374151}
+.pgn{display:flex;align-items:center;gap:.25rem}
+.pb{display:flex;align-items:center;justify-content:center;min-width:32px;height:32px;padding:0 .5rem;border:1.5px solid #e2e8f0;border-radius:7px;font-size:.8rem;font-weight:500;color:#64748b;text-decoration:none;transition:all .18s;background:#fff}
+.pb:hover{background:#f8fafc;color:#334155;border-color:#cbd5e1}
+.pb.cur{background:linear-gradient(135deg,#667eea,#764ba2);color:#fff;border-color:transparent;font-weight:700}
+.pb.off{opacity:.35;pointer-events:none}
+.pb.wide{padding:0 .875rem}
+.pgn-dots{padding:0 .25rem;color:#cbd5e1;font-size:.82rem}
+
+/* Empty state */
+.empty-state{text-align:center;padding:3rem 1rem;color:#94a3b8}
+.empty-state i{font-size:3rem;margin-bottom:1rem;color:#cbd5e1}
+.empty-state h3{font-size:1.1rem;font-weight:600;color:#64748b;margin-bottom:.5rem}
+.empty-state p{font-size:.9rem}
+
+/* Error details */
+.error-details{font-size:.8rem;color:#64748b;margin-top:.25rem}
+.stack-trace{font-family:monospace;font-size:.75rem;background:#f8fafc;padding:.5rem;border-radius:4px;margin-top:.5rem;max-height:100px;overflow-y:auto}
+.modal-backdrop-custom{position:fixed;inset:0;background:rgba(15,23,42,.45);backdrop-filter:blur(3px);z-index:1050;display:none;align-items:center;justify-content:center;padding:1rem}
+.modal-backdrop-custom.open{display:flex}
+.modal-box{background:#fff;border-radius:16px;box-shadow:0 20px 60px rgba(0,0,0,.2);width:100%;max-width:680px;max-height:90vh;overflow-y:auto;animation:mslide .22s ease}
+@@keyframes mslide{from{opacity:0;transform:translateY(-16px)}to{opacity:1;transform:translateY(0)}}
+.modal-hdr{display:flex;align-items:center;justify-content:space-between;padding:1.25rem 1.5rem;border-bottom:1px solid #f1f5f9}
+.modal-hdr h5{font-size:1rem;font-weight:800;color:#0f172a;margin:0;display:flex;align-items:center;gap:.5rem}
+.modal-close{width:30px;height:30px;border:none;background:#f1f5f9;border-radius:7px;color:#64748b;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:.9rem}
+.modal-close:hover{background:#e2e8f0}
+.modal-body-p{padding:1.375rem 1.5rem}
+.modal-foot{padding:1rem 1.5rem;border-top:1px solid #f1f5f9;display:flex;align-items:center;justify-content:flex-end;gap:.625rem}
+.frow{margin-bottom:1rem}
+.frow label{display:block;font-size:.8rem;font-weight:600;color:#374151;margin-bottom:.375rem}
+.finput{width:100%;padding:.65rem .875rem;border:1.5px solid #e2e8f0;border-radius:9px;font-size:.855rem;color:#1e293b;background:#fff;outline:none}
+.finput:focus{border-color:#667eea;box-shadow:0 0 0 3px rgba(102,126,234,.1)}
+.btn-cancel{padding:.65rem 1.25rem;background:#f1f5f9;color:#64748b;border:1.5px solid #e2e8f0;border-radius:9px;font-size:.855rem;font-weight:600;cursor:pointer}
+.btn-cancel:hover{background:#e2e8f0}
+.btn-pm{padding:.65rem 1.5rem;background:linear-gradient(135deg,#667eea,#764ba2);color:#fff;border:none;border-radius:9px;font-size:.855rem;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:.4rem;min-width:120px;justify-content:center}
+.btn-pm:disabled{opacity:.6;cursor:not-allowed}
+.btn-dm{padding:.65rem 1.5rem;background:linear-gradient(135deg,#ef4444,#dc2626);color:#fff;border:none;border-radius:9px;font-size:.855rem;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:.4rem;min-width:120px;justify-content:center}
+.btn-dm:disabled{opacity:.6;cursor:not-allowed}
+.del-icon{width:60px;height:60px;border-radius:50%;background:#fef2f2;display:flex;align-items:center;justify-content:center;margin:0 auto 1rem;font-size:1.5rem;color:#dc2626}
+.err-msg-box{background:#fef2f2;border:1px solid #fecaca;border-radius:10px;padding:1rem 1.25rem;margin-bottom:1rem}
+.err-msg-text{font-size:.9rem;color:#1e293b;font-weight:500;line-height:1.5;word-break:break-word}
+.err-type-badge{display:inline-flex;align-items:center;gap:.3rem;font-size:.72rem;font-weight:700;padding:.2rem .6rem;border-radius:10px;background:#fee2e2;color:#991b1b;margin-bottom:.75rem}
+.stack-block{background:#0f172a;color:#e2e8f0;border-radius:10px;padding:1rem 1.25rem;font-family:monospace;font-size:.75rem;line-height:1.7;overflow-x:auto;max-height:380px;overflow-y:auto;white-space:pre-wrap;word-break:break-all}
+.stack-frame{color:#93c5fd}
+.stack-at{color:#94a3b8}
+.toast-wrap{position:fixed;bottom:1.75rem;right:1.75rem;z-index:9999;display:flex;flex-direction:column;gap:.5rem;pointer-events:none}
+.toast-msg{display:flex;align-items:center;gap:.625rem;padding:.875rem 1.25rem;border-radius:12px;font-size:.855rem;font-weight:600;box-shadow:0 8px 32px rgba(0,0,0,.15);pointer-events:all;transform:translateX(120%);transition:transform .3s cubic-bezier(.4,0,.2,1);max-width:320px}
+.toast-msg.show{transform:translateX(0)}
+.toast-success{background:#065f46;color:#fff}
+.toast-error{background:#991b1b;color:#fff}
+.spin{width:14px;height:14px;border:2px solid rgba(255,255,255,.35);border-top-color:#fff;border-radius:50%;animation:spin .65s linear infinite;flex-shrink:0}
+@@keyframes spin{to{transform:rotate(360deg)}}
+</style>
+
+<div class="page-hdr-row">
+    <div class="page-hdr">
+        <h4>System Logs</h4>
+        <p>Monitor system errors and application logs</p>
+    </div>
+    <div class="hdr-actions">
+        <div class="total-chip">
+            <i class="bi bi-exclamation-triangle"></i>
+            <span>@totalAll Total</span>
+        </div>
+    </div>
+</div>
+
+<!-- Stats -->
+<div class="stats-row">
+    <div class="stat-card">
+        <div class="stat-icon si-total">
+            <i class="bi bi-list"></i>
+        </div>
+        <div class="stat-body">
+            <div class="val">@totalAll</div>
+            <div class="lbl">Total Logs</div>
+        </div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon si-resolved">
+            <i class="bi bi-check-circle"></i>
+        </div>
+        <div class="stat-body">
+            <div class="val">@resolvedCount</div>
+            <div class="lbl">Resolved</div>
+        </div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon si-unresolved">
+            <i class="bi bi-exclamation-circle"></i>
+        </div>
+        <div class="stat-body">
+            <div class="val">@unresolvedCount</div>
+            <div class="lbl">Unresolved</div>
+        </div>
+    </div>
+</div>
+
+<!-- Data Card -->
+<div class="dc">
+    <!-- Header with search and filters -->
+    <div class="dc-head">
+        <form method="get" style="display:contents;">
+            <div class="srch-wrap">
+                <i class="bi bi-search"></i>
+                <input type="text" name="search" value="@Model.SearchTerm" class="srch-input" placeholder="Search logs...">
+            </div>
+            <select name="severity" class="filter-sel">
+                <option value="">All Severities</option>
+                <option value="Error" selected="@(ViewBag.SeverityFilter == "Error")">Error</option>
+                <option value="Warning" selected="@(ViewBag.SeverityFilter == "Warning")">Warning</option>
+                <option value="Info" selected="@(ViewBag.SeverityFilter == "Info")">Info</option>
+                <option value="Debug" selected="@(ViewBag.SeverityFilter == "Debug")">Debug</option>
+            </select>
+            <select name="resolved" class="filter-sel">
+                <option value="">All Status</option>
+                <option value="true" selected="@(ViewBag.ResolvedFilter == true)">Resolved</option>
+                <option value="false" selected="@(ViewBag.ResolvedFilter == false)">Unresolved</option>
+            </select>
+            <button type="submit" class="btn-srch">
+                <i class="bi bi-search"></i>
+                Search
+            </button>
+            <a href="@Url.Action("Index")" class="btn-clr">
+                <i class="bi bi-x"></i>
+                Clear
+            </a>
+        </form>
+    </div>
+
+    <!-- Table -->
+    <div class="tbl-wrap">
+        @if (Model.ErrorLogList.Count > 0)
+        {
+            <table class="dt">
+                <thead>
+                    <tr>
+                        <th style="width:60px">#</th>
+                        <th style="width:100px">Severity</th>
+                        <th style="width:300px">Message</th>
+                        <th style="width:150px">Source</th>
+                        <th style="width:120px">Status</th>
+                        <th style="width:150px">Created</th>
+                        <th style="width:120px">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @{
+                        var startIndex = (Model.Page - 1) * Model.PageSize;
+                    }
+                    @for (int i = 0; i < Model.ErrorLogList.Count; i++)
+                    {
+                        var item = Model.ErrorLogList[i];
+                        var index = i;
+                        <tr>
+                            <td>
+                                <span class="rn">@(startIndex + index + 1)</span>
+                            </td>
+                            <td>
+                                <span class="severity-badge severity-@(item.Severity?.ToLower() ?? "info")">
+                                    <i class="bi @(item.Severity?.ToLower() switch { "error" => "bi-x-circle", "warning" => "bi-exclamation-triangle", "info" => "bi-info-circle", _ => "bi-bug" })"></i>
+                                    @item.Severity
+                                </span>
+                            </td>
+                            <td title="@item.Message">
+                                <div style="font-weight:600;color:#1e293b">@item.Message</div>
+                                @if (!string.IsNullOrEmpty(item.ExceptionType))
+                                {
+                                    <div class="error-details">@item.ExceptionType</div>
+                                }
+                            </td>
+                            <td title="@item.Source">
+                                <div>@item.Source</div>
+                                @if (!string.IsNullOrEmpty(item.Path))
+                                {
+                                    <div class="error-details">@item.Path</div>
+                                }
+                            </td>
+                            <td>
+                                <span class="s-badge @(item.IsResolved ? "s-resolved" : "s-unresolved")">
+                                    <i class="bi @(item.IsResolved ? "bi-check-circle" : "bi-exclamation-circle")"></i>
+                                    @(item.IsResolved ? "Resolved" : "Unresolved")
+                                </span>
+                            </td>
+                            <td>
+                                <div style="font-size:.8rem;color:#64748b">@item.CreatedAt.ToString("MMM dd, yyyy")</div>
+                                <div style="font-size:.75rem;color:#94a3b8">@item.CreatedAt.ToString("HH:mm:ss")</div>
+                            </td>
+                            <td>
+                                <div class="act-wrap">
+                                    <button class="act-btn" onclick="toggleActMenu(this)" title="Actions">
+                                               <i class="bi bi-three-dots-vertical"></i>
+                                    </button>
+                                    <div class="act-menu"
+                                         data-id="@item.Id"
+                                         data-message="@item.Message"
+                                         data-stacktrace="@item.StackTrace"
+                                         data-exceptiontype="@item.ExceptionType"
+                                         data-source="@item.Source"
+                                         data-path="@item.Path"
+                                         data-severity="@item.Severity"
+                                         data-isresolved="@item.IsResolved.ToString().ToLower()">
+                                        <button class="act-item" onclick="openDetails(this.closest('.act-menu'))">
+                                            <i class="bi bi-eye" style="color:#667eea"></i>
+                                            View Details
+                                        </button>
+                                        @if (!item.IsResolved)
+                                        {
+                                            <button class="act-item" onclick="openResolve(this.closest('.act-menu'))">
+                                                <i class="bi bi-check-circle" style="color:#065f46"></i>
+                                                Mark Resolved
+                                            </button>
+                                        }
+                                        <div class="act-divider"></div>
+                                        <button class="act-item danger" onclick="openDelete(this.closest('.act-menu'))">
+                                            <i class="bi bi-trash3-fill"></i>
+                                            Delete
+                                        </button>
+                                    </div>
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+        else
+        {
+            <div class="empty-state">
+                <i class="bi bi-list"></i>
+                <h3>No system logs found</h3>
+                <p>@(string.IsNullOrWhiteSpace(Model.SearchTerm) ? "No error logs to display." : "Try adjusting your search criteria.")</p>
+            </div>
+        }
+    </div>
+
+    <!-- Footer / Pagination -->
+    @if (Model.TotalCount > 0)
+    {
+        <div class="dc-foot">
+            <div class="ri">
+                Showing <strong>@Model.From</strong> to <strong>@Model.To</strong> of <strong>@Model.TotalCount</strong> results
+            </div>
+            @if (Model.TotalPages > 1)
+            {
+                <div class="pgn">
+                    @if (Model.Page > 1)
+                    {
+                        <a href="@Url.Action("Index", new { search = Model.SearchTerm, severity = ViewBag.SeverityFilter, resolved = ViewBag.ResolvedFilter, page = Model.Page - 1 })" class="pb wide">
+                            <i class="bi bi-chevron-left"></i> Previous
+                        </a>
+                    }
+                    else
+                    {
+                        <span class="pb wide off">
+                            <i class="bi bi-chevron-left"></i> Previous
+                        </span>
+                    }
+
+                    @for (int i = Math.Max(1, Model.Page - 2); i <= Math.Min(Model.TotalPages, Model.Page + 2); i++)
+                    {
+                        if (i == Model.Page)
+                        {
+                            <span class="pb cur">@i</span>
+                        }
+                        else
+                        {
+                            <a href="@Url.Action("Index", new { search = Model.SearchTerm, severity = ViewBag.SeverityFilter, resolved = ViewBag.ResolvedFilter, page = i })" class="pb">@i</a>
+                        }
+                    }
+
+                    @if (Model.Page < Model.TotalPages)
+                    {
+                        <a href="@Url.Action("Index", new { search = Model.SearchTerm, severity = ViewBag.SeverityFilter, resolved = ViewBag.ResolvedFilter, page = Model.Page + 1 })" class="pb wide">
+                            Next <i class="bi bi-chevron-right"></i>
+                        </a>
+                    }
+                    else
+                    {
+                        <span class="pb wide off">
+                            Next <i class="bi bi-chevron-right"></i>
+                        </span>
+                    }
+                </div>
+            }
+        </div>
+    }
+</div>
+
+<div class="toast-wrap" id="toastWrap"></div>
+
+<!-- VIEW DETAILS MODAL -->
+<div class="modal-backdrop-custom" id="detailsModal">
+  <div class="modal-box">
+    <div class="modal-hdr">
+      <h5><i class="bi bi-bug" style="color:#dc2626"></i> Error Details</h5>
+      <button class="modal-close" onclick="closeModal('detailsModal')"><i class="bi bi-x-lg"></i></button>
+    </div>
+    <div class="modal-body-p">
+      <div id="d_exceptionType" style="margin-bottom:.75rem"></div>
+      <div class="err-msg-box">
+        <div style="font-size:.72rem;color:#94a3b8;font-weight:600;text-transform:uppercase;margin-bottom:.4rem">Message</div>
+        <div class="err-msg-text" id="d_message"></div>
+      </div>
+      <div id="d_stackSection" style="display:none">
+        <div style="font-size:.8rem;font-weight:700;color:#374151;margin-bottom:.5rem;display:flex;align-items:center;gap:.4rem">
+          <i class="bi bi-layers" style="color:#667eea"></i> Stack Trace
+          <button onclick="copyStack()" style="margin-left:auto;background:#f1f5f9;border:1px solid #e2e8f0;border-radius:6px;padding:.2rem .6rem;font-size:.72rem;cursor:pointer;color:#64748b">
+            <i class="bi bi-clipboard"></i> Copy
+          </button>
+        </div>
+        <div class="stack-block" id="d_stackTrace"></div>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn-cancel" onclick="closeModal('detailsModal')">Close</button>
+      <button class="btn-pm" id="d_resolveBtn" style="display:none" onclick="resolveFromDetails()"><i class="bi bi-check-circle"></i> Mark Resolved</button>
+    </div>
+  </div>
+</div>
+
+<!-- RESOLVE MODAL -->
+<div class="modal-backdrop-custom" id="resolveModal">
+  <div class="modal-box" style="max-width:480px">
+    <div class="modal-hdr">
+      <h5><i class="bi bi-check-circle" style="color:#065f46"></i> Mark as Resolved</h5>
+      <button class="modal-close" onclick="closeModal('resolveModal')"><i class="bi bi-x-lg"></i></button>
+    </div>
+    <div class="modal-body-p">
+      <input type="hidden" id="r_id">
+      <div class="frow">
+        <label>Error Message</label>
+        <div id="r_message" style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:9px;padding:.65rem .875rem;font-size:.855rem;color:#374151;word-break:break-word"></div>
+      </div>
+      <div class="frow">
+        <label>Resolution Notes <span style="color:#ef4444">*</span></label>
+        <textarea class="finput" id="r_resolution" rows="4" placeholder="Describe how this error was resolved..."></textarea>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn-cancel" onclick="closeModal('resolveModal')">Cancel</button>
+      <button class="btn-pm" id="resolveBtn" onclick="submitResolve()"><i class="bi bi-check-circle"></i> Mark Resolved</button>
+    </div>
+  </div>
+</div>
+
+<!-- DELETE MODAL -->
+<div class="modal-backdrop-custom" id="deleteModal">
+  <div class="modal-box" style="max-width:420px">
+    <div class="modal-hdr">
+      <h5><i class="bi bi-trash3-fill" style="color:#dc2626"></i> Delete Log</h5>
+      <button class="modal-close" onclick="closeModal('deleteModal')"><i class="bi bi-x-lg"></i></button>
+    </div>
+    <div class="modal-body-p" style="text-align:center;padding-top:1.75rem">
+      <input type="hidden" id="d_deleteId">
+      <div class="del-icon"><i class="bi bi-exclamation-triangle-fill"></i></div>
+      <p style="font-size:.9rem;color:#374151;margin-bottom:.5rem">Delete this error log?</p>
+      <p id="d_deleteName" style="font-size:.82rem;color:#64748b;margin:0;word-break:break-word;max-height:60px;overflow:hidden"></p>
+      <p style="font-size:.78rem;color:#94a3b8;margin-top:.5rem">This action cannot be undone.</p>
+    </div>
+    <div class="modal-foot">
+      <button class="btn-cancel" onclick="closeModal('deleteModal')">Cancel</button>
+      <button class="btn-dm" id="deleteBtn" onclick="submitDelete()"><i class="bi bi-trash3-fill"></i> Delete</button>
+    </div>
+  </div>
+</div>
+
+<script>
+var _currentResolveId = null;
+
+function openModal(id){document.getElementById(id).classList.add('open');document.body.style.overflow='hidden';}
+function closeModal(id){document.getElementById(id).classList.remove('open');document.body.style.overflow='';}
+document.querySelectorAll('.modal-backdrop-custom').forEach(function(bd){bd.addEventListener('click',function(e){if(e.target===bd)closeModal(bd.id);});});
+document.addEventListener('keydown',function(e){if(e.key==='Escape'){document.querySelectorAll('.modal-backdrop-custom.open').forEach(function(m){closeModal(m.id);});}});
+
+function toggleActMenu(btn){var menu=btn.nextElementSibling;var isOpen=menu.classList.contains('open');closeAllActMenus();if(!isOpen){positionActMenu(btn,menu);menu.classList.add('open');}}
+function closeAllActMenus(){document.querySelectorAll('.act-menu.open').forEach(function(m){m.classList.remove('open');m.style.top='';m.style.left='';m.style.right='';});}
+function positionActMenu(btn,menu){menu.style.visibility='hidden';menu.style.display='block';var mr=menu.getBoundingClientRect();menu.style.display='';menu.style.visibility='';var br=btn.getBoundingClientRect();var right=window.innerWidth-br.right;if(right<8)right=8;var top=br.bottom+4;if(top+mr.height>window.innerHeight-8){var up=br.top-mr.height-4;top=up>=8?up:Math.max(8,window.innerHeight-mr.height-8);}menu.style.top=top+'px';menu.style.right=right+'px';menu.style.left='auto';}
+document.addEventListener('click',function(e){if(!e.target.closest('.act-wrap'))closeAllActMenus();});
+window.addEventListener('scroll',closeAllActMenus,true);
+window.addEventListener('resize',closeAllActMenus);
+
+function setLoading(id,on,html){var b=document.getElementById(id);b.disabled=on;if(on)b.innerHTML='<span class="spin"></span> Saving...';else if(html)b.innerHTML=html;}
+function showToast(msg,type){var w=document.getElementById('toastWrap');var el=document.createElement('div');el.className='toast-msg toast-'+type;el.innerHTML='<i class="bi '+(type==='success'?'bi-check-circle-fill':'bi-exclamation-circle-fill')+'"></i>'+msg;w.appendChild(el);requestAnimationFrame(function(){el.classList.add('show');});setTimeout(function(){el.classList.remove('show');setTimeout(function(){el.remove();},350);},3500);}
+
+function openDetails(menu){
+    closeAllActMenus();
+    var d = menu.dataset;
+    _currentResolveId = d.id;
+    // Exception type badge
+    var typeEl = document.getElementById('d_exceptionType');
+    if(d.exceptiontype){
+        typeEl.innerHTML = '<span class="err-type-badge"><i class="bi bi-exclamation-octagon-fill"></i>' + escHtml(d.exceptiontype) + '</span>';
+    } else { typeEl.innerHTML = ''; }
+    // Message
+    document.getElementById('d_message').textContent = d.message || 'No message available';
+    // Stack trace
+    var stackSection = document.getElementById('d_stackSection');
+    var stackEl = document.getElementById('d_stackTrace');
+    if(d.stacktrace && d.stacktrace.trim()){
+        stackEl.innerHTML = formatStack(d.stacktrace);
+        stackSection.style.display = 'block';
+    } else {
+        stackSection.style.display = 'none';
+    }
+    // Resolve button
+    var resolveBtn = document.getElementById('d_resolveBtn');
+    resolveBtn.style.display = d.isresolved === 'true' ? 'none' : 'inline-flex';
+    openModal('detailsModal');
+}
+
+function formatStack(stack){
+    return stack.split('\n').map(function(line){
+        line = escHtml(line.trim());
+        if(line.startsWith('at ')){
+            return '<span class="stack-at">at </span><span class="stack-frame">' + line.substring(3) + '</span>';
+        }
+        return line;
+    }).join('\n');
+}
+
+function escHtml(s){if(!s)return '';return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+
+function copyStack(){
+    var text = document.getElementById('d_stackTrace').textContent;
+    navigator.clipboard.writeText(text).then(function(){showToast('Stack trace copied!','success');}).catch(function(){showToast('Copy failed.','error');});
+}
+
+function resolveFromDetails(){
+    closeModal('detailsModal');
+    setTimeout(function(){
+        document.getElementById('r_id').value = _currentResolveId;
+        document.getElementById('r_message').textContent = document.getElementById('d_message').textContent;
+        document.getElementById('r_resolution').value = '';
+        openModal('resolveModal');
+    }, 300);
+}
+
+function openResolve(menu){
+    closeAllActMenus();
+    var d = menu.dataset;
+    document.getElementById('r_id').value = d.id;
+    document.getElementById('r_message').textContent = d.message || '';
+    document.getElementById('r_resolution').value = '';
+    openModal('resolveModal');
+}
+
+function openDelete(menu){
+    closeAllActMenus();
+    var d = menu.dataset;
+    document.getElementById('d_deleteId').value = d.id;
+    var msg = d.message || '';
+    document.getElementById('d_deleteName').textContent = msg.length > 120 ? msg.substring(0,120) + '...' : msg;
+    openModal('deleteModal');
+}
+
+async function submitResolve(){
+    var id = document.getElementById('r_id').value;
+    var resolution = document.getElementById('r_resolution').value.trim();
+    if(!resolution){showToast('Please enter resolution notes.','error');return;}
+    setLoading('resolveBtn',true);
+    try{
+        var r = await fetch('/SystemLogs/Resolve/'+id,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({Resolution:resolution})});
+        var d = await r.json();
+        if(d.success){showToast('Error marked as resolved!','success');closeModal('resolveModal');setTimeout(function(){location.reload();},900);}
+        else showToast(d.message||'Failed.','error');
+    }catch(e){showToast('Network error.','error');}
+    finally{setLoading('resolveBtn',false,'<i class="bi bi-check-circle"></i> Mark Resolved');}
+}
+
+async function submitDelete(){
+    var id = document.getElementById('d_deleteId').value;
+    setLoading('deleteBtn',true);
+    try{
+        var r = await fetch('/SystemLogs/Delete/'+id,{method:'POST'});
+        var d = await r.json();
+        if(d.success){showToast('Log deleted!','success');closeModal('deleteModal');setTimeout(function(){location.reload();},900);}
+        else showToast(d.message||'Failed.','error');
+    }catch(e){showToast('Network error.','error');}
+    finally{setLoading('deleteBtn',false,'<i class="bi bi-trash3-fill"></i> Delete');}
+}
+</script>

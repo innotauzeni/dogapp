@@ -1,0 +1,236 @@
+@model Dog.Portal.Models.RolesListViewModel
+@{
+    Layout = "_AdminLayout";
+    ViewData["Title"] = "Roles";
+}
+
+<style>
+    .page-hdr h4 { font-size:1.15rem; font-weight:800; color:#0f172a; margin:0 0 .25rem; letter-spacing:-.02em; }
+    .page-hdr p  { font-size:.845rem; color:#64748b; margin:0; }
+    .page-hdr-row { display:flex; align-items:flex-start; justify-content:space-between; gap:1rem; flex-wrap:wrap; margin-bottom:1.5rem; }
+
+    .total-chip { display:inline-flex; align-items:center; gap:.375rem; background:#ede9fe; color:#6d28d9; font-size:.8rem; font-weight:700; padding:.35rem .875rem; border-radius:20px; white-space:nowrap; }
+
+    /* Data card */
+    .dc { background:#fff; border-radius:14px; border:1px solid #e9eef4; box-shadow:0 1px 4px rgba(0,0,0,.04),0 6px 20px rgba(0,0,0,.04); overflow:hidden; }
+    .dc-head { padding:1rem 1.375rem; border-bottom:1px solid #f1f5f9; background:#fafbfc; display:flex; align-items:center; justify-content:space-between; gap:1rem; flex-wrap:wrap; }
+
+    /* Search */
+    .srch-wrap { position:relative; }
+    .srch-wrap i { position:absolute; left:.875rem; top:50%; transform:translateY(-50%); color:#94a3b8; font-size:.9rem; pointer-events:none; }
+    .srch-input { width:280px; padding:.6rem .875rem .6rem 2.375rem; border:1.5px solid #e2e8f0; border-radius:9px; font-size:.845rem; color:#1e293b; background:#fff; outline:none; transition:border-color .2s,box-shadow .2s; }
+    .srch-input:focus { border-color:#667eea; box-shadow:0 0 0 3px rgba(102,126,234,.1); }
+    .srch-input::placeholder { color:#cbd5e1; }
+    .btn-srch { padding:.6rem 1.125rem; background:linear-gradient(135deg,#667eea 0%,#764ba2 100%); color:#fff; border:none; border-radius:9px; font-size:.845rem; font-weight:600; cursor:pointer; transition:opacity .2s; display:inline-flex; align-items:center; gap:.375rem; }
+    .btn-srch:hover { opacity:.9; }
+    .btn-clr { padding:.6rem .875rem; background:#f1f5f9; color:#64748b; border:1.5px solid #e2e8f0; border-radius:9px; font-size:.845rem; font-weight:500; cursor:pointer; text-decoration:none; display:inline-flex; align-items:center; gap:.3rem; transition:all .18s; }
+    .btn-clr:hover { background:#e2e8f0; color:#334155; }
+
+    /* Table */
+    .tbl-wrap { overflow-x:auto; }
+    .dt { width:100%; border-collapse:collapse; }
+    .dt thead th { padding:.75rem 1.125rem; font-size:.7rem; font-weight:700; color:#64748b; text-transform:uppercase; letter-spacing:.09em; background:#f8fafc; border-bottom:1px solid #f0f4f8; white-space:nowrap; }
+    .dt tbody td { padding:.9rem 1.125rem; font-size:.855rem; color:#374151; border-bottom:1px solid #f8fafc; vertical-align:middle; }
+    .dt tbody tr:last-child td { border-bottom:none; }
+    .dt tbody tr { transition:background .15s; }
+    .dt tbody tr:hover td { background:#fafbff; }
+    .rn { color:#cbd5e1; font-size:.8rem; font-weight:600; }
+
+    /* Role avatar chip */
+    .role-avatar { width:38px; height:38px; border-radius:10px; background:linear-gradient(135deg,#667eea,#764ba2); display:flex; align-items:center; justify-content:center; color:#fff; font-size:.85rem; font-weight:800; flex-shrink:0; box-shadow:0 2px 8px rgba(102,126,234,.25); }
+    .role-name  { font-weight:700; color:#1e293b; }
+    .role-id    { font-size:.72rem; color:#94a3b8; font-family:'Consolas','Monaco',monospace; }
+
+    /* Type / Level badges */
+    .type-chip  { display:inline-block; background:#f1f5f9; color:#475569; border:1px solid #e2e8f0; font-size:.74rem; font-weight:600; padding:.2rem .55rem; border-radius:6px; }
+    .level-chip { display:inline-block; font-size:.74rem; font-weight:600; padding:.2rem .55rem; border-radius:6px; }
+    .lc-system  { background:#ede9fe; color:#6d28d9; }
+    .lc-company { background:#dbeafe; color:#1d4ed8; }
+    .lc-default { background:#f1f5f9; color:#475569; }
+
+    /* Count cells */
+    .cnt { display:inline-flex; align-items:center; gap:.35rem; font-size:.835rem; font-weight:600; color:#374151; }
+    .cnt i { font-size:.85rem; }
+
+    /* Assign button */
+    .btn-assign { display:inline-flex; align-items:center; gap:.375rem; padding:.4rem 1rem; background:linear-gradient(135deg,#667eea,#764ba2); color:#fff; border:none; border-radius:8px; font-size:.8rem; font-weight:600; text-decoration:none; transition:all .18s; box-shadow:0 2px 8px rgba(102,126,234,.25); cursor:pointer; }
+    .btn-assign:hover { opacity:.9; transform:translateY(-1px); box-shadow:0 4px 14px rgba(102,126,234,.35); color:#fff; }
+
+    /* Footer */
+    .dc-foot { padding:.9rem 1.375rem; border-top:1px solid #f1f5f9; background:#fafbfc; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:.75rem; }
+    .ri { font-size:.82rem; color:#94a3b8; }
+    .ri strong { color:#374151; }
+    .pgn { display:flex; align-items:center; gap:.25rem; }
+    .pb { display:flex; align-items:center; justify-content:center; min-width:32px; height:32px; padding:0 .5rem; border:1.5px solid #e2e8f0; border-radius:7px; font-size:.8rem; font-weight:500; color:#64748b; text-decoration:none; transition:all .18s; background:#fff; }
+    .pb:hover { background:#f8fafc; color:#334155; border-color:#cbd5e1; }
+    .pb.cur   { background:linear-gradient(135deg,#667eea,#764ba2); color:#fff; border-color:transparent; font-weight:700; }
+    .pb.off   { opacity:.35; pointer-events:none; }
+    .pb.wide  { padding:0 .875rem; }
+    .pgn-dots { padding:0 .25rem; color:#cbd5e1; font-size:.82rem; }
+
+    /* Empty state */
+    .es { text-align:center; padding:4rem 2rem; }
+    .es-icon { font-size:3rem; color:#e2e8f0; margin-bottom:1rem; display:block; }
+    .es h6 { font-weight:600; color:#64748b; margin:0 0 .375rem; }
+    .es p  { font-size:.845rem; color:#94a3b8; margin:0; }
+
+    .alert-err { background:#fef2f2; border:1px solid #fecaca; border-radius:10px; padding:.875rem 1.125rem; color:#dc2626; font-size:.845rem; display:flex; align-items:center; gap:.625rem; margin-bottom:1.25rem; }
+
+    @@media (max-width:576px) { .srch-input { width:100%; } .dc-head { flex-direction:column; align-items:stretch; } }
+</style>
+
+<!-- Page header -->
+<div class="page-hdr-row">
+    <div class="page-hdr">
+        <h4><i class="bi bi-person-badge-fill me-2" style="color:#667eea;"></i>Roles</h4>
+        <p>Manage roles, assign permissions and menu access.</p>
+    </div>
+    @if (Model.TotalCount > 0)
+    {
+        <span class="total-chip"><i class="bi bi-person-badge"></i> @Model.TotalCount role@(Model.TotalCount != 1 ? "s" : "")</span>
+    }
+</div>
+
+@if (!string.IsNullOrEmpty(ViewBag.FetchError as string))
+{
+    <div class="alert-err"><i class="bi bi-exclamation-circle-fill"></i>@ViewBag.FetchError</div>
+}
+
+<div class="dc">
+    <div class="dc-head">
+        <form method="get" class="d-flex align-items-center gap-2 flex-wrap">
+            <div class="srch-wrap">
+                <i class="bi bi-search"></i>
+                <input class="srch-input" type="text" name="search"
+                       value="@Model.SearchTerm" placeholder="Search roles…" autocomplete="off" />
+            </div>
+            <input type="hidden" name="page" value="1" />
+            <button type="submit" class="btn-srch"><i class="bi bi-search"></i> Search</button>
+            @if (!string.IsNullOrEmpty(Model.SearchTerm))
+            {
+                <a href="/Roles" class="btn-clr"><i class="bi bi-x-circle"></i> Clear</a>
+            }
+        </form>
+    </div>
+
+    <div class="tbl-wrap">
+        <table class="dt">
+            <thead>
+                <tr>
+                    <th style="width:48px;">#</th>
+                    <th>Role</th>
+                    <th style="width:120px;">Type</th>
+                    <th style="width:120px;">Level</th>
+                    <th style="width:100px;" class="d-none d-md-table-cell">Users</th>
+                    <th style="width:120px;" class="d-none d-lg-table-cell">Permissions</th>
+                    <th style="width:110px;">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (Model.Roles.Any())
+                {
+                    @for (int i = 0; i < Model.Roles.Count; i++)
+                    {
+                        var r = Model.Roles[i];
+                        var initial = r.Name.Length > 0 ? r.Name[0].ToString().ToUpper() : "R";
+                        var levelClass = r.Level?.ToLower() switch
+                        {
+                            "system"  => "lc-system",
+                            "company" => "lc-company",
+                            _         => "lc-default"
+                        };
+                        <tr>
+                            <td><span class="rn">@(Model.From + i)</span></td>
+                            <td>
+                                <div class="d-flex align-items-center gap-3">
+                                    <div class="role-avatar">@initial</div>
+                                    <div>
+                                        <div class="role-name">@r.Name</div>
+                                        <div class="role-id">id: @r.Id[..Math.Min(8, r.Id.Length)]…</div>
+                                    </div>
+                                </div>
+                            </td>
+                            <td>
+                                @if (!string.IsNullOrEmpty(r.Type))
+                                {
+                                    <span class="type-chip">@r.Type</span>
+                                }
+                                else { <span style="color:#e2e8f0;">—</span> }
+                            </td>
+                            <td>
+                                @if (!string.IsNullOrEmpty(r.Level))
+                                {
+                                    <span class="level-chip @levelClass">@r.Level</span>
+                                }
+                                else { <span style="color:#e2e8f0;">—</span> }
+                            </td>
+                            <td class="d-none d-md-table-cell">
+                                <span class="cnt">
+                                    <i class="bi bi-people" style="color:#667eea;"></i> @r.UserCount
+                                </span>
+                            </td>
+                            <td class="d-none d-lg-table-cell">
+                                <span class="cnt">
+                                    <i class="bi bi-shield-check" style="color:#10b981;"></i> @r.PermissionCount
+                                </span>
+                            </td>
+                            <td>
+                                <a href="/Roles/Assign/@r.Id" class="btn-assign">
+                                    <i class="bi bi-sliders"></i> Assign
+                                </a>
+                            </td>
+                        </tr>
+                    }
+                }
+                else
+                {
+                    <tr>
+                        <td colspan="7">
+                            <div class="es">
+                                <i class="bi bi-person-badge es-icon"></i>
+                                <h6>@(string.IsNullOrEmpty(Model.SearchTerm) ? "No roles found" : "No roles match your search")</h6>
+                                <p>@(string.IsNullOrEmpty(Model.SearchTerm) ? "Roles will appear here once created." : "Try a different keyword or clear the filter.")</p>
+                            </div>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+
+    @if (Model.TotalCount > 0)
+    {
+        <div class="dc-foot">
+            <div class="ri">Showing <strong>@Model.From</strong>–<strong>@Model.To</strong> of <strong>@Model.TotalCount</strong> role@(Model.TotalCount != 1 ? "s" : "")</div>
+            @if (Model.TotalPages > 1)
+            {
+                <nav class="pgn">
+                    <a class="pb wide @(Model.Page <= 1 ? "off" : "")" href="?search=@Model.SearchTerm&page=@(Model.Page-1)">
+                        <i class="bi bi-chevron-left" style="font-size:.7rem;"></i> Prev
+                    </a>
+                    @{
+                        int tp = Model.TotalPages, cp = Model.Page;
+                        var pages = new List<int?>();
+                        if (tp <= 7) { for (int p = 1; p <= tp; p++) pages.Add(p); }
+                        else
+                        {
+                            pages.Add(1);
+                            if (cp > 3) pages.Add(null);
+                            for (int p = Math.Max(2,cp-1); p <= Math.Min(tp-1,cp+1); p++) pages.Add(p);
+                            if (cp < tp-2) pages.Add(null);
+                            pages.Add(tp);
+                        }
+                    }
+                    @foreach (var pn in pages)
+                    {
+                        if (pn == null) { <span class="pgn-dots">…</span> }
+                        else { <a class="pb @(pn==Model.Page?"cur":"")" href="?search=@Model.SearchTerm&page=@pn">@pn</a> }
+                    }
+                    <a class="pb wide @(Model.Page >= Model.TotalPages ? "off" : "")" href="?search=@Model.SearchTerm&page=@(Model.Page+1)">
+                        Next <i class="bi bi-chevron-right" style="font-size:.7rem;"></i>
+                    </a>
+                </nav>
+            }
+        </div>
+    }
+</div>

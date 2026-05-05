@@ -1,0 +1,7 @@
+<Solution>
+  <Project Path="Dog.Api/Dog.Api.csproj" />
+  <Project Path="Dog.Application/Dog.Application.csproj" />
+  <Project Path="Dog.Core/Dog.Core.csproj" />
+  <Project Path="Dog.Infrastructure/Dog.Infrastructure.csproj" />
+  <Project Path="Dog.Portal/Dog.Portal.csproj" />
+</Solution>

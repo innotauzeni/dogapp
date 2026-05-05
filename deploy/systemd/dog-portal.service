@@ -1,0 +1,27 @@
+[Unit]
+Description=Dog Portal (.NET 8 MVC)
+After=network.target dog-api.service
+Wants=dog-api.service
+
+[Service]
+Type=simple
+User=www-data
+Group=www-data
+WorkingDirectory=/var/www/dog-portal
+ExecStart=/usr/bin/dotnet /var/www/dog-portal/Dog.Portal.dll
+Restart=always
+RestartSec=10
+KillSignal=SIGINT
+SyslogIdentifier=dog-portal
+
+# Environment
+Environment=ASPNETCORE_ENVIRONMENT=Production
+Environment=ASPNETCORE_URLS=http://localhost:5200
+Environment=DOTNET_PRINT_TELEMETRY_MESSAGE=false
+
+# Hardening
+NoNewPrivileges=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

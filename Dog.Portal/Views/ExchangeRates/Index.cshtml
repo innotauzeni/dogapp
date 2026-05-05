@@ -1,0 +1,637 @@
+@model Dog.Portal.Models.ExchangeRatesListViewModel
+@{
+    Layout = "_AdminLayout";
+    ViewData["Title"] = "Exchange Rates";
+    var totalAll = Model.TotalCount;
+    var activeCount = Model.ExchangeRateList.Count(u => bool.Equals(u.IsActive, true));
+    var inactiveCount = Model.ExchangeRateList.Count(u => bool.Equals(u.IsActive, false));
+    var currencies = ViewBag.Currencies as List<Dog.Application.Features.Currencies.DTOs.CurrencyDto> ?? new List<Dog.Application.Features.Currencies.DTOs.CurrencyDto>();
+}
+
+<style>
+.page-hdr h4{font-size:1.15rem;font-weight:800;color:#0f172a;margin:0 0 .25rem;letter-spacing:-.02em}
+.page-hdr p{font-size:.845rem;color:#64748b;margin:0}
+.page-hdr-row{display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;flex-wrap:wrap;margin-bottom:1.5rem}
+.total-chip{display:inline-flex;align-items:center;gap:.375rem;background:#ede9fe;color:#6d28d9;font-size:.8rem;font-weight:700;padding:.35rem .875rem;border-radius:20px;white-space:nowrap}
+.hdr-actions{display:flex;align-items:center;gap:.625rem;flex-wrap:wrap}
+.btn-add{display:inline-flex;align-items:center;gap:.4rem;padding:.6rem 1.25rem;background:linear-gradient(135deg,#667eea,#764ba2);color:#fff;border:none;border-radius:9px;font-size:.845rem;font-weight:600;cursor:pointer;transition:all .2s;box-shadow:0 2px 8px rgba(102,126,234,.3)}
+.btn-add:hover{opacity:.9;transform:translateY(-1px)}
+
+/* Stats */
+.stats-row{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:.875rem;margin-bottom:1.5rem}
+.stat-card{background:#fff;border-radius:12px;border:1px solid #e9eef4;box-shadow:0 1px 4px rgba(0,0,0,.04);padding:1rem 1.25rem;display:flex;align-items:center;gap:.875rem}
+.stat-icon{width:42px;height:42px;border-radius:11px;display:flex;align-items:center;justify-content:center;font-size:1.1rem;flex-shrink:0}
+.si-total{background:linear-gradient(135deg,#ede9fe,#ddd6fe);color:#7c3aed}
+.si-active{background:linear-gradient(135deg,#d1fae5,#a7f3d0);color:#065f46}
+.si-inactive{background:linear-gradient(135deg,#fee2e2,#fecaca);color:#991b1b}
+.stat-body .val{font-size:1.35rem;font-weight:800;color:#0f172a;line-height:1}
+.stat-body .lbl{font-size:.75rem;color:#94a3b8;font-weight:500;margin-top:.2rem}
+
+/* Data card */
+.dc{background:#fff;border-radius:14px;border:1px solid #e9eef4;box-shadow:0 1px 4px rgba(0,0,0,.04),0 6px 20px rgba(0,0,0,.04);overflow:hidden}
+.dc-head{padding:1rem 1.375rem;border-bottom:1px solid #f1f5f9;background:#fafbfc;display:flex;align-items:center;gap:.625rem;flex-wrap:wrap}
+
+/* Search & filters */
+.srch-wrap{position:relative;flex:1;min-width:180px;max-width:280px}
+.srch-wrap i{position:absolute;left:.875rem;top:50%;transform:translateY(-50%);color:#94a3b8;font-size:.9rem;pointer-events:none}
+.srch-input{width:100%;padding:.6rem .875rem .6rem 2.375rem;border:1.5px solid #e2e8f0;border-radius:9px;font-size:.845rem;color:#1e293b;background:#fff;outline:none;transition:border-color .2s,box-shadow .2s}
+.srch-input:focus{border-color:#667eea;box-shadow:0 0 0 3px rgba(102,126,234,.1)}
+.srch-input::placeholder{color:#cbd5e1}
+.filter-sel{padding:.6rem .875rem;border:1.5px solid #e2e8f0;border-radius:9px;font-size:.845rem;color:#374151;background:#fff;outline:none;cursor:pointer;transition:border-color .2s;min-width:130px}
+.filter-sel:focus{border-color:#667eea;box-shadow:0 0 0 3px rgba(102,126,234,.1)}
+.btn-srch{padding:.6rem 1.125rem;background:linear-gradient(135deg,#667eea,#764ba2);color:#fff;border:none;border-radius:9px;font-size:.845rem;font-weight:600;cursor:pointer;transition:opacity .2s;display:inline-flex;align-items:center;gap:.375rem;white-space:nowrap}
+.btn-srch:hover{opacity:.9}
+.btn-clr{padding:.6rem .875rem;background:#f1f5f9;color:#64748b;border:1.5px solid #e2e8f0;border-radius:9px;font-size:.845rem;font-weight:500;cursor:pointer;text-decoration:none;display:inline-flex;align-items:center;gap:.3rem;transition:all .18s;white-space:nowrap}
+.btn-clr:hover{background:#e2e8f0;color:#334155}
+
+/* Table */
+.tbl-wrap{overflow-x:auto;min-height:400px;}
+.dt{width:100%;border-collapse:collapse;table-layout:fixed;}
+.dt thead th{padding:.75rem 1.125rem;font-size:.7rem;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.09em;background:#f8fafc;border-bottom:1px solid #f0f4f8;white-space:nowrap}
+.dt tbody td{padding:.875rem 1.125rem;font-size:.855rem;color:#374151;border-bottom:1px solid #f8fafc;vertical-align:middle;max-width:200px;text-overflow:ellipsis;overflow:hidden;white-space:nowrap}
+.dt tbody tr:last-child td{border-bottom:none}
+.dt tbody tr{transition:background .15s}
+.dt tbody tr:hover td{background:#fafbff}
+.rn{color:#cbd5e1;font-size:.8rem;font-weight:600}
+
+/* Currency pair display */
+.currency-pair{display:flex;align-items:center;gap:.5rem}
+.currency-code{font-weight:600;color:#1e293b;font-size:.875rem}
+.currency-arrow{color:#94a3b8;font-size:.8rem}
+.rate-value{font-weight:700;color:#059669;font-size:.9rem}
+
+/* Status badge */
+.s-badge{display:inline-flex;align-items:center;gap:.3rem;font-size:.74rem;font-weight:700;padding:.25rem .65rem;border-radius:20px}
+.s-active{background:#d1fae5;color:#065f46}
+.s-inactive{background:#fee2e2;color:#991b1b}
+
+/* Action menu */
+.act-wrap{position:relative;display:inline-block}
+.act-btn{width:32px;height:32px;border:1.5px solid #e2e8f0;border-radius:8px;background:#fff;color:#64748b;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all .18s;font-size:.9rem}
+.act-btn:hover{background:#f8fafc;border-color:#cbd5e1;color:#334155}
+.act-menu{position:fixed;background:#fff;border:1px solid #e2e8f0;border-radius:11px;box-shadow:0 12px 40px rgba(0,0,0,.18),0 0 0 1px rgba(0,0,0,.02);min-width:200px;z-index:1045;padding:.375rem;display:none}
+.act-menu.open{display:block}
+.act-item{display:flex;align-items:center;gap:.625rem;padding:.5rem .75rem;border-radius:7px;font-size:.835rem;font-weight:500;color:#374151;cursor:pointer;transition:background .15s;border:none;background:none;width:100%;text-align:left}
+.act-item:hover{background:#f8fafc;color:#1e293b}
+.act-item.danger{color:#dc2626}
+.act-item.danger:hover{background:#fef2f2}
+.act-item i{width:16px;text-align:center;font-size:.85rem}
+.act-divider{height:1px;background:#f1f5f9;margin:.25rem 0}
+
+/* Action menu */
+.act-wrap{position:relative;display:inline-block}
+.act-btn{width:32px;height:32px;border:1.5px solid #e2e8f0;border-radius:8px;background:#fff;color:#64748b;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all .18s;font-size:.9rem}
+.act-btn:hover{background:#f8fafc;border-color:#cbd5e1;color:#334155}
+.act-menu{position:fixed;background:#fff;border:1px solid #e2e8f0;border-radius:11px;box-shadow:0 12px 40px rgba(0,0,0,.18),0 0 0 1px rgba(0,0,0,.02);min-width:200px;z-index:1045;padding:.375rem;display:none}
+.act-menu.open{display:block}
+.act-item{display:flex;align-items:center;gap:.625rem;padding:.5rem .75rem;border-radius:7px;font-size:.835rem;font-weight:500;color:#374151;cursor:pointer;transition:background .15s;border:none;background:none;width:100%;text-align:left}
+.act-item:hover{background:#f8fafc;color:#1e293b}
+.act-item.danger{color:#dc2626}
+.act-item.danger:hover{background:#fef2f2}
+.act-item i{width:16px;text-align:center;font-size:.85rem}
+.act-divider{height:1px;background:#f1f5f9;margin:.25rem 0}
+
+/* Footer / pagination */
+.dc-foot{padding:.9rem 1.375rem;border-top:1px solid #f1f5f9;background:#fafbfc;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.75rem}
+.ri{font-size:.82rem;color:#94a3b8}
+.ri strong{color:#374151}
+.pgn{display:flex;align-items:center;gap:.25rem}
+.pb{display:flex;align-items:center;justify-content:center;min-width:32px;height:32px;padding:0 .5rem;border:1.5px solid #e2e8f0;border-radius:7px;font-size:.8rem;font-weight:500;color:#64748b;text-decoration:none;transition:all .18s;background:#fff}
+.pb:hover{background:#f8fafc;color:#334155;border-color:#cbd5e1}
+.pb.cur{background:linear-gradient(135deg,#667eea,#764ba2);color:#fff;border-color:transparent;font-weight:700}
+.pb.off{opacity:.35;pointer-events:none}
+.pb.wide{padding:0 .875rem}
+.pgn-dots{padding:0 .25rem;color:#cbd5e1;font-size:.82rem}
+
+/* Empty state */
+.empty-state{text-align:center;padding:3rem 1rem;color:#94a3b8}
+.empty-state i{font-size:3rem;margin-bottom:1rem;color:#cbd5e1}
+.empty-state h3{font-size:1.1rem;font-weight:600;color:#64748b;margin-bottom:.5rem}
+.empty-state p{font-size:.9rem}
+</style>
+
+<div class="page-hdr-row">
+    <div class="page-hdr">
+        <h4>Exchange Rates</h4>
+        <p>Manage currency exchange rates for your company</p>
+    </div>
+    <div class="hdr-actions">
+        <div class="total-chip">
+            <i class="fas fa-exchange-alt"></i>
+            <span>@totalAll Total</span>
+        </div>
+        <button type="button" class="btn-add" onclick="openCreateModal()">
+            <i class="fas fa-plus"></i>
+            Add Exchange Rate
+        </button>
+    </div>
+</div>
+
+<!-- Stats -->
+<div class="stats-row">
+    <div class="stat-card">
+        <div class="stat-icon si-total">
+            <i class="fas fa-exchange-alt"></i>
+        </div>
+        <div class="stat-body">
+            <div class="val">@totalAll</div>
+            <div class="lbl">Total Rates</div>
+        </div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon si-active">
+            <i class="fas fa-check-circle"></i>
+        </div>
+        <div class="stat-body">
+            <div class="val">@activeCount</div>
+            <div class="lbl">Active</div>
+        </div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon si-inactive">
+            <i class="fas fa-times-circle"></i>
+        </div>
+        <div class="stat-body">
+            <div class="val">@inactiveCount</div>
+            <div class="lbl">Inactive</div>
+        </div>
+    </div>
+</div>
+
+<!-- Data Card -->
+<div class="dc">
+    <!-- Header with search and filters -->
+    <div class="dc-head">
+        <form method="get" style="display:contents;">
+            <div class="srch-wrap">
+                <i class="fas fa-search"></i>
+                <input type="text" name="search" value="@Model.SearchTerm" class="srch-input" placeholder="Search currency codes...">
+            </div>
+            <select name="status" class="filter-sel">
+                <option value="">All Status</option>
+                <option value="active" selected="@(ViewBag.StatusFilter == "active")">Active</option>
+                <option value="inactive" selected="@(ViewBag.StatusFilter == "inactive")">Inactive</option>
+            </select>
+            <button type="submit" class="btn-srch">
+                <i class="fas fa-search"></i>
+                Search
+            </button>
+            <a href="@Url.Action("Index")" class="btn-clr">
+                <i class="fas fa-times"></i>
+                Clear
+            </a>
+        </form>
+    </div>
+
+    <!-- Table -->
+    <div class="tbl-wrap">
+        @if (Model.ExchangeRateList.Any())
+        {
+            <table class="dt">
+                <thead>
+                    <tr>
+                        <th style="width:60px">#</th>
+                        <th style="width:200px">Currency Pair</th>
+                        <th style="width:150px">Exchange Rate</th>
+                        <th style="width:120px">Status</th>
+                        <th style="width:150px">Created Date</th>
+                        <th style="width:120px">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @{
+                        var startIndex = (Model.Page - 1) * Model.PageSize;
+                    }
+                    @foreach (var item in Model.ExchangeRateList.Select((value, index) => new { value, index }))
+                    {
+                        <tr>
+                            <td>
+                                <span class="rn">@(startIndex + item.index + 1)</span>
+                            </td>
+                            <td>
+                                <div class="currency-pair">
+                                    <span class="currency-code">@item.value.PrimaryCurrencyCode</span>
+                                    <i class="fas fa-arrow-right currency-arrow"></i>
+                                    <span class="currency-code">@item.value.SecondaryCurrencyCode</span>
+                                </div>
+                            </td>
+                            <td>
+                                <span class="rate-value">@item.value.Rate.ToString("F4")</span>
+                            </td>
+                            <td>
+                                <span class="s-badge @(item.value.IsActive ? "s-active" : "s-inactive")">
+                                    <i class="fas @(item.value.IsActive ? "fa-check-circle" : "fa-times-circle")"></i>
+                                    @(item.value.IsActive ? "Active" : "Inactive")
+                                </span>
+                            </td>
+                            <td>
+                                <div style="font-size:.8rem;color:#64748b">@item.value.CreatedAt.ToString("MMM dd, yyyy")</div>
+                            </td>
+                            <td>
+                                <div class="act-wrap">
+                                    <button type="button" class="act-btn" onclick="toggleActionMenu(this)">
+                                                  <i class="bi bi-three-dots-vertical"></i>
+                                    </button>
+                                    <div class="act-menu">
+                                        <button type="button" class="act-item" onclick="openEditModal(@item.value.Id, @item.value.PrimaryCurrencyId, @item.value.SecondaryCurrencyId, @item.value.Rate, @item.value.IsActive.ToString().ToLower())">
+                                            <i class="fas fa-edit"></i>
+                                            Edit
+                                        </button>
+                                        <div class="act-divider"></div>
+                                        <button type="button" class="act-item danger" onclick="deleteExchangeRate(@item.value.Id, '@item.value.PrimaryCurrencyCode/@item.value.SecondaryCurrencyCode')">
+                                            <i class="fas fa-trash"></i>
+                                            Delete
+                                        </button>
+                                    </div>
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+        else
+        {
+            <div class="empty-state">
+                <i class="fas fa-exchange-alt"></i>
+                <h3>No exchange rates found</h3>
+                <p>@(string.IsNullOrWhiteSpace(Model.SearchTerm) ? "Start by creating your first exchange rate." : "Try adjusting your search criteria.")</p>
+            </div>
+        }
+    </div>
+
+    <!-- Footer / Pagination -->
+    @if (Model.TotalCount > 0)
+    {
+        <div class="dc-foot">
+            <div class="ri">
+                Showing <strong>@Model.From</strong> to <strong>@Model.To</strong> of <strong>@Model.TotalCount</strong> results
+            </div>
+            @if (Model.TotalPages > 1)
+            {
+                <div class="pgn">
+                    @if (Model.Page > 1)
+                    {
+                        <a href="@Url.Action("Index", new { search = Model.SearchTerm, status = ViewBag.StatusFilter, page = Model.Page - 1 })" class="pb wide">
+                            <i class="fas fa-chevron-left"></i> Previous
+                        </a>
+                    }
+                    else
+                    {
+                        <span class="pb wide off">
+                            <i class="fas fa-chevron-left"></i> Previous
+                        </span>
+                    }
+
+                    @for (int i = Math.Max(1, Model.Page - 2); i <= Math.Min(Model.TotalPages, Model.Page + 2); i++)
+                    {
+                        if (i == Model.Page)
+                        {
+                            <span class="pb cur">@i</span>
+                        }
+                        else
+                        {
+                            <a href="@Url.Action("Index", new { search = Model.SearchTerm, status = ViewBag.StatusFilter, page = i })" class="pb">@i</a>
+                        }
+                    }
+
+                    @if (Model.Page < Model.TotalPages)
+                    {
+                        <a href="@Url.Action("Index", new { search = Model.SearchTerm, status = ViewBag.StatusFilter, page = Model.Page + 1 })" class="pb wide">
+                            Next <i class="fas fa-chevron-right"></i>
+                        </a>
+                    }
+                    else
+                    {
+                        <span class="pb wide off">
+                            Next <i class="fas fa-chevron-right"></i>
+                        </span>
+                    }
+                </div>
+            }
+        </div>
+    }
+</div>
+<!-- Create Exchange Rate Modal -->
+<div class="modal fade" id="createModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Add New Exchange Rate</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="createForm">
+                    <div class="mb-3">
+                        <label for="createPrimaryCurrency" class="form-label">From Currency *</label>
+                        <select class="form-control" id="createPrimaryCurrency" required>
+                            <option value="">Select primary currency</option>
+                            @foreach (var currency in currencies.Where(c => c.IsActive))
+                            {
+                                <option value="@currency.Id">@currency.Code - @currency.Name</option>
+                            }
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="createSecondaryCurrency" class="form-label">To Currency *</label>
+                        <select class="form-control" id="createSecondaryCurrency" required>
+                            <option value="">Select secondary currency</option>
+                            @foreach (var currency in currencies.Where(c => c.IsActive))
+                            {
+                                <option value="@currency.Id">@currency.Code - @currency.Name</option>
+                            }
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="createRate" class="form-label">Exchange Rate *</label>
+                        <input type="number" class="form-control" id="createRate" step="0.0001" min="0" required>
+                        <div class="form-text">Enter the rate to convert from primary to secondary currency</div>
+                    </div>
+                    <div class="mb-3">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="createIsActive" checked>
+                            <label class="form-check-label" for="createIsActive">Active</label>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" onclick="submitCreate()">
+                    <span class="spinner-border spinner-border-sm d-none" id="createSpinner"></span>
+                    Create
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Exchange Rate Modal -->
+<div class="modal fade" id="editModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Edit Exchange Rate</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="editForm">
+                    <input type="hidden" id="editId">
+                    <div class="mb-3">
+                        <label for="editPrimaryCurrency" class="form-label">From Currency *</label>
+                        <select class="form-control" id="editPrimaryCurrency" required>
+                            <option value="">Select primary currency</option>
+                            @foreach (var currency in currencies.Where(c => c.IsActive))
+                            {
+                                <option value="@currency.Id">@currency.Code - @currency.Name</option>
+                            }
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="editSecondaryCurrency" class="form-label">To Currency *</label>
+                        <select class="form-control" id="editSecondaryCurrency" required>
+                            <option value="">Select secondary currency</option>
+                            @foreach (var currency in currencies.Where(c => c.IsActive))
+                            {
+                                <option value="@currency.Id">@currency.Code - @currency.Name</option>
+                            }
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="editRate" class="form-label">Exchange Rate *</label>
+                        <input type="number" class="form-control" id="editRate" step="0.0001" min="0" required>
+                        <div class="form-text">Enter the rate to convert from primary to secondary currency</div>
+                    </div>
+                    <div class="mb-3">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="editIsActive">
+                            <label class="form-check-label" for="editIsActive">Active</label>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" onclick="submitEdit()">
+                    <span class="spinner-border spinner-border-sm d-none" id="editSpinner"></span>
+                    Update
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Exchange Rate Functions
+function openCreateModal() {
+    document.getElementById('createPrimaryCurrency').value = '';
+    document.getElementById('createSecondaryCurrency').value = '';
+    document.getElementById('createRate').value = '';
+    document.getElementById('createIsActive').checked = true;
+    new bootstrap.Modal(document.getElementById('createModal')).show();
+}
+
+function openEditModal(id, primaryCurrencyId, secondaryCurrencyId, rate, isActive) {
+    document.getElementById('editId').value = id;
+    document.getElementById('editPrimaryCurrency').value = primaryCurrencyId;
+    document.getElementById('editSecondaryCurrency').value = secondaryCurrencyId;
+    document.getElementById('editRate').value = rate;
+    document.getElementById('editIsActive').checked = isActive;
+    new bootstrap.Modal(document.getElementById('editModal')).show();
+}
+
+function submitCreate() {
+    const primaryCurrencyId = document.getElementById('createPrimaryCurrency').value;
+    const secondaryCurrencyId = document.getElementById('createSecondaryCurrency').value;
+    const rate = document.getElementById('createRate').value;
+    const isActive = document.getElementById('createIsActive').checked;
+    
+    if (!primaryCurrencyId) {
+        showAlert('Please select a primary currency.', 'warning');
+        return;
+    }
+    
+    if (!secondaryCurrencyId) {
+        showAlert('Please select a secondary currency.', 'warning');
+        return;
+    }
+    
+    if (primaryCurrencyId === secondaryCurrencyId) {
+        showAlert('Primary and secondary currencies must be different.', 'warning');
+        return;
+    }
+    
+    if (!rate || parseFloat(rate) <= 0) {
+        showAlert('Please enter a valid exchange rate.', 'warning');
+        return;
+    }
+    
+    setLoading('createSpinner', true);
+    
+    fetch('/ExchangeRates/Create', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+            PrimaryCurrencyId: parseInt(primaryCurrencyId), 
+            SecondaryCurrencyId: parseInt(secondaryCurrencyId),
+            Rate: parseFloat(rate),
+            IsActive: isActive 
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        setLoading('createSpinner', false);
+        if (data.success) {
+            showAlert('Exchange rate created successfully!', 'success');
+            bootstrap.Modal.getInstance(document.getElementById('createModal')).hide();
+            setTimeout(() => location.reload(), 1500);
+        } else {
+            showAlert(data.message || 'Failed to create exchange rate.', 'danger');
+        }
+    })
+    .catch(error => {
+        setLoading('createSpinner', false);
+        showAlert('An error occurred. Please try again.', 'danger');
+        console.error('Error:', error);
+    });
+}
+
+function submitEdit() {
+    const id = document.getElementById('editId').value;
+    const primaryCurrencyId = document.getElementById('editPrimaryCurrency').value;
+    const secondaryCurrencyId = document.getElementById('editSecondaryCurrency').value;
+    const rate = document.getElementById('editRate').value;
+    const isActive = document.getElementById('editIsActive').checked;
+    
+    if (!primaryCurrencyId) {
+        showAlert('Please select a primary currency.', 'warning');
+        return;
+    }
+    
+    if (!secondaryCurrencyId) {
+        showAlert('Please select a secondary currency.', 'warning');
+        return;
+    }
+    
+    if (primaryCurrencyId === secondaryCurrencyId) {
+        showAlert('Primary and secondary currencies must be different.', 'warning');
+        return;
+    }
+    
+    if (!rate || parseFloat(rate) <= 0) {
+        showAlert('Please enter a valid exchange rate.', 'warning');
+        return;
+    }
+    
+    setLoading('editSpinner', true);
+    
+    fetch('/ExchangeRates/Update', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+            Id: parseInt(id),
+            PrimaryCurrencyId: parseInt(primaryCurrencyId), 
+            SecondaryCurrencyId: parseInt(secondaryCurrencyId),
+            Rate: parseFloat(rate),
+            IsActive: isActive 
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        setLoading('editSpinner', false);
+        if (data.success) {
+            showAlert('Exchange rate updated successfully!', 'success');
+            bootstrap.Modal.getInstance(document.getElementById('editModal')).hide();
+            setTimeout(() => location.reload(), 1500);
+        } else {
+            showAlert(data.message || 'Failed to update exchange rate.', 'danger');
+        }
+    })
+    .catch(error => {
+        setLoading('editSpinner', false);
+        showAlert('An error occurred. Please try again.', 'danger');
+        console.error('Error:', error);
+    });
+}
+
+function deleteExchangeRate(id, currencyPair) {
+    if (!confirm(`Are you sure you want to delete the exchange rate for "${currencyPair}"? This action cannot be undone.`)) {
+        return;
+    }
+    
+    fetch(`/ExchangeRates/Delete/${id}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showAlert('Exchange rate deleted successfully!', 'success');
+            setTimeout(() => location.reload(), 1500);
+        } else {
+            showAlert(data.message || 'Failed to delete exchange rate.', 'danger');
+        }
+    })
+    .catch(error => {
+        showAlert('An error occurred. Please try again.', 'danger');
+        console.error('Error:', error);
+    });
+}
+
+// Utility Functions
+function toggleActionMenu(button) {
+    const menu = button.nextElementSibling;
+    const rect = button.getBoundingClientRect();
+    
+    // Close all other menus
+    document.querySelectorAll('.act-menu.open').forEach(m => {
+        if (m !== menu) m.classList.remove('open');
+    });
+    
+    if (menu.classList.contains('open')) {
+        menu.classList.remove('open');
+    } else {
+        menu.style.left = rect.left + 'px';
+        menu.style.top = (rect.bottom + 5) + 'px';
+        menu.classList.add('open');
+    }
+}
+
+function setLoading(spinnerId, loading) {
+    const spinner = document.getElementById(spinnerId);
+    if (loading) {
+        spinner.classList.remove('d-none');
+    } else {
+        spinner.classList.add('d-none');
+    }
+}
+
+function showAlert(message, type) {
+    // Create alert element
+    const alertDiv = document.createElement('div');
+    alertDiv.className = `alert alert-${type} alert-dismissible fade show position-fixed`;
+    alertDiv.style.cssText = 'top: 20px; right: 20px; z-index: 9999; min-width: 300px;';
+    alertDiv.innerHTML = `
+        ${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+    
+    document.body.appendChild(alertDiv);
+    
+    // Auto remove after 5 seconds
+    setTimeout(() => {
+        if (alertDiv.parentNode) {
+            alertDiv.remove();
+        }
+    }, 5000);
+}
+
+// Close action menus when clicking outside
+document.addEventListener('click', function(e) {
+    if (!e.target.closest('.act-wrap')) {
+        document.querySelectorAll('.act-menu.open').forEach(menu => {
+            menu.classList.remove('open');
+        });
+    }
+});
+</script>

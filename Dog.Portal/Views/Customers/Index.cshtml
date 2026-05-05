@@ -1,0 +1,321 @@
+﻿@model Dog.Portal.Models.CustomerListViewModel
+@{
+    Layout = "_AdminLayout";
+    ViewData["Title"] = "Customers";
+    var totalAll = Model.TotalCount;
+}
+<style>
+.page-hdr h4{font-size:1.15rem;font-weight:800;color:#0f172a;margin:0 0 .25rem}
+.page-hdr p{font-size:.845rem;color:#64748b;margin:0}
+.page-hdr-row{display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;flex-wrap:wrap;margin-bottom:1.5rem}
+.total-chip{display:inline-flex;align-items:center;gap:.375rem;background:#ede9fe;color:#6d28d9;font-size:.8rem;font-weight:700;padding:.35rem .875rem;border-radius:20px}
+.hdr-actions{display:flex;align-items:center;gap:.625rem;flex-wrap:wrap}
+.btn-add{display:inline-flex;align-items:center;gap:.4rem;padding:.6rem 1.25rem;background:linear-gradient(135deg,#667eea,#764ba2);color:#fff;border:none;border-radius:9px;font-size:.845rem;font-weight:600;cursor:pointer;transition:all .2s}
+.stats-row{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:.875rem;margin-bottom:1.5rem}
+.stat-card{background:#fff;border-radius:12px;border:1px solid #e9eef4;padding:1rem 1.25rem;display:flex;align-items:center;gap:.875rem}
+.stat-icon{width:42px;height:42px;border-radius:11px;display:flex;align-items:center;justify-content:center;font-size:1.1rem}
+.si-total{background:linear-gradient(135deg,#ede9fe,#ddd6fe);color:#7c3aed}
+.stat-body .val{font-size:1.35rem;font-weight:800;color:#0f172a;line-height:1}
+.stat-body .lbl{font-size:.75rem;color:#94a3b8;font-weight:500;margin-top:.2rem}
+.dc{background:#fff;border-radius:14px;border:1px solid #e9eef4;overflow:hidden}
+.dc-head{padding:1rem 1.375rem;border-bottom:1px solid #f1f5f9;background:#fafbfc;display:flex;align-items:center;gap:.625rem;flex-wrap:wrap}
+.srch-wrap{position:relative;flex:1;min-width:180px;max-width:280px}
+.srch-wrap i{position:absolute;left:.875rem;top:50%;transform:translateY(-50%);color:#94a3b8;font-size:.9rem;pointer-events:none}
+.srch-input{width:100%;padding:.6rem .875rem .6rem 2.375rem;border:1.5px solid #e2e8f0;border-radius:9px;font-size:.845rem;color:#1e293b;background:#fff;outline:none}
+.srch-input:focus{border-color:#667eea;box-shadow:0 0 0 3px rgba(102,126,234,.1)}
+.btn-srch{padding:.6rem 1.125rem;background:linear-gradient(135deg,#667eea,#764ba2);color:#fff;border:none;border-radius:9px;font-size:.845rem;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:.375rem}
+.btn-clr{padding:.6rem .875rem;background:#f1f5f9;color:#64748b;border:1.5px solid #e2e8f0;border-radius:9px;font-size:.845rem;cursor:pointer;text-decoration:none;display:inline-flex;align-items:center;gap:.3rem}
+.tbl-wrap{overflow-x:auto;min-height:300px}
+.dt{width:100%;border-collapse:collapse;table-layout:fixed}
+.dt thead th{padding:.75rem 1.125rem;font-size:.7rem;font-weight:700;color:#64748b;text-transform:uppercase;background:#f8fafc;border-bottom:1px solid #f0f4f8;white-space:nowrap}
+.dt tbody td{padding:.875rem 1.125rem;font-size:.855rem;color:#374151;border-bottom:1px solid #f8fafc;vertical-align:middle;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dt tbody tr:hover td{background:#fafbff}
+.rn{color:#cbd5e1;font-size:.8rem;font-weight:600}
+.act-wrap{position:relative;display:inline-block}
+.act-btn{width:32px;height:32px;border:1.5px solid #e2e8f0;border-radius:8px;background:#fff;color:#64748b;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all .18s}
+.act-btn:hover{background:#f8fafc;border-color:#cbd5e1;color:#334155}
+.act-menu{position:fixed;background:#fff;border:1px solid #e2e8f0;border-radius:11px;box-shadow:0 12px 40px rgba(0,0,0,.18);min-width:200px;z-index:1045;padding:.375rem;display:none}
+.act-menu.open{display:block}
+.act-item{display:flex;align-items:center;gap:.625rem;padding:.5rem .75rem;border-radius:7px;font-size:.835rem;font-weight:500;color:#374151;cursor:pointer;border:none;background:none;width:100%;text-align:left}
+.act-item:hover{background:#f8fafc}
+.act-item.danger{color:#dc2626}
+.act-item.danger:hover{background:#fef2f2}
+.act-item i{width:16px;text-align:center}
+.act-divider{height:1px;background:#f1f5f9;margin:.25rem 0}
+.dc-foot{padding:.9rem 1.375rem;border-top:1px solid #f1f5f9;background:#fafbfc;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.75rem}
+.ri{font-size:.82rem;color:#94a3b8}
+.ri strong{color:#374151}
+.pgn{display:flex;align-items:center;gap:.25rem}
+.pb{display:flex;align-items:center;justify-content:center;min-width:32px;height:32px;padding:0 .5rem;border:1.5px solid #e2e8f0;border-radius:7px;font-size:.8rem;color:#64748b;text-decoration:none;background:#fff}
+.pb:hover{background:#f8fafc}
+.pb.cur{background:linear-gradient(135deg,#667eea,#764ba2);color:#fff;border-color:transparent;font-weight:700}
+.pb.off{opacity:.35;pointer-events:none}
+.pb.wide{padding:0 .875rem}
+.empty-state{text-align:center;padding:3rem 1rem;color:#94a3b8}
+.empty-state i{font-size:3rem;margin-bottom:1rem;color:#cbd5e1;display:block}
+.empty-state h3{font-size:1.1rem;font-weight:600;color:#64748b;margin-bottom:.5rem}
+.avatar-ph{width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,#667eea,#764ba2);color:#fff;display:inline-flex;align-items:center;justify-content:center;font-size:.85rem;font-weight:700;flex-shrink:0}
+.name-cell{display:flex;align-items:center;gap:.625rem}
+.modal-backdrop-custom{position:fixed;inset:0;background:rgba(15,23,42,.45);backdrop-filter:blur(3px);z-index:1050;display:none;align-items:center;justify-content:center;padding:1rem}
+.modal-backdrop-custom.open{display:flex}
+.modal-box{background:#fff;border-radius:16px;box-shadow:0 20px 60px rgba(0,0,0,.2);width:100%;max-width:520px;max-height:90vh;overflow-y:auto;animation:mslide .22s ease}
+@@keyframes mslide{from{opacity:0;transform:translateY(-16px)}to{opacity:1;transform:translateY(0)}}
+.modal-hdr{display:flex;align-items:center;justify-content:space-between;padding:1.25rem 1.5rem;border-bottom:1px solid #f1f5f9}
+.modal-hdr h5{font-size:1rem;font-weight:800;color:#0f172a;margin:0;display:flex;align-items:center;gap:.5rem}
+.modal-close{width:30px;height:30px;border:none;background:#f1f5f9;border-radius:7px;color:#64748b;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:.9rem}
+.modal-close:hover{background:#e2e8f0}
+.modal-body{padding:1.375rem 1.5rem}
+.modal-foot{padding:1rem 1.5rem;border-top:1px solid #f1f5f9;display:flex;align-items:center;justify-content:flex-end;gap:.625rem}
+.frow{margin-bottom:1rem}
+.frow label{display:block;font-size:.8rem;font-weight:600;color:#374151;margin-bottom:.375rem}
+.frow label .req{color:#ef4444;margin-left:.2rem}
+.finput{width:100%;padding:.65rem .875rem;border:1.5px solid #e2e8f0;border-radius:9px;font-size:.855rem;color:#1e293b;background:#fff;outline:none}
+.finput:focus{border-color:#667eea;box-shadow:0 0 0 3px rgba(102,126,234,.1)}
+.frow-2{display:grid;grid-template-columns:1fr 1fr;gap:.875rem}
+.btn-cancel{padding:.65rem 1.25rem;background:#f1f5f9;color:#64748b;border:1.5px solid #e2e8f0;border-radius:9px;font-size:.855rem;font-weight:600;cursor:pointer}
+.btn-cancel:hover{background:#e2e8f0}
+.btn-primary{padding:.65rem 1.5rem;background:linear-gradient(135deg,#667eea,#764ba2);color:#fff;border:none;border-radius:9px;font-size:.855rem;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:.4rem;min-width:120px;justify-content:center}
+.btn-primary:disabled{opacity:.6;cursor:not-allowed}
+.btn-danger{padding:.65rem 1.5rem;background:linear-gradient(135deg,#ef4444,#dc2626);color:#fff;border:none;border-radius:9px;font-size:.855rem;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:.4rem;min-width:120px;justify-content:center}
+.btn-danger:disabled{opacity:.6;cursor:not-allowed}
+.del-icon{width:60px;height:60px;border-radius:50%;background:#fef2f2;display:flex;align-items:center;justify-content:center;margin:0 auto 1rem;font-size:1.5rem;color:#dc2626}
+.toast-wrap{position:fixed;bottom:1.75rem;right:1.75rem;z-index:9999;display:flex;flex-direction:column;gap:.5rem;pointer-events:none}
+.toast-msg{display:flex;align-items:center;gap:.625rem;padding:.875rem 1.25rem;border-radius:12px;font-size:.855rem;font-weight:600;box-shadow:0 8px 32px rgba(0,0,0,.15);pointer-events:all;transform:translateX(120%);transition:transform .3s cubic-bezier(.4,0,.2,1);max-width:320px}
+.toast-msg.show{transform:translateX(0)}
+.toast-success{background:#065f46;color:#fff}
+.toast-error{background:#991b1b;color:#fff}
+.spin{width:14px;height:14px;border:2px solid rgba(255,255,255,.35);border-top-color:#fff;border-radius:50%;animation:spin .65s linear infinite;flex-shrink:0}
+@@keyframes spin{to{transform:rotate(360deg)}}
+</style>
+<div class="toast-wrap" id="toastWrap"></div>
+<div class="page-hdr-row">
+  <div class="page-hdr"><h4>Customers</h4><p>Manage customer information and profiles</p></div>
+  <div class="hdr-actions">
+    <span class="total-chip"><i class="bi bi-people"></i> @totalAll Total</span>
+    <button class="btn-add" onclick="openModal('createModal')"><i class="bi bi-person-plus-fill"></i> Add Customer</button>
+  </div>
+</div>
+<div class="stats-row">
+  <div class="stat-card"><div class="stat-icon si-total"><i class="bi bi-people-fill"></i></div><div class="stat-body"><div class="val">@totalAll</div><div class="lbl">Total Customers</div></div></div>
+</div>
+<div class="dc">
+  <div class="dc-head">
+    <form method="get" style="display:contents">
+      <div class="srch-wrap"><i class="bi bi-search"></i><input type="text" name="search" value="@Model.SearchTerm" class="srch-input" placeholder="Search by name, email, phone..."></div>
+      <button type="submit" class="btn-srch"><i class="bi bi-funnel-fill"></i> Filter</button>
+      @if (!string.IsNullOrEmpty(Model.SearchTerm)) { <a href="@Url.Action("Index")" class="btn-clr"><i class="bi bi-x"></i> Clear</a> }
+    </form>
+  </div>
+  <div class="tbl-wrap">
+    @if (Model.CustomerList.Count > 0) {
+      <table class="dt">
+        <thead><tr>
+          <th style="width:50px">#</th>
+          <th style="width:200px">Customer</th>
+          <th style="width:90px">Gender</th>
+          <th style="width:180px">Email</th>
+          <th style="width:130px">Cellphone</th>
+          <th style="width:130px">ID Number</th>
+          <th style="width:80px">DOB</th>
+          <th style="width:160px">Address</th>
+          <th style="width:80px;text-align:center">Actions</th>
+        </tr></thead>
+        <tbody>
+          @{ var si = (Model.Page - 1) * Model.PageSize; }
+          @for (int i = 0; i < Model.CustomerList.Count; i++) {
+            var item = Model.CustomerList[i];
+            var ini = string.IsNullOrEmpty(item.FullName) ? "?" : item.FullName.Substring(0,1).ToUpper();
+            <tr>
+              <td><span class="rn">@(si+i+1)</span></td>
+              <td>
+                <div class="name-cell">
+                  @if (!string.IsNullOrEmpty(item.Profile)) { <img src="@item.Profile" style="width:36px;height:36px;border-radius:50%;object-fit:cover" /> }
+                  else { <span class="avatar-ph">@ini</span> }
+                  <div><div style="font-weight:600;color:#1e293b">@item.FullName</div><div style="font-size:.75rem;color:#94a3b8">@item.FirstName @item.LastName</div></div>
+                </div>
+              </td>
+              <td>@item.Gender</td>
+              <td title="@item.Email">@item.Email</td>
+              <td>@item.Cellphone</td>
+              <td>@item.IDnumber</td>
+              <td>@item.Dob</td>
+              <td title="@item.Address">@item.Address</td>
+              <td style="text-align:center">
+                <div class="act-wrap">
+                  <button class="act-btn" onclick="toggleActMenu(this)" title="Actions"><i class="bi bi-three-dots-vertical"></i></button>
+                  <div class="act-menu"
+                       data-id="@item.Id"
+                       data-firstname="@item.FirstName"
+                       data-lastname="@item.LastName"
+                       data-fullname="@item.FullName"
+                       data-gender="@item.Gender"
+                       data-dob="@item.Dob"
+                       data-idnumber="@item.IDnumber"
+                       data-cellphone="@item.Cellphone"
+                       data-email="@item.Email"
+                       data-address="@item.Address"
+                       data-profile="@item.Profile">
+                    <button class="act-item" onclick="openView(this.closest('.act-menu'))"><i class="bi bi-person" style="color:#667eea"></i> View Profile</button>
+                    <button class="act-item" onclick="openEdit(this.closest('.act-menu'))"><i class="bi bi-pencil-fill" style="color:#667eea"></i> Edit</button>
+                    <div class="act-divider"></div>
+                    <button class="act-item danger" onclick="openDelete(this.closest('.act-menu'))"><i class="bi bi-trash3-fill"></i> Delete</button>
+                  </div>
+                </div>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    } else {
+      <div class="empty-state"><i class="bi bi-people"></i><h3>No customers found</h3><p>@(string.IsNullOrWhiteSpace(Model.SearchTerm) ? "Get started by adding your first customer." : "Try adjusting your search.")</p></div>
+    }
+  </div>
+  @if (Model.TotalCount > 0) {
+    <div class="dc-foot">
+      <div class="ri">Showing <strong>@Model.From</strong>-<strong>@Model.To</strong> of <strong>@Model.TotalCount</strong></div>
+      @if (Model.TotalPages > 1) {
+        <div class="pgn">
+          @if (Model.Page > 1) { <a href="@Url.Action("Index", new { search=Model.SearchTerm, page=Model.Page-1 })" class="pb wide"><i class="bi bi-chevron-left"></i> Prev</a> }
+          else { <span class="pb wide off"><i class="bi bi-chevron-left"></i> Prev</span> }
+          @for (int p = Math.Max(1,Model.Page-2); p <= Math.Min(Model.TotalPages,Model.Page+2); p++) {
+            if (p==Model.Page) { <span class="pb cur">@p</span> }
+            else { <a href="@Url.Action("Index", new { search=Model.SearchTerm, page=p })" class="pb">@p</a> }
+          }
+          @if (Model.Page < Model.TotalPages) { <a href="@Url.Action("Index", new { search=Model.SearchTerm, page=Model.Page+1 })" class="pb wide">Next <i class="bi bi-chevron-right"></i></a> }
+          else { <span class="pb wide off">Next <i class="bi bi-chevron-right"></i></span> }
+        </div>
+      }
+    </div>
+  }
+</div><!-- VIEW PROFILE MODAL -->
+<div class="modal-backdrop-custom" id="viewModal">
+  <div class="modal-box">
+    <div class="modal-hdr">
+      <h5><i class="bi bi-person-fill" style="color:#667eea"></i> Customer Profile</h5>
+      <button class="modal-close" onclick="closeModal('viewModal')"><i class="bi bi-x-lg"></i></button>
+    </div>
+    <div class="modal-body" style="text-align:center;padding-top:1.5rem">
+      <div id="v_avatarWrap" style="margin-bottom:1rem"></div>
+      <h5 id="v_fullname" style="font-weight:800;color:#0f172a;margin-bottom:.25rem"></h5>
+      <p id="v_email" style="color:#64748b;font-size:.875rem;margin-bottom:1.5rem"></p>
+      <div id="v_details" style="text-align:left;background:#f8fafc;border-radius:10px;padding:1rem;display:grid;grid-template-columns:1fr 1fr;gap:.75rem"></div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn-cancel" onclick="closeModal('viewModal')">Close</button>
+      <button class="btn-primary" id="v_editBtn"><i class="bi bi-pencil-fill"></i> Edit</button>
+    </div>
+  </div>
+</div>
+<!-- CREATE MODAL -->
+<div class="modal-backdrop-custom" id="createModal">
+  <div class="modal-box">
+    <div class="modal-hdr">
+      <h5><i class="bi bi-person-plus-fill" style="color:#667eea"></i> Add Customer</h5>
+      <button class="modal-close" onclick="closeModal('createModal')"><i class="bi bi-x-lg"></i></button>
+    </div>
+    <div class="modal-body">
+      <div class="frow-2">
+        <div class="frow"><label>First Name</label><input class="finput" id="c_firstName" placeholder="First name"></div>
+        <div class="frow"><label>Last Name</label><input class="finput" id="c_lastName" placeholder="Last name"></div>
+      </div>
+      <div class="frow"><label>Full Name <span class="req">*</span></label><input class="finput" id="c_fullName" placeholder="Full name"></div>
+      <div class="frow-2">
+        <div class="frow"><label>Gender</label><select class="finput" id="c_gender"><option value="">Select</option><option>Male</option><option>Female</option><option>Other</option></select></div>
+        <div class="frow"><label>Date of Birth</label><input class="finput" type="date" id="c_dob"></div>
+      </div>
+      <div class="frow-2">
+        <div class="frow"><label>ID Number</label><input class="finput" id="c_idNumber" placeholder="ID / Passport"></div>
+        <div class="frow"><label>Cellphone</label><input class="finput" id="c_cellphone" placeholder="+1 234 567 8900"></div>
+      </div>
+      <div class="frow"><label>Email</label><input class="finput" type="email" id="c_email" placeholder="email@example.com"></div>
+      <div class="frow"><label>Address</label><textarea class="finput" id="c_address" rows="2" placeholder="Physical address"></textarea></div>
+      <div class="frow"><label>Profile Photo URL</label><input class="finput" id="c_profile" placeholder="https://..."></div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn-cancel" onclick="closeModal('createModal')">Cancel</button>
+      <button class="btn-primary" id="createBtn" onclick="submitCreate()"><i class="bi bi-person-plus-fill"></i> Save Customer</button>
+    </div>
+  </div>
+</div>
+<!-- EDIT MODAL -->
+<div class="modal-backdrop-custom" id="editModal">
+  <div class="modal-box">
+    <div class="modal-hdr">
+      <h5><i class="bi bi-pencil-fill" style="color:#667eea"></i> Edit Customer</h5>
+      <button class="modal-close" onclick="closeModal('editModal')"><i class="bi bi-x-lg"></i></button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="e_id">
+      <div class="frow-2">
+        <div class="frow"><label>First Name</label><input class="finput" id="e_firstName"></div>
+        <div class="frow"><label>Last Name</label><input class="finput" id="e_lastName"></div>
+      </div>
+      <div class="frow"><label>Full Name</label><input class="finput" id="e_fullName"></div>
+      <div class="frow-2">
+        <div class="frow"><label>Gender</label><select class="finput" id="e_gender"><option value="">Select</option><option>Male</option><option>Female</option><option>Other</option></select></div>
+        <div class="frow"><label>Date of Birth</label><input class="finput" type="date" id="e_dob"></div>
+      </div>
+      <div class="frow-2">
+        <div class="frow"><label>ID Number</label><input class="finput" id="e_idNumber"></div>
+        <div class="frow"><label>Cellphone</label><input class="finput" id="e_cellphone"></div>
+      </div>
+      <div class="frow"><label>Email</label><input class="finput" type="email" id="e_email"></div>
+      <div class="frow"><label>Address</label><textarea class="finput" id="e_address" rows="2"></textarea></div>
+      <div class="frow"><label>Profile Photo URL</label><input class="finput" id="e_profile"></div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn-cancel" onclick="closeModal('editModal')">Cancel</button>
+      <button class="btn-primary" id="editBtn" onclick="submitEdit()"><i class="bi bi-check2-circle"></i> Save Changes</button>
+    </div>
+  </div>
+</div>
+<!-- DELETE MODAL -->
+<div class="modal-backdrop-custom" id="deleteModal">
+  <div class="modal-box">
+    <div class="modal-hdr">
+      <h5><i class="bi bi-trash3-fill" style="color:#dc2626"></i> Delete Customer</h5>
+      <button class="modal-close" onclick="closeModal('deleteModal')"><i class="bi bi-x-lg"></i></button>
+    </div>
+    <div class="modal-body" style="text-align:center;padding-top:1.75rem">
+      <input type="hidden" id="d_id">
+      <div class="del-icon"><i class="bi bi-person-x-fill"></i></div>
+      <p style="font-size:.9rem;color:#374151;margin-bottom:.5rem">Are you sure you want to delete</p>
+      <p id="d_name" style="font-weight:700;color:#1e293b;font-size:1rem;margin-bottom:.5rem"></p>
+      <p style="font-size:.82rem;color:#94a3b8;margin:0">This action cannot be undone.</p>
+    </div>
+    <div class="modal-foot">
+      <button class="btn-cancel" onclick="closeModal('deleteModal')">Cancel</button>
+      <button class="btn-danger" id="deleteBtn" onclick="submitDelete()"><i class="bi bi-trash3-fill"></i> Delete</button>
+    </div>
+  </div>
+</div>
+<script>
+function openModal(id){document.getElementById(id).classList.add('open');document.body.style.overflow='hidden';}
+function closeModal(id){document.getElementById(id).classList.remove('open');document.body.style.overflow='';}
+document.querySelectorAll('.modal-backdrop-custom').forEach(function(bd){bd.addEventListener('click',function(e){if(e.target===bd)closeModal(bd.id);});});
+document.addEventListener('keydown',function(e){if(e.key==='Escape'){document.querySelectorAll('.modal-backdrop-custom.open').forEach(function(m){closeModal(m.id);});}});
+
+function toggleActMenu(btn){var menu=btn.nextElementSibling;var isOpen=menu.classList.contains('open');closeAllActMenus();if(!isOpen){positionActMenu(btn,menu);menu.classList.add('open');}}
+function closeAllActMenus(){document.querySelectorAll('.act-menu.open').forEach(function(m){m.classList.remove('open');m.style.top='';m.style.left='';m.style.right='';});}
+function positionActMenu(btn,menu){menu.style.visibility='hidden';menu.style.display='block';var menuRect=menu.getBoundingClientRect();menu.style.display='';menu.style.visibility='';var btnRect=btn.getBoundingClientRect();var right=window.innerWidth-btnRect.right;if(right<8)right=8;var top=btnRect.bottom+4;if(top+menuRect.height>window.innerHeight-8){var upTop=btnRect.top-menuRect.height-4;if(upTop>=8)top=upTop;else top=Math.max(8,window.innerHeight-menuRect.height-8);}menu.style.top=top+'px';menu.style.right=right+'px';menu.style.left='auto';}
+document.addEventListener('click',function(e){if(!e.target.closest('.act-wrap'))closeAllActMenus();});
+window.addEventListener('scroll',closeAllActMenus,true);
+window.addEventListener('resize',closeAllActMenus);
+
+function drow(l,v){return '<div><div style="font-size:.72rem;color:#94a3b8;font-weight:600;text-transform:uppercase">'+l+'</div><div style="font-size:.875rem;color:#1e293b;font-weight:500;margin-top:.15rem">'+(v||'-')+'</div></div>';}
+
+function openView(menu){closeAllActMenus();var d=menu.dataset;var ini=(d.fullname||'?').substring(0,1).toUpperCase();var w=document.getElementById('v_avatarWrap');if(d.profile){w.innerHTML='<img src="'+d.profile+'" style="width:80px;height:80px;border-radius:50%;object-fit:cover;border:3px solid #e2e8f0" />';}else{w.innerHTML='<div style="width:80px;height:80px;border-radius:50%;background:linear-gradient(135deg,#667eea,#764ba2);color:#fff;display:inline-flex;align-items:center;justify-content:center;font-size:2rem;font-weight:700">'+ini+'</div>';}document.getElementById('v_fullname').textContent=d.fullname||'-';document.getElementById('v_email').textContent=d.email||'-';document.getElementById('v_details').innerHTML=drow('First Name',d.firstname)+drow('Last Name',d.lastname)+drow('Gender',d.gender)+drow('DOB',d.dob)+drow('ID Number',d.idnumber)+drow('Cellphone',d.cellphone)+drow('Address',d.address);document.getElementById('v_editBtn').onclick=function(){closeModal('viewModal');setTimeout(function(){openEdit(menu);},300);};openModal('viewModal');}
+
+function openEdit(menu){closeAllActMenus();var d=menu.dataset;document.getElementById('e_id').value=d.id;document.getElementById('e_firstName').value=d.firstname||'';document.getElementById('e_lastName').value=d.lastname||'';document.getElementById('e_fullName').value=d.fullname||'';document.getElementById('e_gender').value=d.gender||'';document.getElementById('e_dob').value=d.dob||'';document.getElementById('e_idNumber').value=d.idnumber||'';document.getElementById('e_cellphone').value=d.cellphone||'';document.getElementById('e_email').value=d.email||'';document.getElementById('e_address').value=d.address||'';document.getElementById('e_profile').value=d.profile||'';openModal('editModal');}
+
+function openDelete(menu){closeAllActMenus();var d=menu.dataset;document.getElementById('d_id').value=d.id;document.getElementById('d_name').textContent=d.fullname||'this customer';openModal('deleteModal');}
+
+function setLoading(btnId,loading,restoreHtml){var btn=document.getElementById(btnId);btn.disabled=loading;if(loading)btn.innerHTML='<span class="spin"></span> Saving...';else if(restoreHtml)btn.innerHTML=restoreHtml;}
+function showToast(msg,type){var wrap=document.getElementById('toastWrap');var el=document.createElement('div');el.className='toast-msg toast-'+type;el.innerHTML='<i class="bi '+(type==='success'?'bi-check-circle-fill':'bi-exclamation-circle-fill')+'"></i>'+msg;wrap.appendChild(el);requestAnimationFrame(function(){el.classList.add('show');});setTimeout(function(){el.classList.remove('show');setTimeout(function(){el.remove();},350);},3500);}
+
+async function submitCreate(){var fn=document.getElementById('c_firstName').value.trim();var ln=document.getElementById('c_lastName').value.trim();var full=document.getElementById('c_fullName').value.trim();if(!full&&!fn){showToast('Please enter at least a name.','error');return;}setLoading('createBtn',true);try{var res=await fetch('/Customers/Create',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({firstName:fn,lastName:ln,fullName:full,gender:document.getElementById('c_gender').value,dob:document.getElementById('c_dob').value,iDnumber:document.getElementById('c_idNumber').value.trim(),cellphone:document.getElementById('c_cellphone').value.trim(),email:document.getElementById('c_email').value.trim(),address:document.getElementById('c_address').value.trim(),profile:document.getElementById('c_profile').value.trim(),isActive:true})});var data=await res.json();if(data.success){showToast(data.message||'Customer created!','success');closeModal('createModal');setTimeout(function(){location.reload();},900);}else{showToast(data.message||'Failed to create customer.','error');}}catch(e){showToast('Network error. Please try again.','error');}finally{setLoading('createBtn',false,'<i class="bi bi-person-plus-fill"></i> Save Customer');}}
+
+async function submitEdit(){var id=document.getElementById('e_id').value;setLoading('editBtn',true);try{var res=await fetch('/Customers/Update',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:parseInt(id),firstName:document.getElementById('e_firstName').value.trim(),lastName:document.getElementById('e_lastName').value.trim(),fullName:document.getElementById('e_fullName').value.trim(),gender:document.getElementById('e_gender').value,dob:document.getElementById('e_dob').value,iDnumber:document.getElementById('e_idNumber').value.trim(),cellphone:document.getElementById('e_cellphone').value.trim(),email:document.getElementById('e_email').value.trim(),address:document.getElementById('e_address').value.trim(),profile:document.getElementById('e_profile').value.trim(),isActive:true})});var data=await res.json();if(data.success){showToast(data.message||'Customer updated!','success');closeModal('editModal');setTimeout(function(){location.reload();},900);}else{showToast(data.message||'Failed to update customer.','error');}}catch(e){showToast('Network error. Please try again.','error');}finally{setLoading('editBtn',false,'<i class="bi bi-check2-circle"></i> Save Changes');}}
+
+async function submitDelete(){var id=document.getElementById('d_id').value;setLoading('deleteBtn',true);try{var res=await fetch('/Customers/Delete/'+id,{method:'POST'});var data=await res.json();if(data.success){showToast(data.message||'Customer deleted.','success');closeModal('deleteModal');setTimeout(function(){location.reload();},900);}else{showToast(data.message||'Failed to delete customer.','error');}}catch(e){showToast('Network error. Please try again.','error');}finally{setLoading('deleteBtn',false,'<i class="bi bi-trash3-fill"></i> Delete');}}
+</script>

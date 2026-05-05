@@ -1,0 +1,579 @@
+@model Dog.Portal.Models.RoleAssignViewModel
+@{
+    Layout = "_AdminLayout";
+    ViewData["Title"] = $"Assign — {Model.Role.Name}";
+
+    var initial = Model.Role.Name.Length > 0 ? Model.Role.Name[0].ToString().ToUpper() : "R";
+    var totalPerms  = Model.PermissionGroups.Sum(g => g.Permissions.Count);
+    var totalModules = Model.AllModules.Count;
+}
+
+<style>
+    /* ── Breadcrumb ─────────────────────────────── */
+    .bcrumb { display:flex; align-items:center; gap:.375rem; font-size:.8rem; color:#94a3b8; margin-bottom:1.25rem; flex-wrap:wrap; }
+    .bcrumb a { color:#667eea; text-decoration:none; font-weight:500; }
+    .bcrumb a:hover { color:#4f46e5; }
+    .bcrumb .sep { color:#e2e8f0; }
+    .bcrumb .cur { color:#374151; font-weight:600; }
+
+    /* ── Role hero ──────────────────────────────── */
+    .role-hero { background:#fff; border-radius:14px; border:1px solid #e9eef4; box-shadow:0 1px 4px rgba(0,0,0,.04),0 6px 20px rgba(0,0,0,.04); padding:1.375rem 1.75rem; margin-bottom:1.5rem; display:flex; align-items:center; gap:1.25rem; flex-wrap:wrap; }
+    .role-hero-av { width:54px; height:54px; border-radius:14px; background:linear-gradient(135deg,#667eea,#764ba2); display:flex; align-items:center; justify-content:center; color:#fff; font-size:1.5rem; font-weight:800; flex-shrink:0; box-shadow:0 4px 14px rgba(102,126,234,.3); }
+    .role-hero-body { flex:1; min-width:0; }
+    .role-hero-body h5 { font-size:1.05rem; font-weight:800; color:#0f172a; margin:0 0 .375rem; }
+    .role-meta { display:flex; align-items:center; gap:.75rem; flex-wrap:wrap; }
+    .rm-chip { display:inline-flex; align-items:center; gap:.3rem; font-size:.78rem; font-weight:600; padding:.2rem .6rem; border-radius:6px; }
+    .rm-type  { background:#f1f5f9; color:#475569; border:1px solid #e2e8f0; }
+    .rm-sys   { background:#ede9fe; color:#6d28d9; }
+    .rm-comp  { background:#dbeafe; color:#1d4ed8; }
+    .rm-count { background:#d1fae5; color:#065f46; }
+    .rm-perm  { background:#fef3c7; color:#92400e; }
+    .btn-back { display:inline-flex; align-items:center; gap:.375rem; padding:.5rem 1rem; background:#f1f5f9; color:#475569; border:1.5px solid #e2e8f0; border-radius:9px; font-size:.845rem; font-weight:600; text-decoration:none; transition:all .18s; }
+    .btn-back:hover { background:#e2e8f0; color:#334155; }
+
+    /* ── Tab switcher ───────────────────────────── */
+    .tab-row { display:flex; align-items:center; gap:.75rem; margin-bottom:1.25rem; flex-wrap:wrap; }
+    .tab-btn {
+        display:inline-flex; align-items:center; gap:.5rem;
+        padding:.625rem 1.375rem; border-radius:10px; font-size:.875rem; font-weight:600;
+        border:2px solid #e2e8f0; background:#fff; color:#64748b; cursor:pointer;
+        transition:all .2s;
+    }
+    .tab-btn .tb-count { font-size:.72rem; font-weight:700; padding:.15rem .45rem; border-radius:20px; background:#f1f5f9; color:#94a3b8; margin-left:.1rem; }
+    .tab-btn.active {
+        background:linear-gradient(135deg,#667eea,#764ba2);
+        border-color:transparent; color:#fff;
+        box-shadow:0 4px 14px rgba(102,126,234,.3);
+    }
+    .tab-btn.active .tb-count { background:rgba(255,255,255,.25); color:#fff; }
+    .tab-btn:not(.active):hover { border-color:#cbd5e1; background:#f8fafc; color:#334155; }
+
+    .tab-pane { display:none; }
+    .tab-pane.active { display:block; }
+
+    /* ── Permissions tab ────────────────────────── */
+    .perm-toolbar { display:flex; align-items:center; justify-content:space-between; gap:.75rem; margin-bottom:1rem; flex-wrap:wrap; }
+    .perm-srch-wrap { position:relative; flex:1; max-width:320px; }
+    .perm-srch-wrap i { position:absolute; left:.875rem; top:50%; transform:translateY(-50%); color:#94a3b8; font-size:.9rem; pointer-events:none; }
+    .perm-srch { width:100%; padding:.6rem .875rem .6rem 2.375rem; border:1.5px solid #e2e8f0; border-radius:9px; font-size:.845rem; color:#1e293b; background:#fff; outline:none; transition:border-color .2s,box-shadow .2s; }
+    .perm-srch:focus { border-color:#667eea; box-shadow:0 0 0 3px rgba(102,126,234,.1); }
+    .perm-srch::placeholder { color:#cbd5e1; }
+
+    .perm-bulk-btns { display:flex; align-items:center; gap:.5rem; }
+    .btn-bulk { padding:.5rem .875rem; border-radius:8px; font-size:.8rem; font-weight:600; cursor:pointer; transition:all .18s; border:1.5px solid; display:inline-flex; align-items:center; gap:.3rem; }
+    .btn-all  { background:#ede9fe; color:#6d28d9; border-color:#ddd6fe; }
+    .btn-all:hover  { background:#ddd6fe; }
+    .btn-none { background:#f1f5f9; color:#64748b; border-color:#e2e8f0; }
+    .btn-none:hover { background:#e2e8f0; }
+
+    /* Permission group card */
+    .pg-card { background:#fff; border-radius:12px; border:1px solid #e9eef4; box-shadow:0 1px 3px rgba(0,0,0,.04),0 3px 10px rgba(0,0,0,.04); margin-bottom:1rem; overflow:hidden; }
+    .pg-head { display:flex; align-items:center; justify-content:space-between; padding:.875rem 1.125rem; border-bottom:1px solid #f1f5f9; background:#f8fafc; }
+    .pg-head-left { display:flex; align-items:center; gap:.625rem; }
+    .pg-dot { width:10px; height:10px; border-radius:50%; flex-shrink:0; }
+    .pg-name { font-size:.875rem; font-weight:700; color:#1e293b; }
+    .pg-cnt  { font-size:.74rem; font-weight:600; color:#94a3b8; }
+    .pg-all-wrap { display:flex; align-items:center; gap:.5rem; }
+    .pg-all-label { font-size:.78rem; font-weight:600; color:#64748b; cursor:pointer; }
+
+    /* Custom group checkbox */
+    .cb-group {
+        width:18px; height:18px; border:2px solid #cbd5e1; border-radius:5px;
+        cursor:pointer; appearance:none; -webkit-appearance:none;
+        display:flex; align-items:center; justify-content:center;
+        transition:all .15s; flex-shrink:0; position:relative;
+    }
+    .cb-group:checked { background:#667eea; border-color:#667eea; }
+    .cb-group:checked::after { content:''; position:absolute; width:10px; height:5px; border-left:2px solid #fff; border-bottom:2px solid #fff; transform:rotate(-45deg) translateY(-1px); }
+    .cb-group:indeterminate { background:#667eea; border-color:#667eea; }
+    .cb-group:indeterminate::after { content:''; position:absolute; width:8px; height:2px; background:#fff; border-radius:1px; }
+
+    /* Permission items grid */
+    .pg-body { padding:.875rem 1.125rem; }
+    .perm-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(220px,1fr)); gap:.5rem; }
+
+    /* Permission label */
+    .perm-lbl {
+        display:flex; align-items:flex-start; gap:.625rem; padding:.625rem .75rem;
+        border:1.5px solid #e2e8f0; border-radius:9px; cursor:pointer;
+        transition:all .15s; background:#fafbfc; position:relative;
+    }
+    .perm-lbl:hover { border-color:#a5b4fc; background:rgba(102,126,234,.03); }
+
+    .perm-lbl input[type=checkbox] { position:absolute; opacity:0; width:0; height:0; }
+
+    .perm-chk {
+        width:18px; height:18px; border:2px solid #cbd5e1; border-radius:5px;
+        flex-shrink:0; margin-top:1px; transition:all .15s;
+        display:flex; align-items:center; justify-content:center;
+    }
+
+    .perm-lbl:has(input:checked) { border-color:#667eea; background:rgba(102,126,234,.05); }
+    .perm-lbl:has(input:checked) .perm-chk { background:#667eea; border-color:#667eea; }
+    .perm-lbl:has(input:checked) .perm-chk::after { content:''; display:block; width:10px; height:5px; border-left:2px solid #fff; border-bottom:2px solid #fff; transform:rotate(-45deg) translateY(-1px); }
+
+    .perm-info { flex:1; min-width:0; }
+    .perm-display { font-size:.82rem; font-weight:600; color:#1e293b; line-height:1.35; }
+    .perm-name    { font-size:.72rem; color:#94a3b8; font-family:'Consolas','Monaco',monospace; }
+
+    /* Action chip on permission */
+    .act-chip { display:inline-block; font-size:.65rem; font-weight:700; padding:.1rem .4rem; border-radius:4px; text-transform:uppercase; margin-top:.2rem; }
+    .ac-view   { background:#dbeafe; color:#1d4ed8; }
+    .ac-create { background:#d1fae5; color:#065f46; }
+    .ac-edit   { background:#fef3c7; color:#92400e; }
+    .ac-delete { background:#fee2e2; color:#991b1b; }
+    .ac-other  { background:#f1f5f9; color:#475569; }
+
+    /* Hidden when filtered */
+    .perm-lbl.hidden { display:none; }
+    .pg-card.all-hidden { display:none; }
+
+    /* ── Save button ────────────────────────────── */
+    .save-bar { display:flex; align-items:center; justify-content:space-between; margin-top:1.25rem; flex-wrap:wrap; gap:.75rem; }
+    .save-info { font-size:.82rem; color:#94a3b8; }
+    .save-info strong { color:#374151; }
+
+    .btn-save {
+        display:inline-flex; align-items:center; gap:.5rem;
+        padding:.75rem 2rem; background:linear-gradient(135deg,#667eea,#764ba2);
+        color:#fff; border:none; border-radius:10px; font-size:.9rem; font-weight:700;
+        cursor:pointer; transition:all .2s; box-shadow:0 4px 14px rgba(102,126,234,.3);
+        letter-spacing:.01em; min-width:180px; justify-content:center;
+    }
+    .btn-save:hover:not(:disabled) { transform:translateY(-2px); box-shadow:0 6px 20px rgba(102,126,234,.4); }
+    .btn-save:disabled { opacity:.65; cursor:not-allowed; transform:none; }
+
+    /* ── Menus tab ──────────────────────────────── */
+    .menus-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(280px,1fr)); gap:.875rem; }
+
+    .menu-card {
+        background:#fff; border-radius:12px; border:2px solid #e9eef4;
+        box-shadow:0 1px 3px rgba(0,0,0,.04),0 3px 10px rgba(0,0,0,.04);
+        padding:1.125rem 1.25rem; cursor:pointer;
+        transition:all .2s; display:flex; align-items:center; gap:1rem;
+        position:relative;
+    }
+    .menu-card:hover { border-color:#a5b4fc; box-shadow:0 4px 14px rgba(102,126,234,.1); }
+    .menu-card.selected { border-color:#667eea; background:rgba(102,126,234,.04); box-shadow:0 4px 16px rgba(102,126,234,.15); }
+
+    .menu-card input[type=checkbox] { position:absolute; opacity:0; width:0; height:0; }
+
+    .menu-icon-wrap { width:46px; height:46px; border-radius:12px; background:linear-gradient(135deg,#ede9fe,#ddd6fe); display:flex; align-items:center; justify-content:center; font-size:1.25rem; color:#7c3aed; flex-shrink:0; transition:all .2s; }
+    .menu-card.selected .menu-icon-wrap { background:linear-gradient(135deg,#667eea,#764ba2); color:#fff; box-shadow:0 4px 12px rgba(102,126,234,.3); }
+
+    .menu-body { flex:1; min-width:0; }
+    .menu-body h6 { font-size:.875rem; font-weight:700; color:#1e293b; margin:0 0 .2rem; }
+    .menu-body p  { font-size:.775rem; color:#64748b; margin:0; line-height:1.4; }
+
+    .menu-chk-wrap { flex-shrink:0; }
+    .menu-toggle-chk {
+        width:22px; height:22px; border:2px solid #cbd5e1; border-radius:6px; cursor:pointer;
+        appearance:none; -webkit-appearance:none; transition:all .15s; position:relative;
+    }
+    .menu-toggle-chk:checked { background:#667eea; border-color:#667eea; }
+    .menu-toggle-chk:checked::after { content:''; position:absolute; inset:0; margin:auto; display:block; width:12px; height:6px; border-left:2px solid #fff; border-bottom:2px solid #fff; transform:rotate(-45deg) translateY(-1px); }
+
+    /* ── Toast notification ─────────────────────── */
+    .toast-wrap { position:fixed; bottom:1.75rem; right:1.75rem; z-index:9999; display:flex; flex-direction:column; gap:.5rem; pointer-events:none; }
+    .toast-msg {
+        display:flex; align-items:center; gap:.625rem;
+        padding:.875rem 1.25rem; border-radius:12px; font-size:.855rem; font-weight:600;
+        box-shadow:0 8px 32px rgba(0,0,0,.15); pointer-events:all;
+        transform:translateX(120%); transition:transform .3s cubic-bezier(.4,0,.2,1);
+        max-width:320px;
+    }
+    .toast-msg.show { transform:translateX(0); }
+    .toast-success { background:#065f46; color:#fff; }
+    .toast-error   { background:#991b1b; color:#fff; }
+
+    /* Spinner */
+    .spin { width:14px; height:14px; border:2px solid rgba(255,255,255,.35); border-top-color:#fff; border-radius:50%; animation:spin .65s linear infinite; flex-shrink:0; }
+    @@keyframes spin { to { transform:rotate(360deg); } }
+
+    @@media (max-width:576px) { .perm-grid { grid-template-columns:1fr; } .menus-grid { grid-template-columns:1fr; } }
+</style>
+
+<!-- Toast container -->
+<div class="toast-wrap" id="toastWrap"></div>
+
+<!-- Breadcrumb -->
+<nav class="bcrumb">
+    <a href="/Roles"><i class="bi bi-person-badge-fill me-1"></i>Roles</a>
+    <span class="sep"><i class="bi bi-chevron-right" style="font-size:.65rem;"></i></span>
+    <span class="cur">Assign — @Model.Role.Name</span>
+</nav>
+
+<!-- Role hero card -->
+<div class="role-hero" data-role-id="@Model.Role.Id">
+    <div class="role-hero-av">@initial</div>
+    <div class="role-hero-body">
+        <h5>@Model.Role.Name</h5>
+        <div class="role-meta">
+            @if (!string.IsNullOrEmpty(Model.Role.Type))
+            {
+                <span class="rm-chip rm-type"><i class="bi bi-tag" style="font-size:.7rem;"></i>@Model.Role.Type</span>
+            }
+            @if (!string.IsNullOrEmpty(Model.Role.Level))
+            {
+                var lc = Model.Role.Level.ToLower() == "system" ? "rm-sys" : "rm-comp";
+                <span class="rm-chip @lc"><i class="bi bi-layers" style="font-size:.7rem;"></i>@Model.Role.Level</span>
+            }
+            <span class="rm-chip rm-count"><i class="bi bi-people" style="font-size:.7rem;"></i>@Model.Role.UserCount users</span>
+            <span class="rm-chip rm-perm"><i class="bi bi-shield-check" style="font-size:.7rem;"></i>@Model.Role.PermissionCount permissions</span>
+        </div>
+    </div>
+    <a href="/Roles" class="btn-back"><i class="bi bi-arrow-left"></i> Back</a>
+</div>
+
+<!-- Tab switcher -->
+<div class="tab-row">
+    <button class="tab-btn active" onclick="switchTab('permissions', this)" id="tab-btn-permissions">
+        <i class="bi bi-shield-fill-check"></i>
+        Permissions
+        <span class="tb-count" id="perm-selected-count">@Model.AssignedPermissionIds.Count/@totalPerms</span>
+    </button>
+    <button class="tab-btn" onclick="switchTab('menus', this)" id="tab-btn-menus">
+        <i class="bi bi-grid-3x3-gap-fill"></i>
+        Menus
+        <span class="tb-count" id="menu-selected-count">@Model.AssignedModuleIds.Count/@totalModules</span>
+    </button>
+</div>
+
+<!-- ══ PERMISSIONS TAB ═════════════════════════════════════════ -->
+<div class="tab-pane active" id="tab-permissions">
+
+    <div class="perm-toolbar">
+        <div class="perm-srch-wrap">
+            <i class="bi bi-search"></i>
+            <input class="perm-srch" id="permSearch" type="text"
+                   placeholder="Filter permissions…" autocomplete="off"
+                   oninput="filterPerms(this.value)" />
+        </div>
+        <div class="perm-bulk-btns">
+            <button class="btn-bulk btn-all" onclick="selectAllPerms(true)">
+                <i class="bi bi-check-all"></i> Select All
+            </button>
+            <button class="btn-bulk btn-none" onclick="selectAllPerms(false)">
+                <i class="bi bi-x"></i> Clear All
+            </button>
+        </div>
+    </div>
+
+    @{
+        var groupColors = new[] {"#667eea","#10b981","#f59e0b","#ec4899","#06b6d4","#8b5cf6","#ef4444","#84cc16"};
+        int gi = 0;
+    }
+
+    @foreach (var group in Model.PermissionGroups)
+    {
+        var color = groupColors[gi++ % groupColors.Length];
+        var groupId = $"grp_{group.Module.Replace(" ","_")}";
+        <div class="pg-card" id="@groupId">
+            <div class="pg-head">
+                <div class="pg-head-left">
+                    <div class="pg-dot" style="background:@color;"></div>
+                    <span class="pg-name">@group.Module</span>
+                    <span class="pg-cnt" id="cnt_@groupId">
+                        @group.Permissions.Count(p => Model.AssignedPermissionIds.Contains(p.Id))/@group.Permissions.Count selected
+                    </span>
+                </div>
+                <div class="pg-all-wrap">
+                    <label class="pg-all-label" for="all_@groupId">All</label>
+                    <input type="checkbox" class="cb-group" id="all_@groupId"
+                           onchange="togglePermGroup('@groupId', this.checked)"
+                           @{
+                               var assigned = group.Permissions.Count(p => Model.AssignedPermissionIds.Contains(p.Id));
+                               if (assigned > 0 && assigned == group.Permissions.Count) { @("checked") }
+                           } />
+                </div>
+            </div>
+            <div class="pg-body">
+                <div class="perm-grid">
+                    @foreach (var perm in group.Permissions)
+                    {
+                        var isChecked = Model.AssignedPermissionIds.Contains(perm.Id);
+                        var parts = perm.Name.Split('.');
+                        var action = parts.Length > 1 ? parts[^1].ToLower() : "";
+                        var actClass = action switch
+                        {
+                            "view"   or "read"   => "ac-view",
+                            "create" or "add"    => "ac-create",
+                            "edit"   or "update" => "ac-edit",
+                            "delete" or "remove" => "ac-delete",
+                            _                    => "ac-other"
+                        };
+                        <label class="perm-lbl" data-name="@perm.Name.ToLower() @perm.DisplayName.ToLower()" data-group="@groupId">
+                            <input type="checkbox" class="perm-cb"
+                                   value="@perm.Id"
+                                   data-group="@groupId"
+                                   onchange="onPermChange('@groupId')"
+                                   @(isChecked ? "checked" : "") />
+                            <div class="perm-chk"></div>
+                            <div class="perm-info">
+                                <div class="perm-display">@perm.DisplayName</div>
+                                <div class="perm-name">@perm.Name</div>
+                                <span class="act-chip @actClass">@(action.Length > 0 ? action : "action")</span>
+                            </div>
+                        </label>
+                    }
+                </div>
+            </div>
+        </div>
+    }
+
+    @if (!Model.PermissionGroups.Any())
+    {
+        <div style="text-align:center;padding:4rem 2rem;">
+            <i class="bi bi-shield-slash" style="font-size:3rem;color:#e2e8f0;display:block;margin-bottom:1rem;"></i>
+            <h6 style="color:#64748b;font-weight:600;">No permissions available</h6>
+        </div>
+    }
+
+    <div class="save-bar">
+        <div class="save-info">
+            <strong id="perm-save-count">@Model.AssignedPermissionIds.Count</strong> permission@(Model.AssignedPermissionIds.Count != 1 ? "s" : "") selected
+        </div>
+        <button class="btn-save" id="savePermBtn" onclick="savePermissions()">
+            <i class="bi bi-check2-circle"></i> Save Permissions
+        </button>
+    </div>
+</div>
+
+<!-- ══ MENUS TAB ═══════════════════════════════════════════════ -->
+<div class="tab-pane" id="tab-menus">
+
+    <div style="margin-bottom:1rem;">
+        <p style="font-size:.845rem;color:#64748b;margin:0;">
+            Select which system modules this role can see in the sidebar navigation.
+        </p>
+    </div>
+
+    <div class="menus-grid">
+        @foreach (var mod in Model.AllModules)
+        {
+            var isAssigned = Model.AssignedModuleIds.Contains(mod.Id);
+            <div class="menu-card @(isAssigned ? "selected" : "")" id="mc_@mod.Id" onclick="toggleMenu(@mod.Id, this)">
+                <input type="checkbox" class="menu-cb" value="@mod.Id" @(isAssigned ? "checked" : "") />
+                <div class="menu-icon-wrap">
+                    <i class="bi @(string.IsNullOrEmpty(mod.Icon) ? "bi-grid" : mod.Icon)"></i>
+                </div>
+                <div class="menu-body">
+                    <h6>@mod.Name</h6>
+                    <p>@(string.IsNullOrEmpty(mod.Description) ? "No description" : mod.Description)</p>
+                    @if (mod.Children.Any())
+                    {
+                        <span style="font-size:.72rem;color:#94a3b8;">@mod.Children.Count submodule@(mod.Children.Count != 1 ? "s" : "")</span>
+                    }
+                </div>
+                <div class="menu-chk-wrap">
+                    <input type="checkbox" class="menu-toggle-chk" id="mtc_@mod.Id"
+                           @(isAssigned ? "checked" : "")
+                           onclick="event.stopPropagation(); syncMenuCard(@mod.Id)" />
+                </div>
+            </div>
+        }
+    </div>
+
+    @if (!Model.AllModules.Any())
+    {
+        <div style="text-align:center;padding:4rem 2rem;">
+            <i class="bi bi-grid-3x3-gap" style="font-size:3rem;color:#e2e8f0;display:block;margin-bottom:1rem;"></i>
+            <h6 style="color:#64748b;font-weight:600;">No modules available</h6>
+        </div>
+    }
+
+    <div class="save-bar">
+        <div class="save-info">
+            <strong id="menu-save-count">@Model.AssignedModuleIds.Count</strong> module@(Model.AssignedModuleIds.Count != 1 ? "s" : "") selected
+        </div>
+        <button class="btn-save" id="saveMenuBtn" onclick="saveMenus()">
+            <i class="bi bi-check2-circle"></i> Save Menus
+        </button>
+    </div>
+</div>
+
+<script>
+    const ROLE_ID = '@Model.Role.Id';
+
+    // ── Tab switching ─────────────────────────────────────────
+    function switchTab(name, btn) {
+        document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        document.getElementById('tab-' + name).classList.add('active');
+        btn.classList.add('active');
+    }
+
+    // ── Permission: toggle group (select-all checkbox) ────────
+    function togglePermGroup(groupId, checked) {
+        const card = document.getElementById(groupId);
+        if (!card) return;
+        card.querySelectorAll('.perm-cb').forEach(cb => {
+            cb.checked = checked;
+        });
+        updateGroupCounter(groupId);
+        updatePermSaveBadge();
+    }
+    // Called when individual permission changes
+    function onPermChange(groupId) {
+        updateGroupCounter(groupId);
+        updatePermSaveBadge();
+    }
+
+    function updateGroupCounter(groupId) {
+        const card = document.getElementById(groupId);
+        if (!card) return;
+        const all  = card.querySelectorAll('.perm-cb');
+        const chkd = card.querySelectorAll('.perm-cb:checked');
+        const masterCb = document.getElementById('all_' + groupId);
+        const cntEl    = document.getElementById('cnt_' + groupId);
+
+        if (masterCb) {
+            if (all.length === 0) {
+                masterCb.checked = false;
+                masterCb.indeterminate = false;
+            } else {
+                masterCb.indeterminate = chkd.length > 0 && chkd.length < all.length;
+                masterCb.checked = chkd.length === all.length;
+            }
+        }
+        if (cntEl) {
+            cntEl.textContent = `${chkd.length}/${all.length} selected`;
+        }
+    }
+
+    function updatePermSaveBadge() {
+        const total = document.querySelectorAll('.perm-cb:checked').length;
+        document.getElementById('perm-save-count').textContent = total;
+        document.getElementById('perm-selected-count').textContent =
+            total + '/' + document.querySelectorAll('.perm-cb').length;
+    }
+
+    // ── Permission: select / clear all ───────────────────────
+    function selectAllPerms(checked) {
+        // Select all visible permission checkboxes (skip hidden labels)
+        document.querySelectorAll('.perm-cb').forEach(cb => {
+            const lbl = cb.closest('.perm-lbl');
+            if (!lbl || !lbl.classList.contains('hidden')) {
+                cb.checked = checked;
+            }
+        });
+        // Update every group's header checkbox and counter
+        document.querySelectorAll('.pg-card').forEach(card => {
+            updateGroupCounter(card.id);
+        });
+        updatePermSaveBadge();
+    }
+
+    // ── Permission: real-time filter ─────────────────────────
+    function filterPerms(query) {
+        const q = query.toLowerCase().trim();
+        document.querySelectorAll('.perm-lbl').forEach(lbl => {
+            const match = !q || (lbl.dataset.name || '').includes(q);
+            lbl.classList.toggle('hidden', !match);
+        });
+        // Hide groups with no visible items
+        document.querySelectorAll('.pg-card').forEach(card => {
+            const visible = card.querySelectorAll('.perm-lbl:not(.hidden)').length;
+            card.classList.toggle('all-hidden', visible === 0);
+        });
+    }
+
+    // ── Menu: toggle card (click on card area) ────────────────
+    function toggleMenu(modId, card) {
+        const cb  = card.querySelector('.menu-cb');
+        const tcb = document.getElementById('mtc_' + modId);
+        cb.checked  = !cb.checked;
+        tcb.checked = cb.checked;
+        card.classList.toggle('selected', cb.checked);
+        updateMenuBadge();
+    }
+
+    // Sync when the small checkbox itself is clicked
+    function syncMenuCard(modId) {
+        const tcb  = document.getElementById('mtc_' + modId);
+        const card = document.getElementById('mc_' + modId);
+        const cb   = card.querySelector('.menu-cb');
+        cb.checked = tcb.checked;
+        card.classList.toggle('selected', tcb.checked);
+        updateMenuBadge();
+    }
+
+    function updateMenuBadge() {
+        const total = document.querySelectorAll('.menu-cb:checked').length;
+        document.getElementById('menu-save-count').textContent = total;
+        document.getElementById('menu-selected-count').textContent =
+            total + '/' + document.querySelectorAll('.menu-cb').length;
+    }
+
+    // ── Save permissions (AJAX) ───────────────────────────────
+    async function savePermissions() {
+        const ids = [...document.querySelectorAll('.perm-cb:checked')].map(cb => parseInt(cb.value));
+        const btn = document.getElementById('savePermBtn');
+        setLoading(btn, true);
+        try {
+            const res  = await fetch('/Roles/SavePermissions', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ roleId: ROLE_ID, permissionIds: ids })
+            });
+            const data = await res.json();
+            showToast(data.message ?? (data.success ? 'Permissions saved!' : 'Failed.'), data.success ? 'success' : 'error');
+        } catch {
+            showToast('Network error. Please try again.', 'error');
+        } finally {
+            setLoading(btn, false, '<i class="bi bi-check2-circle"></i> Save Permissions');
+        }
+    }
+
+    // ── Save menus (AJAX) ─────────────────────────────────────
+    async function saveMenus() {
+        const ids = [...document.querySelectorAll('.menu-cb:checked')].map(cb => parseInt(cb.value));
+        const btn = document.getElementById('saveMenuBtn');
+        setLoading(btn, true);
+        try {
+            const res  = await fetch('/Roles/SaveMenus', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ roleId: ROLE_ID, moduleIds: ids })
+            });
+            const data = await res.json();
+            showToast(data.message ?? (data.success ? 'Menus saved!' : 'Failed.'), data.success ? 'success' : 'error');
+        } catch {
+            showToast('Network error. Please try again.', 'error');
+        } finally {
+            setLoading(btn, false, '<i class="bi bi-check2-circle"></i> Save Menus');
+        }
+    }
+
+    // ── Helpers ───────────────────────────────────────────────
+    function setLoading(btn, loading, restoreHtml) {
+        btn.disabled = loading;
+        if (loading) {
+            btn.innerHTML = '<span class="spin"></span> Saving…';
+        } else if (restoreHtml) {
+            btn.innerHTML = restoreHtml;
+        }
+    }
+
+    function showToast(msg, type) {
+        const wrap = document.getElementById('toastWrap');
+        const el   = document.createElement('div');
+        el.className = `toast-msg toast-${type}`;
+        el.innerHTML = `<i class="bi ${type === 'success' ? 'bi-check-circle-fill' : 'bi-exclamation-circle-fill'}"></i>${msg}`;
+        wrap.appendChild(el);
+        requestAnimationFrame(() => el.classList.add('show'));
+        setTimeout(() => {
+            el.classList.remove('show');
+            setTimeout(() => el.remove(), 350);
+        }, 3500);
+    }
+
+    // ── Init: sync group counters on load ─────────────────────
+    document.addEventListener('DOMContentLoaded', () => {
+        document.querySelectorAll('.pg-card').forEach(card => {
+            updateGroupCounter(card.id);
+        });
+        updatePermSaveBadge();
+        updateMenuBadge();
+    });
+</script>

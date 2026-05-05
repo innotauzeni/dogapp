@@ -1,0 +1,840 @@
+@model Dog.Portal.Models.BreedGroupsListViewModel
+@{
+    Layout = "_AdminLayout";
+    ViewData["Title"] = "Breed Groups";
+    var totalAll = Model.TotalCount;
+    var activeCount = Model.BreedGroupList.Count(u => bool.Equals(u.IsActive, true));
+    var inactiveCount = Model.BreedGroupList.Count(u => bool.Equals(u.IsActive, false));
+}
+
+<style>
+.page-hdr h4{font-size:1.15rem;font-weight:800;color:#0f172a;margin:0 0 .25rem;letter-spacing:-.02em}
+.page-hdr p{font-size:.845rem;color:#64748b;margin:0}
+.page-hdr-row{display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;flex-wrap:wrap;margin-bottom:1.5rem}
+.total-chip{display:inline-flex;align-items:center;gap:.375rem;background:#ede9fe;color:#6d28d9;font-size:.8rem;font-weight:700;padding:.35rem .875rem;border-radius:20px;white-space:nowrap}
+.hdr-actions{display:flex;align-items:center;gap:.625rem;flex-wrap:wrap}
+.btn-add{display:inline-flex;align-items:center;gap:.4rem;padding:.6rem 1.25rem;background:linear-gradient(135deg,#667eea,#764ba2);color:#fff;border:none;border-radius:9px;font-size:.845rem;font-weight:600;cursor:pointer;transition:all .2s;box-shadow:0 2px 8px rgba(102,126,234,.3)}
+.btn-add:hover{opacity:.9;transform:translateY(-1px)}
+
+/* Stats */
+.stats-row{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:.875rem;margin-bottom:1.5rem}
+.stat-card{background:#fff;border-radius:12px;border:1px solid #e9eef4;box-shadow:0 1px 4px rgba(0,0,0,.04);padding:1rem 1.25rem;display:flex;align-items:center;gap:.875rem}
+.stat-icon{width:42px;height:42px;border-radius:11px;display:flex;align-items:center;justify-content:center;font-size:1.1rem;flex-shrink:0}
+.si-total{background:linear-gradient(135deg,#ede9fe,#ddd6fe);color:#7c3aed}
+.si-active{background:linear-gradient(135deg,#d1fae5,#a7f3d0);color:#065f46}
+.si-inactive{background:linear-gradient(135deg,#fee2e2,#fecaca);color:#991b1b}
+.stat-body .val{font-size:1.35rem;font-weight:800;color:#0f172a;line-height:1}
+.stat-body .lbl{font-size:.75rem;color:#94a3b8;font-weight:500;margin-top:.2rem}
+
+/* Data card */
+.dc{background:#fff;border-radius:14px;border:1px solid #e9eef4;box-shadow:0 1px 4px rgba(0,0,0,.04),0 6px 20px rgba(0,0,0,.04);overflow:hidden}
+.dc-head{padding:1rem 1.375rem;border-bottom:1px solid #f1f5f9;background:#fafbfc;display:flex;align-items:center;gap:.625rem;flex-wrap:wrap}
+
+/* Search & filters */
+.srch-wrap{position:relative;flex:1;min-width:180px;max-width:280px}
+.srch-wrap i{position:absolute;left:.875rem;top:50%;transform:translateY(-50%);color:#94a3b8;font-size:.9rem;pointer-events:none}
+.srch-input{width:100%;padding:.6rem .875rem .6rem 2.375rem;border:1.5px solid #e2e8f0;border-radius:9px;font-size:.845rem;color:#1e293b;background:#fff;outline:none;transition:border-color .2s,box-shadow .2s}
+.srch-input:focus{border-color:#667eea;box-shadow:0 0 0 3px rgba(102,126,234,.1)}
+.srch-input::placeholder{color:#cbd5e1}
+.filter-sel{padding:.6rem .875rem;border:1.5px solid #e2e8f0;border-radius:9px;font-size:.845rem;color:#374151;background:#fff;outline:none;cursor:pointer;transition:border-color .2s;min-width:130px}
+.filter-sel:focus{border-color:#667eea;box-shadow:0 0 0 3px rgba(102,126,234,.1)}
+.btn-srch{padding:.6rem 1.125rem;background:linear-gradient(135deg,#667eea,#764ba2);color:#fff;border:none;border-radius:9px;font-size:.845rem;font-weight:600;cursor:pointer;transition:opacity .2s;display:inline-flex;align-items:center;gap:.375rem;white-space:nowrap}
+.btn-srch:hover{opacity:.9}
+.btn-clr{padding:.6rem .875rem;background:#f1f5f9;color:#64748b;border:1.5px solid #e2e8f0;border-radius:9px;font-size:.845rem;font-weight:500;cursor:pointer;text-decoration:none;display:inline-flex;align-items:center;gap:.3rem;transition:all .18s;white-space:nowrap}
+.btn-clr:hover{background:#e2e8f0;color:#334155}
+
+/* Table */
+.tbl-wrap{overflow-x:auto;min-height:400px;}
+.dt{width:100%;border-collapse:collapse;table-layout:fixed;}
+.dt thead th{padding:.75rem 1.125rem;font-size:.7rem;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.09em;background:#f8fafc;border-bottom:1px solid #f0f4f8;white-space:nowrap}
+.dt tbody td{padding:.875rem 1.125rem;font-size:.855rem;color:#374151;border-bottom:1px solid #f8fafc;vertical-align:middle;max-width:200px;text-overflow:ellipsis;overflow:hidden;white-space:nowrap}
+.dt tbody tr:last-child td{border-bottom:none}
+.dt tbody tr{transition:background .15s}
+.dt tbody tr:hover td{background:#fafbff}
+.rn{color:#cbd5e1;font-size:.8rem;font-weight:600}
+
+/* Status badge */
+.s-badge{display:inline-flex;align-items:center;gap:.3rem;font-size:.74rem;font-weight:700;padding:.25rem .65rem;border-radius:20px}
+.s-active{background:#d1fae5;color:#065f46}
+.s-inactive{background:#fee2e2;color:#991b1b}
+
+/* Action menu */
+.act-wrap{position:relative;display:inline-block}
+.act-btn{width:32px;height:32px;border:1.5px solid #e2e8f0;border-radius:8px;background:#fff;color:#64748b;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all .18s;font-size:.9rem}
+.act-btn:hover{background:#f8fafc;border-color:#cbd5e1;color:#334155}
+.act-menu{position:fixed;background:#fff;border:1px solid #e2e8f0;border-radius:11px;box-shadow:0 12px 40px rgba(0,0,0,.18),0 0 0 1px rgba(0,0,0,.02);min-width:200px;z-index:1045;padding:.375rem;display:none}
+.act-menu.open{display:block}
+.act-item{display:flex;align-items:center;gap:.625rem;padding:.5rem .75rem;border-radius:7px;font-size:.835rem;font-weight:500;color:#374151;cursor:pointer;transition:background .15s;border:none;background:none;width:100%;text-align:left}
+.act-item:hover{background:#f8fafc;color:#1e293b}
+.act-item.danger{color:#dc2626}
+.act-item.danger:hover{background:#fef2f2}
+.act-item i{width:16px;text-align:center;font-size:.85rem}
+.act-divider{height:1px;background:#f1f5f9;margin:.25rem 0}
+
+/* Footer / pagination */
+.dc-foot{padding:.9rem 1.375rem;border-top:1px solid #f1f5f9;background:#fafbfc;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.75rem}
+.ri{font-size:.82rem;color:#94a3b8}
+.ri strong{color:#374151}
+.pgn{display:flex;align-items:center;gap:.25rem}
+.pb{display:flex;align-items:center;justify-content:center;min-width:32px;height:32px;padding:0 .5rem;border:1.5px solid #e2e8f0;border-radius:7px;font-size:.8rem;font-weight:500;color:#64748b;text-decoration:none;transition:all .18s;background:#fff}
+.pb:hover{background:#f8fafc;color:#334155;border-color:#cbd5e1}
+.pb.cur{background:linear-gradient(135deg,#667eea,#764ba2);color:#fff;border-color:transparent;font-weight:700}
+.pb.off{opacity:.35;pointer-events:none}
+.pb.wide{padding:0 .875rem}
+.pgn-dots{padding:0 .25rem;color:#cbd5e1;font-size:.82rem}
+
+/* Breed section */
+.breed-section{margin-top:1rem;padding:1rem;background:#f8fafc;border-radius:8px;border:1px solid #e2e8f0;display:none}
+.breed-section.show{display:block}
+.breed-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem}
+.breed-title{font-size:1rem;font-weight:700;color:#1e293b}
+.btn-add-breed{display:inline-flex;align-items:center;gap:.4rem;padding:.5rem 1rem;background:linear-gradient(135deg,#10b981,#059669);color:#fff;border:none;border-radius:8px;font-size:.8rem;font-weight:600;cursor:pointer;transition:all .2s}
+.btn-add-breed:hover{opacity:.9;transform:translateY(-1px)}
+.breed-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:.75rem}
+.breed-card{background:#fff;border:1px solid #e2e8f0;border-radius:8px;padding:.875rem;display:flex;align-items:center;justify-content:space-between}
+.breed-name{font-size:.85rem;font-weight:600;color:#374151}
+.breed-actions{display:flex;gap:.5rem}
+.btn-breed-edit,.btn-breed-delete{width:28px;height:28px;border:1px solid #e2e8f0;border-radius:6px;background:#fff;color:#64748b;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all .15s;font-size:.8rem}
+.btn-breed-edit:hover{background:#f8fafc;color:#374151}
+.btn-breed-delete:hover{background:#fef2f2;color:#dc2626;border-color:#fecaca}
+
+/* Empty state */
+.empty-state{text-align:center;padding:3rem 1rem;color:#94a3b8}
+.empty-state i{font-size:3rem;margin-bottom:1rem;color:#cbd5e1}
+.empty-state h3{font-size:1.1rem;font-weight:600;color:#64748b;margin-bottom:.5rem}
+.empty-state p{font-size:.9rem}
+</style>
+
+<div class="page-hdr-row">
+    <div class="page-hdr">
+        <h4>Breed Groups</h4>
+        <p>Manage dog breed groups and their associated breeds</p>
+    </div>
+    <div class="hdr-actions">
+        <div class="total-chip">
+            <i class="fas fa-layer-group"></i>
+            <span>@totalAll Total</span>
+        </div>
+        <button type="button" class="btn-add" onclick="openCreateModal()">
+            <i class="fas fa-plus"></i>
+            Add Breed Group
+        </button>
+    </div>
+</div>
+
+<!-- Stats -->
+<div class="stats-row">
+    <div class="stat-card">
+        <div class="stat-icon si-total">
+            <i class="fas fa-layer-group"></i>
+        </div>
+        <div class="stat-body">
+            <div class="val">@totalAll</div>
+            <div class="lbl">Total Groups</div>
+        </div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon si-active">
+            <i class="fas fa-check-circle"></i>
+        </div>
+        <div class="stat-body">
+            <div class="val">@activeCount</div>
+            <div class="lbl">Active</div>
+        </div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon si-inactive">
+            <i class="fas fa-times-circle"></i>
+        </div>
+        <div class="stat-body">
+            <div class="val">@inactiveCount</div>
+            <div class="lbl">Inactive</div>
+        </div>
+    </div>
+</div>
+
+<!-- Data Card -->
+<div class="dc">
+    <!-- Header with search and filters -->
+    <div class="dc-head">
+        <form method="get" style="display:contents;">
+            <div class="srch-wrap">
+                <i class="fas fa-search"></i>
+                <input type="text" name="search" value="@Model.SearchTerm" class="srch-input" placeholder="Search breed groups...">
+            </div>
+            <select name="status" class="filter-sel">
+                <option value="">All Status</option>
+                <option value="active" selected="@(ViewBag.StatusFilter == "active")">Active</option>
+                <option value="inactive" selected="@(ViewBag.StatusFilter == "inactive")">Inactive</option>
+            </select>
+            <button type="submit" class="btn-srch">
+                <i class="fas fa-search"></i>
+                Search
+            </button>
+            <a href="@Url.Action("Index")" class="btn-clr">
+                <i class="fas fa-times"></i>
+                Clear
+            </a>
+        </form>
+    </div>
+
+    <!-- Table -->
+    <div class="tbl-wrap">
+        @if (Model.BreedGroupList.Any())
+        {
+            <table class="dt">
+                <thead>
+                    <tr>
+                        <th style="width:60px">#</th>
+                        <th style="width:300px">Name</th>
+                        <th style="width:120px">Status</th>
+                        <th style="width:150px">Actions</th>
+                        <th style="width:120px">View Breeds</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @{
+                        var startIndex = (Model.Page - 1) * Model.PageSize;
+                    }
+                    @foreach (var item in Model.BreedGroupList.Select((value, index) => new { value, index }))
+                    {
+                        <tr>
+                            <td>
+                                <span class="rn">@(startIndex + item.index + 1)</span>
+                            </td>
+                            <td>
+                                <div style="font-weight:600;color:#1e293b">@item.value.Name</div>
+                            </td>
+                            <td>
+                                <span class="s-badge @(item.value.IsActive ? "s-active" : "s-inactive")">
+                                    <i class="fas @(item.value.IsActive ? "fa-check-circle" : "fa-times-circle")"></i>
+                                    @(item.value.IsActive ? "Active" : "Inactive")
+                                </span>
+                            </td>
+                            <td>
+                                <div class="act-wrap">
+                                    <button type="button" class="act-btn" onclick="toggleActionMenu(this)">
+                                                 <i class="bi bi-three-dots-vertical"></i>
+                                    </button>
+                                    <div class="act-menu">
+                                        <button type="button" class="act-item" onclick="openEditModal(@item.value.Id, '@Html.Raw(Html.Encode(item.value.Name))', @item.value.IsActive.ToString().ToLower())">
+                                            <i class="fas fa-edit"></i>
+                                            Edit
+                                        </button>
+                                        <div class="act-divider"></div>
+                                        <button type="button" class="act-item danger" onclick="deleteBreedGroup(@item.value.Id, '@Html.Raw(Html.Encode(item.value.Name))')">
+                                            <i class="fas fa-trash"></i>
+                                            Delete
+                                        </button>
+                                    </div>
+                                </div>
+                            </td>
+                            <td>
+                                <button type="button" class="btn-srch" style="padding:.4rem .8rem;font-size:.8rem" onclick="toggleBreeds(@item.value.Id, '@Html.Raw(Html.Encode(item.value.Name))')">
+                                    <i class="fas fa-eye"></i>
+                                    View Breeds
+                                </button>
+                            </td>
+                        </tr>
+                        <tr id="breed-row-@item.value.Id" style="display:none">
+                            <td colspan="5">
+                                <div class="breed-section" id="breed-section-@item.value.Id">
+                                    <div class="breed-header">
+                                        <div class="breed-title">Breeds in <span id="breed-group-name-@item.value.Id">@item.value.Name</span></div>
+                                        <button type="button" class="btn-add-breed" onclick="openCreateBreedModal(@item.value.Id, '@Html.Raw(Html.Encode(item.value.Name))')">
+                                            <i class="fas fa-plus"></i>
+                                            Add Breed
+                                        </button>
+                                    </div>
+                                    <div class="breed-grid" id="breed-grid-@item.value.Id">
+                                        <div class="empty-state">
+                                            <i class="fas fa-spinner fa-spin"></i>
+                                            <h3>Loading breeds...</h3>
+                                        </div>
+                                    </div>
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+        else
+        {
+            <div class="empty-state">
+                <i class="fas fa-layer-group"></i>
+                <h3>No breed groups found</h3>
+                <p>@(string.IsNullOrWhiteSpace(Model.SearchTerm) ? "Start by creating your first breed group." : "Try adjusting your search criteria.")</p>
+            </div>
+        }
+    </div>
+
+    <!-- Footer / Pagination -->
+    @if (Model.TotalCount > 0)
+    {
+        <div class="dc-foot">
+            <div class="ri">
+                Showing <strong>@Model.From</strong> to <strong>@Model.To</strong> of <strong>@Model.TotalCount</strong> results
+            </div>
+            @if (Model.TotalPages > 1)
+            {
+                <div class="pgn">
+                    @if (Model.Page > 1)
+                    {
+                        <a href="@Url.Action("Index", new { search = Model.SearchTerm, status = ViewBag.StatusFilter, page = Model.Page - 1 })" class="pb wide">
+                            <i class="fas fa-chevron-left"></i> Previous
+                        </a>
+                    }
+                    else
+                    {
+                        <span class="pb wide off">
+                            <i class="fas fa-chevron-left"></i> Previous
+                        </span>
+                    }
+
+                    @for (int i = Math.Max(1, Model.Page - 2); i <= Math.Min(Model.TotalPages, Model.Page + 2); i++)
+                    {
+                        if (i == Model.Page)
+                        {
+                            <span class="pb cur">@i</span>
+                        }
+                        else
+                        {
+                            <a href="@Url.Action("Index", new { search = Model.SearchTerm, status = ViewBag.StatusFilter, page = i })" class="pb">@i</a>
+                        }
+                    }
+
+                    @if (Model.Page < Model.TotalPages)
+                    {
+                        <a href="@Url.Action("Index", new { search = Model.SearchTerm, status = ViewBag.StatusFilter, page = Model.Page + 1 })" class="pb wide">
+                            Next <i class="fas fa-chevron-right"></i>
+                        </a>
+                    }
+                    else
+                    {
+                        <span class="pb wide off">
+                            Next <i class="fas fa-chevron-right"></i>
+                        </span>
+                    }
+                </div>
+            }
+        </div>
+    }
+</div>
+
+<!-- Create Breed Group Modal -->
+<div class="modal fade" id="createModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Add New Breed Group</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="createForm">
+                    <div class="mb-3">
+                        <label for="createName" class="form-label">Name *</label>
+                        <input type="text" class="form-control" id="createName" required>
+                    </div>
+                    <div class="mb-3">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="createIsActive" checked>
+                            <label class="form-check-label" for="createIsActive">Active</label>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" onclick="submitCreate()">
+                    <span class="spinner-border spinner-border-sm d-none" id="createSpinner"></span>
+                    Create
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Breed Group Modal -->
+<div class="modal fade" id="editModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Edit Breed Group</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="editForm">
+                    <input type="hidden" id="editId">
+                    <div class="mb-3">
+                        <label for="editName" class="form-label">Name *</label>
+                        <input type="text" class="form-control" id="editName" required>
+                    </div>
+                    <div class="mb-3">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="editIsActive">
+                            <label class="form-check-label" for="editIsActive">Active</label>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" onclick="submitEdit()">
+                    <span class="spinner-border spinner-border-sm d-none" id="editSpinner"></span>
+                    Update
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Create Breed Modal -->
+<div class="modal fade" id="createBreedModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Add New Breed</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="createBreedForm">
+                    <input type="hidden" id="createBreedGroupId">
+                    <div class="mb-3">
+                        <label class="form-label">Breed Group</label>
+                        <input type="text" class="form-control" id="createBreedGroupName" readonly>
+                    </div>
+                    <div class="mb-3">
+                        <label for="createBreedName" class="form-label">Breed Name *</label>
+                        <input type="text" class="form-control" id="createBreedName" required>
+                    </div>
+                    <div class="mb-3">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="createBreedIsActive" checked>
+                            <label class="form-check-label" for="createBreedIsActive">Active</label>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" onclick="submitCreateBreed()">
+                    <span class="spinner-border spinner-border-sm d-none" id="createBreedSpinner"></span>
+                    Create
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Breed Modal -->
+<div class="modal fade" id="editBreedModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Edit Breed</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="editBreedForm">
+                    <input type="hidden" id="editBreedId">
+                    <input type="hidden" id="editBreedGroupId">
+                    <div class="mb-3">
+                        <label class="form-label">Breed Group</label>
+                        <input type="text" class="form-control" id="editBreedGroupName" readonly>
+                    </div>
+                    <div class="mb-3">
+                        <label for="editBreedName" class="form-label">Breed Name *</label>
+                        <input type="text" class="form-control" id="editBreedName" required>
+                    </div>
+                    <div class="mb-3">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="editBreedIsActive">
+                            <label class="form-check-label" for="editBreedIsActive">Active</label>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" onclick="submitEditBreed()">
+                    <span class="spinner-border spinner-border-sm d-none" id="editBreedSpinner"></span>
+                    Update
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Global variables
+let currentBreedGroupId = null;
+let currentBreedGroupName = null;
+let loadedBreedGroups = new Set();
+
+// Breed Group Functions
+function openCreateModal() {
+    document.getElementById('createName').value = '';
+    document.getElementById('createIsActive').checked = true;
+    new bootstrap.Modal(document.getElementById('createModal')).show();
+}
+
+function openEditModal(id, name, isActive) {
+    document.getElementById('editId').value = id;
+    document.getElementById('editName').value = name;
+    document.getElementById('editIsActive').checked = isActive;
+    new bootstrap.Modal(document.getElementById('editModal')).show();
+}
+
+function submitCreate() {
+    const name = document.getElementById('createName').value.trim();
+    const isActive = document.getElementById('createIsActive').checked;
+    
+    if (!name) {
+        showAlert('Please enter a breed group name.', 'warning');
+        return;
+    }
+    
+    setLoading('createSpinner', true);
+    
+    fetch('/BreedGroups/Create', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ Name: name, IsActive: isActive })
+    })
+    .then(response => response.json())
+    .then(data => {
+        setLoading('createSpinner', false);
+        if (data.success) {
+            showAlert('Breed group created successfully!', 'success');
+            bootstrap.Modal.getInstance(document.getElementById('createModal')).hide();
+            setTimeout(() => location.reload(), 1500);
+        } else {
+            showAlert(data.message || 'Failed to create breed group.', 'danger');
+        }
+    })
+    .catch(error => {
+        setLoading('createSpinner', false);
+        showAlert('An error occurred. Please try again.', 'danger');
+        console.error('Error:', error);
+    });
+}
+
+function submitEdit() {
+    const id = document.getElementById('editId').value;
+    const name = document.getElementById('editName').value.trim();
+    const isActive = document.getElementById('editIsActive').checked;
+    
+    if (!name) {
+        showAlert('Please enter a breed group name.', 'warning');
+        return;
+    }
+    
+    setLoading('editSpinner', true);
+    
+    fetch('/BreedGroups/Update', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ Id: parseInt(id), Name: name, IsActive: isActive })
+    })
+    .then(response => response.json())
+    .then(data => {
+        setLoading('editSpinner', false);
+        if (data.success) {
+            showAlert('Breed group updated successfully!', 'success');
+            bootstrap.Modal.getInstance(document.getElementById('editModal')).hide();
+            setTimeout(() => location.reload(), 1500);
+        } else {
+            showAlert(data.message || 'Failed to update breed group.', 'danger');
+        }
+    })
+    .catch(error => {
+        setLoading('editSpinner', false);
+        showAlert('An error occurred. Please try again.', 'danger');
+        console.error('Error:', error);
+    });
+}
+
+function deleteBreedGroup(id, name) {
+    if (!confirm(`Are you sure you want to delete "${name}"? This action cannot be undone.`)) {
+        return;
+    }
+    
+    fetch(`/BreedGroups/Delete/${id}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showAlert('Breed group deleted successfully!', 'success');
+            setTimeout(() => location.reload(), 1500);
+        } else {
+            showAlert(data.message || 'Failed to delete breed group.', 'danger');
+        }
+    })
+    .catch(error => {
+        showAlert('An error occurred. Please try again.', 'danger');
+        console.error('Error:', error);
+    });
+}
+
+// Breed Functions
+function toggleBreeds(breedGroupId, breedGroupName) {
+    const row = document.getElementById(`breed-row-${breedGroupId}`);
+    const section = document.getElementById(`breed-section-${breedGroupId}`);
+    
+    if (row.style.display === 'none') {
+        row.style.display = 'table-row';
+        section.classList.add('show');
+        
+        // Load breeds if not already loaded
+        if (!loadedBreedGroups.has(breedGroupId)) {
+            loadBreeds(breedGroupId);
+            loadedBreedGroups.add(breedGroupId);
+        }
+    } else {
+        row.style.display = 'none';
+        section.classList.remove('show');
+    }
+}
+
+function loadBreeds(breedGroupId) {
+    const grid = document.getElementById(`breed-grid-${breedGroupId}`);
+    
+    fetch(`/BreedGroups/GetBreedsByGroup?breedGroupId=${breedGroupId}`)
+    .then(response => response.json())
+    .then(data => {
+        if (data.success && data.data) {
+            displayBreeds(breedGroupId, data.data);
+        } else {
+            grid.innerHTML = `
+                <div class="empty-state">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    <h3>Failed to load breeds</h3>
+                    <p>Please try again later.</p>
+                </div>
+            `;
+        }
+    })
+    .catch(error => {
+        console.error('Error loading breeds:', error);
+        grid.innerHTML = `
+            <div class="empty-state">
+                <i class="fas fa-exclamation-triangle"></i>
+                <h3>Error loading breeds</h3>
+                <p>Please try again later.</p>
+            </div>
+        `;
+    });
+}
+
+function displayBreeds(breedGroupId, breeds) {
+    const grid = document.getElementById(`breed-grid-${breedGroupId}`);
+    
+    if (breeds.length === 0) {
+        grid.innerHTML = `
+            <div class="empty-state">
+                <i class="fas fa-paw"></i>
+                <h3>No breeds found</h3>
+                <p>Start by adding breeds to this group.</p>
+            </div>
+        `;
+        return;
+    }
+    
+    grid.innerHTML = breeds.map(breed => `
+        <div class="breed-card">
+            <div class="breed-name">${breed.name}</div>
+            <div class="breed-actions">
+                <button type="button" class="btn-breed-edit" onclick="openEditBreedModal(${breed.id}, '${breed.name}', ${breed.breedGroupId}, '${document.getElementById('breed-group-name-' + breed.breedGroupId).textContent}', ${breed.isActive})" title="Edit">
+                    <i class="fas fa-edit"></i>
+                </button>
+                <button type="button" class="btn-breed-delete" onclick="deleteBreed(${breed.id}, '${breed.name}', ${breed.breedGroupId})" title="Delete">
+                    <i class="fas fa-trash"></i>
+                </button>
+            </div>
+        </div>
+    `).join('');
+}
+
+function openCreateBreedModal(breedGroupId, breedGroupName) {
+    document.getElementById('createBreedGroupId').value = breedGroupId;
+    document.getElementById('createBreedGroupName').value = breedGroupName;
+    document.getElementById('createBreedName').value = '';
+    document.getElementById('createBreedIsActive').checked = true;
+    new bootstrap.Modal(document.getElementById('createBreedModal')).show();
+}
+
+function openEditBreedModal(id, name, breedGroupId, breedGroupName, isActive) {
+    document.getElementById('editBreedId').value = id;
+    document.getElementById('editBreedGroupId').value = breedGroupId;
+    document.getElementById('editBreedGroupName').value = breedGroupName;
+    document.getElementById('editBreedName').value = name;
+    document.getElementById('editBreedIsActive').checked = isActive;
+    new bootstrap.Modal(document.getElementById('editBreedModal')).show();
+}
+
+function submitCreateBreed() {
+    const breedGroupId = document.getElementById('createBreedGroupId').value;
+    const name = document.getElementById('createBreedName').value.trim();
+    const isActive = document.getElementById('createBreedIsActive').checked;
+    
+    if (!name) {
+        showAlert('Please enter a breed name.', 'warning');
+        return;
+    }
+    
+    setLoading('createBreedSpinner', true);
+    
+    fetch('/BreedGroups/CreateBreed', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+            BreedGroupId: parseInt(breedGroupId), 
+            Name: name, 
+            IsActive: isActive 
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        setLoading('createBreedSpinner', false);
+        if (data.success) {
+            showAlert('Breed created successfully!', 'success');
+            bootstrap.Modal.getInstance(document.getElementById('createBreedModal')).hide();
+            // Reload breeds for this group
+            loadBreeds(breedGroupId);
+        } else {
+            showAlert(data.message || 'Failed to create breed.', 'danger');
+        }
+    })
+    .catch(error => {
+        setLoading('createBreedSpinner', false);
+        showAlert('An error occurred. Please try again.', 'danger');
+        console.error('Error:', error);
+    });
+}
+
+function submitEditBreed() {
+    const id = document.getElementById('editBreedId').value;
+    const breedGroupId = document.getElementById('editBreedGroupId').value;
+    const name = document.getElementById('editBreedName').value.trim();
+    const isActive = document.getElementById('editBreedIsActive').checked;
+    
+    if (!name) {
+        showAlert('Please enter a breed name.', 'warning');
+        return;
+    }
+    
+    setLoading('editBreedSpinner', true);
+    
+    fetch(`/BreedGroups/UpdateBreed/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+            BreedGroupId: parseInt(breedGroupId), 
+            Name: name, 
+            IsActive: isActive 
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        setLoading('editBreedSpinner', false);
+        if (data.success) {
+            showAlert('Breed updated successfully!', 'success');
+            bootstrap.Modal.getInstance(document.getElementById('editBreedModal')).hide();
+            // Reload breeds for this group
+            loadBreeds(breedGroupId);
+        } else {
+            showAlert(data.message || 'Failed to update breed.', 'danger');
+        }
+    })
+    .catch(error => {
+        setLoading('editBreedSpinner', false);
+        showAlert('An error occurred. Please try again.', 'danger');
+        console.error('Error:', error);
+    });
+}
+
+function deleteBreed(id, name, breedGroupId) {
+    if (!confirm(`Are you sure you want to delete "${name}"? This action cannot be undone.`)) {
+        return;
+    }
+    
+    fetch(`/BreedGroups/DeleteBreed/${id}`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showAlert('Breed deleted successfully!', 'success');
+            // Reload breeds for this group
+            loadBreeds(breedGroupId);
+        } else {
+            showAlert(data.message || 'Failed to delete breed.', 'danger');
+        }
+    })
+    .catch(error => {
+        showAlert('An error occurred. Please try again.', 'danger');
+        console.error('Error:', error);
+    });
+}
+
+// Utility Functions
+function toggleActionMenu(button) {
+    const menu = button.nextElementSibling;
+    const rect = button.getBoundingClientRect();
+    
+    // Close all other menus
+    document.querySelectorAll('.act-menu.open').forEach(m => {
+        if (m !== menu) m.classList.remove('open');
+    });
+    
+    if (menu.classList.contains('open')) {
+        menu.classList.remove('open');
+    } else {
+        menu.style.left = rect.left + 'px';
+        menu.style.top = (rect.bottom + 5) + 'px';
+        menu.classList.add('open');
+    }
+}
+
+function setLoading(spinnerId, loading) {
+    const spinner = document.getElementById(spinnerId);
+    if (loading) {
+        spinner.classList.remove('d-none');
+    } else {
+        spinner.classList.add('d-none');
+    }
+}
+
+function showAlert(message, type) {
+    // Create alert element
+    const alertDiv = document.createElement('div');
+    alertDiv.className = `alert alert-${type} alert-dismissible fade show position-fixed`;
+    alertDiv.style.cssText = 'top: 20px; right: 20px; z-index: 9999; min-width: 300px;';
+    alertDiv.innerHTML = `
+        ${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+    
+    document.body.appendChild(alertDiv);
+    
+    // Auto remove after 5 seconds
+    setTimeout(() => {
+        if (alertDiv.parentNode) {
+            alertDiv.remove();
+        }
+    }, 5000);
+}
+
+// Close action menus when clicking outside
+document.addEventListener('click', function(e) {
+    if (!e.target.closest('.act-wrap')) {
+        document.querySelectorAll('.act-menu.open').forEach(menu => {
+            menu.classList.remove('open');
+        });
+    }
+});
+</script>

@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] - Dog Section</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <style>
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            -webkit-font-smoothing: antialiased;
+            min-height: 100vh;
+            display: flex;
+        }
+
+        /* ── Split layout ──────────────────────────── */
+        .auth-shell {
+            display: flex;
+            width: 100%;
+            min-height: 100vh;
+        }
+
+        /* Left panel */
+        .auth-panel-left {
+            flex: 0 0 42%;
+            background: linear-gradient(160deg, #1e1b4b 0%, #312e81 45%, #4c1d95 100%);
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            padding: 2.5rem;
+            position: relative;
+            overflow: hidden;
+        }
+
+        /* decorative blobs */
+        .auth-panel-left::before {
+            content: '';
+            position: absolute;
+            width: 420px;
+            height: 420px;
+            background: rgba(129,140,248,0.12);
+            border-radius: 50%;
+            top: -160px;
+            right: -160px;
+            pointer-events: none;
+        }
+
+        .auth-panel-left::after {
+            content: '';
+            position: absolute;
+            width: 280px;
+            height: 280px;
+            background: rgba(167,139,250,0.1);
+            border-radius: 50%;
+            bottom: -100px;
+            left: -80px;
+            pointer-events: none;
+        }
+
+        .auth-left-top { position: relative; z-index: 1; }
+
+        .auth-logo {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.75rem;
+            text-decoration: none;
+        }
+
+        .auth-logo-icon {
+            width: 42px;
+            height: 42px;
+            background: linear-gradient(135deg, #818cf8 0%, #a78bfa 100%);
+            border-radius: 11px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.25rem;
+            color: #fff;
+            box-shadow: 0 8px 24px rgba(129,140,248,0.4);
+        }
+
+        .auth-logo-text strong {
+            display: block;
+            color: #f1f5f9;
+            font-size: 1rem;
+            font-weight: 700;
+        }
+
+        .auth-logo-text small {
+            color: rgba(199,210,254,0.65);
+            font-size: 0.72rem;
+        }
+
+        .auth-left-body {
+            position: relative;
+            z-index: 1;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            padding: 2rem 0;
+        }
+
+        .auth-headline {
+            font-size: 2rem;
+            font-weight: 800;
+            color: #fff;
+            line-height: 1.2;
+            margin-bottom: 0.875rem;
+            letter-spacing: -0.03em;
+        }
+
+        .auth-headline span {
+            background: linear-gradient(135deg, #818cf8, #a78bfa);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .auth-tagline {
+            color: rgba(199,210,254,0.7);
+            font-size: 0.92rem;
+            line-height: 1.65;
+            max-width: 340px;
+            margin-bottom: 2rem;
+        }
+
+        .auth-feature {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            margin-bottom: 0.875rem;
+        }
+
+        .auth-feature-icon {
+            width: 32px;
+            height: 32px;
+            background: rgba(129,140,248,0.15);
+            border: 1px solid rgba(129,140,248,0.2);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.9rem;
+            color: #a5b4fc;
+            flex-shrink: 0;
+        }
+
+        .auth-feature-text {
+            font-size: 0.855rem;
+            color: rgba(199,210,254,0.8);
+            font-weight: 500;
+        }
+
+        .auth-left-foot {
+            position: relative;
+            z-index: 1;
+        }
+
+        .auth-left-foot p {
+            font-size: 0.78rem;
+            color: rgba(199,210,254,0.4);
+        }
+
+        /* Right panel */
+        .auth-panel-right {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #f8fafc;
+            padding: 2rem;
+            position: relative;
+        }
+
+        /* subtle dot pattern */
+        .auth-panel-right::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background-image: radial-gradient(circle, #cbd5e1 1px, transparent 1px);
+            background-size: 28px 28px;
+            opacity: 0.35;
+            pointer-events: none;
+        }
+
+        .auth-form-box {
+            width: 100%;
+            max-width: 420px;
+            position: relative;
+            z-index: 1;
+        }
+
+        /* ── Mobile: stacked layout ───────────────── */
+        @@media (max-width: 767.98px) {
+            .auth-shell { flex-direction: column; }
+
+            .auth-panel-left {
+                flex: 0 0 auto;
+                padding: 1.75rem 1.5rem;
+            }
+
+            .auth-panel-left::before { display: none; }
+
+            .auth-left-body { padding: 1.25rem 0; }
+
+            .auth-headline { font-size: 1.5rem; }
+
+            .auth-feature { display: none; }
+
+            .auth-tagline { display: none; }
+
+            .auth-panel-right {
+                align-items: flex-start;
+                padding: 2rem 1.25rem;
+            }
+
+            .auth-form-box { max-width: 100%; }
+        }
+
+        @@media (min-width: 768px) and (max-width: 1023px) {
+            .auth-panel-left { flex: 0 0 38%; padding: 2rem; }
+            .auth-headline { font-size: 1.65rem; }
+        }
+    </style>
+</head>
+<body>
+    <div class="auth-shell">
+
+        <!-- ══ Left branding panel ══════════════════════════ -->
+        <div class="auth-panel-left">
+            <div class="auth-left-top">
+                <a href="/" class="auth-logo">
+                    <div class="auth-logo-icon"><i class="bi bi-heart-fill"></i></div>
+                    <div class="auth-logo-text">
+                        <strong>Dog Section</strong>
+                        <small>Management System</small>
+                    </div>
+                </a>
+            </div>
+
+            <div class="auth-left-body">
+                <h1 class="auth-headline">
+                    Manage your<br>breeding with <span>confidence</span>
+                </h1>
+                <p class="auth-tagline">
+                    A complete platform for dog breeders — from registrations and litters
+                    to customers, invoicing, and multi-branch operations.
+                </p>
+
+                <div class="auth-feature">
+                    <div class="auth-feature-icon"><i class="bi bi-heart-fill"></i></div>
+                    <span class="auth-feature-text">Full dog & litter registration</span>
+                </div>
+                <div class="auth-feature">
+                    <div class="auth-feature-icon"><i class="bi bi-people-fill"></i></div>
+                    <span class="auth-feature-text">Customer & contact management</span>
+                </div>
+                <div class="auth-feature">
+                    <div class="auth-feature-icon"><i class="bi bi-receipt-cutoff"></i></div>
+                    <span class="auth-feature-text">Invoicing & payment tracking</span>
+                </div>
+                <div class="auth-feature">
+                    <div class="auth-feature-icon"><i class="bi bi-building"></i></div>
+                    <span class="auth-feature-text">Multi-branch support</span>
+                </div>
+                <div class="auth-feature">
+                    <div class="auth-feature-icon"><i class="bi bi-shield-check-fill"></i></div>
+                    <span class="auth-feature-text">Role-based access control</span>
+                </div>
+            </div>
+
+            <div class="auth-left-foot">
+                <p>&copy; @DateTime.Now.Year Dog Section. All rights reserved.</p>
+            </div>
+        </div>
+
+        <!-- ══ Right form panel ════════════════════════════ -->
+        <div class="auth-panel-right">
+            <div class="auth-form-box">
+                @RenderBody()
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    @await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>

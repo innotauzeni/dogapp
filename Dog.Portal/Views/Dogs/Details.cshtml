@@ -1,0 +1,543 @@
+@model Dog.Portal.Models.DogProfileDto
+@{
+    Layout = "_AdminLayout";
+    ViewData["Title"] = $"Dog Profile - {Model.Dog.Name}";
+    var dog = Model.Dog;
+    var isActive = dog.IsActive;
+    var isDeceased = dog.DateOfDeath.HasValue;
+    var age = isDeceased
+        ? (int)((dog.DateOfDeath!.Value - dog.DateOfBirth).TotalDays / 365.25)
+        : (int)((DateTime.Today - dog.DateOfBirth).TotalDays / 365.25);
+}
+<style>
+.dog-hero{background:linear-gradient(135deg,#667eea,#764ba2);border-radius:20px;padding:2rem 2rem 4.5rem;margin-bottom:1.5rem;position:relative;overflow:hidden}
+.hero-back{display:inline-flex;align-items:center;gap:.4rem;color:rgba(255,255,255,.8);font-size:.845rem;font-weight:600;text-decoration:none;margin-bottom:1.5rem}
+.hero-back:hover{color:#fff}
+.hero-content{display:flex;align-items:flex-end;gap:1.75rem;flex-wrap:wrap}
+.hero-photo{width:120px;height:120px;border-radius:16px;object-fit:cover;border:4px solid rgba(255,255,255,.3);box-shadow:0 8px 24px rgba(0,0,0,.2);flex-shrink:0}
+.hero-photo-ph{width:120px;height:120px;border-radius:16px;background:rgba(255,255,255,.15);border:4px solid rgba(255,255,255,.2);display:flex;align-items:center;justify-content:center;font-size:3rem;color:rgba(255,255,255,.5);flex-shrink:0}
+.hero-text{flex:1;min-width:180px;padding-bottom:.5rem}
+.hero-name{font-size:1.9rem;font-weight:900;color:#fff;margin:0 0 .2rem;line-height:1.1}
+.hero-sub{font-size:.95rem;color:rgba(255,255,255,.8);margin:0 0 .875rem}
+.hero-chips{display:flex;gap:.5rem;flex-wrap:wrap}
+.hchip{display:inline-flex;align-items:center;gap:.3rem;font-size:.77rem;font-weight:700;padding:.28rem .7rem;border-radius:20px}
+.hchip-active{background:rgba(16,185,129,.25);color:#d1fae5;border:1px solid rgba(16,185,129,.35)}
+.hchip-inactive{background:rgba(239,68,68,.25);color:#fee2e2;border:1px solid rgba(239,68,68,.35)}
+.hchip-deceased{background:rgba(107,114,128,.3);color:#f3f4f6;border:1px solid rgba(107,114,128,.4)}
+.hchip-info{background:rgba(255,255,255,.15);color:#fff;border:1px solid rgba(255,255,255,.2)}
+.info-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:1.25rem;margin-bottom:1.5rem}
+.icard{background:#fff;border-radius:14px;border:1px solid #e9eef4;box-shadow:0 1px 4px rgba(0,0,0,.04);overflow:hidden}
+.icard-hdr{display:flex;align-items:center;gap:.5rem;padding:.8rem 1.2rem;border-bottom:1px solid #f1f5f9;background:#fafbfc}
+.icard-hdr i{color:#667eea;font-size:.95rem}
+.icard-hdr span{font-size:.845rem;font-weight:800;color:#0f172a}
+.icard-body{padding:1rem 1.2rem}
+.drow{display:flex;justify-content:space-between;align-items:center;padding:.45rem 0;border-bottom:1px solid #f8fafc;gap:1rem}
+.drow:last-child{border-bottom:none;padding-bottom:0}
+.dlabel{font-size:.78rem;font-weight:600;color:#64748b;white-space:nowrap}
+.dval{font-size:.845rem;color:#1e293b;font-weight:500;text-align:right;word-break:break-all}
+.dval.mono{font-family:monospace;font-size:.8rem;letter-spacing:.02em}
+.sbadge{display:inline-flex;align-items:center;gap:.3rem;font-size:.74rem;font-weight:700;padding:.22rem .6rem;border-radius:20px}
+.sb-active{background:#d1fae5;color:#065f46}
+.sb-inactive{background:#fee2e2;color:#991b1b}
+.sb-deceased{background:#f1f5f9;color:#374151}
+.photo-card{background:#fff;border-radius:14px;border:1px solid #e9eef4;overflow:hidden;margin-bottom:1.5rem;box-shadow:0 1px 4px rgba(0,0,0,.04)}
+.photo-full{width:100%;max-height:380px;object-fit:cover;display:block}
+.photo-empty{height:180px;display:flex;flex-direction:column;align-items:center;justify-content:center;color:#cbd5e1;gap:.5rem;font-size:.875rem}
+.photo-empty i{font-size:2.5rem}
+.family-section{background:#fff;border-radius:14px;border:1px solid #e9eef4;box-shadow:0 1px 4px rgba(0,0,0,.04);overflow:hidden;margin-bottom:1.5rem}
+.family-hdr{display:flex;align-items:center;gap:.5rem;padding:.8rem 1.2rem;border-bottom:1px solid #f1f5f9;background:#fafbfc}
+.family-hdr i{color:#667eea}
+.family-hdr span{font-size:.845rem;font-weight:800;color:#0f172a}
+.family-body{padding:1.25rem;display:grid;grid-template-columns:1fr 36px 1fr;gap:.75rem;align-items:center}
+.fam-card{border-radius:12px;border:1px solid #e9eef4;padding:1rem;text-align:center}
+.fam-role{font-size:.7rem;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.07em;margin-bottom:.5rem}
+.fam-icon{width:44px;height:44px;border-radius:11px;background:linear-gradient(135deg,#ede9fe,#ddd6fe);display:flex;align-items:center;justify-content:center;margin:0 auto .5rem;font-size:1.2rem;color:#7c3aed}
+.fam-name{font-size:.9rem;font-weight:700;color:#1e293b;margin:0}
+.fam-none{font-size:.82rem;color:#cbd5e1;font-style:italic;margin:0}
+.fam-subject{background:linear-gradient(135deg,#667eea,#764ba2);border-radius:12px;padding:1rem;text-align:center}
+.fam-subject .fam-role{color:rgba(255,255,255,.7)}
+.fam-subject .fam-icon{background:rgba(255,255,255,.2);color:#fff}
+.fam-subject .fam-name{color:#fff}
+.fam-arrow{display:flex;align-items:center;justify-content:center;color:#cbd5e1;font-size:1.25rem}
+.actions-bar{background:#fff;border-radius:14px;border:1px solid #e9eef4;padding:1rem 1.2rem;display:flex;align-items:center;gap:.625rem;flex-wrap:wrap;margin-bottom:1.5rem;box-shadow:0 1px 4px rgba(0,0,0,.04)}
+.abtn{display:inline-flex;align-items:center;gap:.4rem;padding:.6rem 1.2rem;border:none;border-radius:9px;font-size:.835rem;font-weight:600;cursor:pointer;text-decoration:none;transition:all .18s}
+.abtn-edit{background:linear-gradient(135deg,#667eea,#764ba2);color:#fff;box-shadow:0 2px 8px rgba(102,126,234,.25)}
+.abtn-edit:hover{opacity:.9;color:#fff}
+.abtn-danger{background:linear-gradient(135deg,#ef4444,#dc2626);color:#fff;box-shadow:0 2px 8px rgba(239,68,68,.2)}
+.abtn-danger:hover{opacity:.9;color:#fff}
+.abtn-back{background:#f1f5f9;color:#64748b;border:1.5px solid #e2e8f0}
+.abtn-back:hover{background:#e2e8f0;color:#334155}
+.modal-backdrop-custom{position:fixed;inset:0;background:rgba(15,23,42,.45);backdrop-filter:blur(3px);z-index:1050;display:none;align-items:center;justify-content:center;padding:1rem}
+.modal-backdrop-custom.open{display:flex}
+.modal-box{background:#fff;border-radius:16px;box-shadow:0 20px 60px rgba(0,0,0,.2);width:100%;max-width:420px;overflow:hidden}
+.modal-hdr{display:flex;align-items:center;justify-content:space-between;padding:1.1rem 1.375rem;border-bottom:1px solid #f1f5f9}
+.modal-hdr h5{font-size:.95rem;font-weight:800;color:#0f172a;margin:0;display:flex;align-items:center;gap:.5rem}
+.modal-close{width:28px;height:28px;border:none;background:#f1f5f9;border-radius:7px;color:#64748b;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:.85rem}
+.modal-body{padding:1.2rem 1.375rem}
+.modal-foot{padding:.875rem 1.375rem;border-top:1px solid #f1f5f9;display:flex;justify-content:flex-end;gap:.5rem}
+.finput{width:100%;padding:.6rem .875rem;border:1.5px solid #e2e8f0;border-radius:9px;font-size:.845rem;color:#1e293b;outline:none;transition:border-color .2s}
+.finput:focus{border-color:#667eea;box-shadow:0 0 0 3px rgba(102,126,234,.1)}
+.frow{margin-bottom:.875rem}
+.frow label{display:block;font-size:.78rem;font-weight:600;color:#374151;margin-bottom:.3rem}
+.btn-cancel{padding:.6rem 1.1rem;background:#f1f5f9;color:#64748b;border:1.5px solid #e2e8f0;border-radius:9px;font-size:.835rem;font-weight:600;cursor:pointer}
+.btn-danger-sm{padding:.6rem 1.25rem;background:linear-gradient(135deg,#ef4444,#dc2626);color:#fff;border:none;border-radius:9px;font-size:.835rem;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:.4rem}
+.toast-wrap{position:fixed;bottom:1.75rem;right:1.75rem;z-index:9999;display:flex;flex-direction:column;gap:.5rem;pointer-events:none}
+.toast-msg{display:flex;align-items:center;gap:.625rem;padding:.875rem 1.25rem;border-radius:12px;font-size:.855rem;font-weight:600;box-shadow:0 8px 32px rgba(0,0,0,.15);pointer-events:all;transform:translateX(120%);transition:transform .3s cubic-bezier(.4,0,.2,1);max-width:320px}
+.toast-msg.show{transform:translateX(0)}
+.toast-success{background:#065f46;color:#fff}
+.toast-error{background:#991b1b;color:#fff}
+</style>
+
+<div class="toast-wrap" id="toastWrap"></div>
+
+<!-- Hero -->
+<div class="dog-hero">
+    <a href="/Dogs" class="hero-back"><i class="bi bi-arrow-left"></i> Back to Dogs</a>
+    <div class="hero-content">
+        @if (!string.IsNullOrEmpty(dog.PhotoUrl))
+        {
+            <img src="@dog.PhotoUrl" alt="@dog.Name" class="hero-photo" />
+        }
+        else
+        {
+            <div class="hero-photo-ph"><i class="bi bi-camera"></i></div>
+        }
+        <div class="hero-text">
+            <h1 class="hero-name">@dog.Name</h1>
+            <p class="hero-sub">@dog.Breed &nbsp;&middot;&nbsp; @dog.Color &nbsp;&middot;&nbsp; @(dog.Gender ?? "Unknown gender")</p>
+            <div class="hero-chips">
+                @if (isDeceased)
+                {
+                    <span class="hchip hchip-deceased"><i class="bi bi-heartbreak-fill"></i> Deceased</span>
+                }
+                else if (isActive)
+                {
+                    <span class="hchip hchip-active"><i class="bi bi-circle-fill" style="font-size:.45rem;"></i> Active</span>
+                }
+                else
+                {
+                    <span class="hchip hchip-inactive"><i class="bi bi-circle-fill" style="font-size:.45rem;"></i> Inactive</span>
+                }
+                <span class="hchip hchip-info"><i class="bi bi-calendar3"></i> @age yr@(age != 1 ? "s" : "") old</span>
+                @if (!string.IsNullOrEmpty(dog.CompanyName))
+                {
+                    <span class="hchip hchip-info"><i class="bi bi-building"></i> @dog.CompanyName</span>
+                }
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Actions -->
+<div class="actions-bar">
+    <a href="/Dogs" class="abtn abtn-back"><i class="bi bi-arrow-left"></i> Dogs List</a>
+    @if (!isDeceased)
+    {
+        <a href="javascript:void(0)" onclick="goEdit(@dog.Id)" class="abtn abtn-edit"><i class="bi bi-pencil-fill"></i> Edit Dog</a>
+        @if (isActive)
+        {
+            <button class="abtn abtn-danger" onclick="openDeceasedModal()"><i class="bi bi-heartbreak-fill"></i> Mark as Deceased</button>
+        }
+    }
+    <a href="/Reports/DogCertificate/@dog.Id" target="_blank" class="abtn" style="background:linear-gradient(135deg,#f59e0b,#d97706);color:#fff;box-shadow:0 2px 8px rgba(245,158,11,.25);">
+        <i class="bi bi-award-fill"></i> Print Certificate
+    </a>
+</div>
+
+<!-- Full photo -->
+@if (!string.IsNullOrEmpty(dog.PhotoUrl))
+{
+    <div class="photo-card">
+        <img src="@dog.PhotoUrl" alt="@dog.Name" class="photo-full" />
+    </div>
+}
+
+<!-- Info cards -->
+<div class="info-grid">
+    <div class="icard">
+        <div class="icard-hdr"><i class="bi bi-info-circle-fill"></i><span>Basic Information</span></div>
+        <div class="icard-body">
+            <div class="drow"><span class="dlabel">Name</span><span class="dval">@dog.Name</span></div>
+            <div class="drow"><span class="dlabel">Breed</span><span class="dval">@(dog.Breed ?? "â€”")</span></div>
+            <div class="drow"><span class="dlabel">Color</span><span class="dval">@(dog.Color ?? "â€”")</span></div>
+            <div class="drow"><span class="dlabel">Gender</span><span class="dval">@(dog.Gender ?? "Not specified")</span></div>
+            <div class="drow">
+                <span class="dlabel">Status</span>
+                <span class="dval">
+                    @if (isDeceased) {
+                        <span class="sbadge sb-deceased"><i class="bi bi-heartbreak-fill"></i> Deceased</span>
+                    } else if (isActive) {
+                        <span class="sbadge sb-active"><i class="bi bi-circle-fill" style="font-size:.45rem;"></i> Active</span>
+                    } else {
+                        <span class="sbadge sb-inactive"><i class="bi bi-circle-fill" style="font-size:.45rem;"></i> Inactive</span>
+                    }
+                </span>
+            </div>
+        </div>
+    </div>
+    <div class="icard">
+        <div class="icard-hdr"><i class="bi bi-calendar3"></i><span>Dates &amp; Age</span></div>
+        <div class="icard-body">
+            <div class="drow"><span class="dlabel">Date of Birth</span><span class="dval">@dog.DateOfBirth.ToString("MMMM dd, yyyy")</span></div>
+            <div class="drow"><span class="dlabel">Age</span><span class="dval">@age year@(age != 1 ? "s" : "")</span></div>
+            @if (dog.DateOfDeath.HasValue) {
+                <div class="drow"><span class="dlabel">Date of Death</span><span class="dval">@dog.DateOfDeath.Value.ToString("MMMM dd, yyyy")</span></div>
+            }
+        </div>
+    </div>
+    <div class="icard">
+        <div class="icard-hdr"><i class="bi bi-upc-scan"></i><span>Identification</span></div>
+        <div class="icard-body">
+            <div class="drow"><span class="dlabel">System ID</span><span class="dval mono">#@dog.Id</span></div>
+            <div class="drow"><span class="dlabel">Microchip</span><span class="dval mono">@(dog.MicrochipNumber ?? "Not registered")</span></div>
+            <div class="drow"><span class="dlabel">Company</span><span class="dval">@(dog.CompanyName ?? "â€”")</span></div>
+        </div>
+    </div>
+</div>
+
+<!-- Family Tree -->
+<div class="family-section">
+    <div class="family-hdr"><i class="bi bi-diagram-3-fill"></i><span>Family Tree</span></div>
+    <div class="family-body">
+        <div class="fam-card">
+            <div class="fam-role">Sire (Father)</div>
+            <div class="fam-icon"><i class="bi bi-gender-male"></i></div>
+            @if (dog.SireId.HasValue && !string.IsNullOrEmpty(dog.SireName)) {
+                <p class="fam-name">@dog.SireName</p>
+                <a href="/Dogs/Details/@dog.SireId" style="font-size:.75rem;color:#667eea;text-decoration:none;display:inline-block;margin-top:.3rem;">View Profile</a>
+            } else {
+                <p class="fam-none">Unknown</p>
+            }
+        </div>
+        <div class="fam-arrow"><i class="bi bi-arrow-right"></i></div>
+        <div class="fam-subject">
+            <div class="fam-role">This Dog</div>
+            <div class="fam-icon"><i class="bi bi-star-fill"></i></div>
+            <p class="fam-name">@dog.Name</p>
+        </div>
+    </div>
+    <div style="padding:0 1.25rem 1.25rem;display:grid;grid-template-columns:1fr 36px 1fr;gap:.75rem;align-items:center">
+        <div></div>
+        <div class="fam-arrow" style="transform:rotate(90deg)"><i class="bi bi-arrow-down"></i></div>
+        <div></div>
+    </div>
+    <div style="padding:0 1.25rem 1.25rem;display:grid;grid-template-columns:1fr 36px 1fr;gap:.75rem;align-items:center">
+        <div class="fam-card">
+            <div class="fam-role">Dam (Mother)</div>
+            <div class="fam-icon"><i class="bi bi-gender-female"></i></div>
+            @if (dog.DamId.HasValue && !string.IsNullOrEmpty(dog.DamName)) {
+                <p class="fam-name">@dog.DamName</p>
+                <a href="/Dogs/Details/@dog.DamId" style="font-size:.75rem;color:#667eea;text-decoration:none;display:inline-block;margin-top:.3rem;">View Profile</a>
+            } else {
+                <p class="fam-none">Unknown</p>
+            }
+        </div>
+        <div></div>
+        <div></div>
+    </div>
+</div>
+
+<!-- Vaccination Records -->
+@if (Model.Vaccinations.Any())
+{
+    <div class="family-section">
+        <div class="family-hdr"><i class="bi bi-shield-fill-check"></i><span>Vaccination Records</span></div>
+        <div style="padding:1.25rem;">
+            @foreach (var vacc in Model.Vaccinations)
+            {
+                <div style="border:1px solid #e9eef4;border-radius:12px;padding:1rem;margin-bottom:1rem;background:#fafbfc;">
+                    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:.75rem;">
+                        <div>
+                            <h6 style="font-size:.9rem;font-weight:700;color:#1e293b;margin:0 0 .25rem;">@(vacc.Name ?? "Vaccination")</h6>
+                            <p style="font-size:.8rem;color:#64748b;margin:0;">@(vacc.VaccType ?? "Unknown type")</p>
+                        </div>
+                        <span style="font-size:.75rem;color:#059669;background:#d1fae5;padding:.2rem .6rem;border-radius:20px;font-weight:600;">
+                            @vacc.VaccinationDate.ToString("MMM dd, yyyy")
+                        </span>
+                    </div>
+                    @if (!string.IsNullOrEmpty(vacc.VetclinicName))
+                    {
+                        <p style="font-size:.8rem;color:#374151;margin:.25rem 0;"><strong>Clinic:</strong> @vacc.VetclinicName</p>
+                    }
+                    @if (!string.IsNullOrEmpty(vacc.BatchNumber))
+                    {
+                        <p style="font-size:.8rem;color:#374151;margin:.25rem 0;"><strong>Batch:</strong> @vacc.BatchNumber</p>
+                    }
+                    @if (vacc.NextVaccinationDate.HasValue)
+                    {
+                        <p style="font-size:.8rem;color:#dc2626;margin:.25rem 0;"><strong>Next Due:</strong> @vacc.NextVaccinationDate.Value.ToString("MMM dd, yyyy")</p>
+                    }
+                    @if (!string.IsNullOrEmpty(vacc.Notes))
+                    {
+                        <p style="font-size:.8rem;color:#64748b;margin:.5rem 0 0;font-style:italic;">@vacc.Notes</p>
+                    }
+                </div>
+            }
+        </div>
+    </div>
+}
+
+<!-- Mating Records & Litters -->
+@if (Model.MatingRecords.Any())
+{
+    <div class="family-section">
+        <div class="family-hdr"><i class="bi bi-heart-fill"></i><span>Mating Records & Litters</span></div>
+        <div style="padding:1.25rem;">
+            @foreach (var mating in Model.MatingRecords)
+            {
+                <div style="border:1px solid #e9eef4;border-radius:12px;padding:1.25rem;margin-bottom:1.5rem;background:#fafbfc;">
+                    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:1rem;">
+                        <div>
+                            <h6 style="font-size:.95rem;font-weight:700;color:#1e293b;margin:0 0 .5rem;">Mating Record</h6>
+                            <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;font-size:.8rem;">
+                                <div><strong>Sire:</strong> @(mating.SireName ?? "Unknown")</div>
+                                <div><strong>Dam:</strong> @(mating.DamName ?? "Unknown")</div>
+                            </div>
+                            @if (!string.IsNullOrEmpty(mating.Location))
+                            {
+                                <p style="font-size:.8rem;color:#64748b;margin:.5rem 0 0;"><strong>Location:</strong> @mating.Location</p>
+                            }
+                        </div>
+                        <span style="font-size:.75rem;color:#7c3aed;background:#ede9fe;padding:.2rem .6rem;border-radius:20px;font-weight:600;">
+                            @mating.MatingDate.ToString("MMM dd, yyyy")
+                        </span>
+                    </div>
+                    
+                    @if (!string.IsNullOrEmpty(mating.Notes))
+                    {
+                        <p style="font-size:.8rem;color:#64748b;margin:.5rem 0 1rem;font-style:italic;">@mating.Notes</p>
+                    }
+
+                    @if (mating.Litters.Any())
+                    {
+                        <h6 style="font-size:.85rem;font-weight:700;color:#1e293b;margin:1rem 0 .75rem;border-top:1px solid #e2e8f0;padding-top:1rem;">Resulting Litters</h6>
+                        @foreach (var litter in mating.Litters)
+                        {
+                            <div style="border:1px solid #ddd6fe;border-radius:8px;padding:.875rem;margin-bottom:.75rem;background:#faf5ff;">
+                                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.5rem;">
+                                    <span style="font-size:.8rem;font-weight:600;color:#7c3aed;">Litter - @litter.BirthDate.ToString("MMM dd, yyyy")</span>
+                                    <div style="display:flex;gap:.5rem;font-size:.7rem;">
+                                        <span style="background:#d1fae5;color:#065f46;padding:.15rem .4rem;border-radius:12px;">@litter.TotalBorn born</span>
+                                        <span style="background:#dbeafe;color:#1e40af;padding:.15rem .4rem;border-radius:12px;">@litter.SurvivedCount survived</span>
+                                        @if (litter.DiedCount > 0)
+                                        {
+                                            <span style="background:#fee2e2;color:#991b1b;padding:.15rem .4rem;border-radius:12px;">@litter.DiedCount died</span>
+                                        }
+                                    </div>
+                                </div>
+                                
+                                @if (litter.Puppies.Any())
+                                {
+                                    <div style="margin-top:.75rem;">
+                                        <p style="font-size:.75rem;font-weight:600;color:#374151;margin:0 0 .5rem;">Puppies:</p>
+                                        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:.5rem;">
+                                            @foreach (var puppy in litter.Puppies)
+                                            {
+                                                <div style="background:#fff;border:1px solid #e5e7eb;border-radius:6px;padding:.5rem;font-size:.75rem;">
+                                                    <div style="font-weight:600;color:#1f2937;">@puppy.Name</div>
+                                                    <div style="color:#6b7280;">@puppy.Color @(puppy.Gender != null ? $"• {puppy.Gender}" : "")</div>
+                                                    @if (puppy.DateOfDeath.HasValue)
+                                                    {
+                                                        <div style="color:#dc2626;font-size:.7rem;">† @puppy.DateOfDeath.Value.ToString("MMM dd, yyyy")</div>
+                                                    }
+                                                </div>
+                                            }
+                                        </div>
+                                    </div>
+                                }
+                                
+                                @if (!string.IsNullOrEmpty(litter.Notes))
+                                {
+                                    <p style="font-size:.75rem;color:#64748b;margin:.5rem 0 0;font-style:italic;">@litter.Notes</p>
+                                }
+                            </div>
+                        }
+                    }
+                </div>
+            }
+        </div>
+    </div>
+}
+
+<!-- Deceased Modal -->
+<div class="modal-backdrop-custom" id="deceasedModal">
+    <div class="modal-box">
+        <div class="modal-hdr">
+            <h5><i class="bi bi-heartbreak-fill" style="color:#dc2626;"></i> Mark as Deceased</h5>
+            <button class="modal-close" onclick="closeModal('deceasedModal')"><i class="bi bi-x-lg"></i></button>
+        </div>
+        <div class="modal-body">
+            <p style="font-size:.875rem;color:#374151;margin-bottom:1rem;">Mark <strong>@dog.Name</strong> as deceased? This will set the status to inactive.</p>
+            <div class="frow">
+                <label>Date of Death <span style="color:#ef4444;">*</span></label>
+                <input class="finput" id="deceasedDate" type="date" />
+            </div>
+        </div>
+        <div class="modal-foot">
+            <button class="btn-cancel" onclick="closeModal('deceasedModal')">Cancel</button>
+            <button class="btn-danger-sm" onclick="markAsDeceased(@dog.Id)"><i class="bi bi-heartbreak-fill"></i> Confirm</button>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Dog Modal -->
+<div class="modal-backdrop-custom" id="editDogModal">
+    <div class="modal-box" style="max-width:600px">
+        <div class="modal-hdr">
+            <h5><i class="bi bi-pencil-fill" style="color:#667eea;"></i> Edit Dog</h5>
+            <button class="modal-close" onclick="closeModal('editDogModal')"><i class="bi bi-x-lg"></i></button>
+        </div>
+        <div class="modal-body" style="max-height:70vh;overflow-y:auto">
+            <input type="hidden" id="ed_id" value="@dog.Id">
+            <input type="hidden" id="ed_existingPhoto" value="@dog.PhotoUrl">
+            <input type="hidden" id="ed_companyId" value="@dog.CompanyId">
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:.875rem">
+                <div class="frow"><label>Name <span style="color:#ef4444">*</span></label><input class="finput" id="ed_name" value="@dog.Name"></div>
+                <div class="frow"><label>Breed <span style="color:#ef4444">*</span></label><input class="finput" id="ed_breed" value="@dog.Breed"></div>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:.875rem">
+                <div class="frow"><label>Color <span style="color:#ef4444">*</span></label><input class="finput" id="ed_color" value="@dog.Color"></div>
+                <div class="frow"><label>Gender</label>
+                    <select class="finput" id="ed_gender">
+                        <option value="">-- Select --</option>
+                        @{ var dogGender = dog.Gender ?? ""; }
+                        @if (dogGender == "Male") { <option value="Male" selected>Male</option> } else { <option value="Male">Male</option> }
+                        @if (dogGender == "Female") { <option value="Female" selected>Female</option> } else { <option value="Female">Female</option> }
+                    </select>
+                </div>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:.875rem">
+                <div class="frow"><label>Date of Birth <span style="color:#ef4444">*</span></label><input class="finput" type="date" id="ed_dateOfBirth" value="@dog.DateOfBirth.ToString("yyyy-MM-dd")"></div>
+                <div class="frow"><label>Microchip Number</label><input class="finput" id="ed_microchip" value="@dog.MicrochipNumber"></div>
+            </div>
+            <div class="frow">
+                <label>Date of Death <span style="font-size:.72rem;color:#94a3b8;font-weight:400">(clear to mark as alive)</span></label>
+                <input class="finput" type="date" id="ed_dateOfDeath" value="@(dog.DateOfDeath.HasValue ? dog.DateOfDeath.Value.ToString("yyyy-MM-dd") : "")">
+                <div id="ed_dod_hint" style="display:none;margin-top:.3rem;font-size:.75rem;color:#059669;font-weight:600">
+                    <i class="bi bi-arrow-counterclockwise"></i> Date of death cleared — dog will be marked as <strong>Active</strong>
+                </div>
+            </div>
+            <div class="frow"><label>New Photo (leave blank to keep current)</label>
+                <input class="finput" type="file" id="ed_photo" accept=".jpg,.jpeg,.png,.gif" style="padding:.4rem">
+            </div>
+            @if (!string.IsNullOrEmpty(dog.PhotoUrl))
+            {
+                <div style="margin-bottom:.875rem;font-size:.78rem;color:#64748b">
+                    <i class="bi bi-image"></i> Current photo: <span style="color:#667eea">@System.IO.Path.GetFileName(dog.PhotoUrl)</span>
+                </div>
+            }
+        </div>
+        <div class="modal-foot">
+            <button class="btn-cancel" onclick="closeModal('editDogModal')">Cancel</button>
+            <button class="btn-danger-sm" id="editDogBtn" onclick="submitEditDog()" style="background:linear-gradient(135deg,#667eea,#764ba2)">
+                <i class="bi bi-check2-circle"></i> Save Changes
+            </button>
+        </div>
+    </div>
+</div>
+
+<script>
+function openModal(id){document.getElementById(id).classList.add('open');document.body.style.overflow='hidden';}
+function closeModal(id){document.getElementById(id).classList.remove('open');document.body.style.overflow='';}
+document.querySelectorAll('.modal-backdrop-custom').forEach(bd=>{bd.addEventListener('click',e=>{if(e.target===bd)closeModal(bd.id);});});
+document.addEventListener('keydown',e=>{if(e.key==='Escape')document.querySelectorAll('.modal-backdrop-custom.open').forEach(m=>closeModal(m.id));});
+function openDeceasedModal(){document.getElementById('deceasedDate').value=new Date().toISOString().split('T')[0];openModal('deceasedModal');}
+function goEdit(id){openModal('editDogModal');}
+
+// Show hint when date of death is cleared
+document.addEventListener('DOMContentLoaded',function(){
+    var dodInput = document.getElementById('ed_dateOfDeath');
+    var dodHint  = document.getElementById('ed_dod_hint');
+    if(dodInput && dodHint){
+        var originalVal = dodInput.value;
+        dodInput.addEventListener('change',function(){
+            // Show hint only if there WAS a date and it's now been cleared
+            if(originalVal && !dodInput.value){
+                dodHint.style.display='block';
+            } else {
+                dodHint.style.display='none';
+            }
+        });
+    }
+});
+function showToast(msg,type){const w=document.getElementById('toastWrap');const el=document.createElement('div');el.className='toast-msg toast-'+type;el.innerHTML='<i class="bi '+(type==='success'?'bi-check-circle-fill':'bi-exclamation-circle-fill')+'"></i>'+msg;w.appendChild(el);requestAnimationFrame(()=>el.classList.add('show'));setTimeout(()=>{el.classList.remove('show');setTimeout(()=>el.remove(),350);},3500);}
+function setLoading(id,on,html){const b=document.getElementById(id);b.disabled=on;if(on)b.innerHTML='<span style="display:inline-block;width:14px;height:14px;border:2px solid rgba(255,255,255,.35);border-top-color:#fff;border-radius:50%;animation:spin .65s linear infinite"></span> Saving...';else if(html)b.innerHTML=html;}
+
+async function markAsDeceased(id){
+    const d=document.getElementById('deceasedDate').value;
+    if(!d){showToast('Date of death is required','error');return;}
+    const fd=new FormData();fd.append('dateOfDeath',d);
+    try{
+        const r=await fetch('/Dogs/MarkAsDeceased/'+id,{method:'POST',body:fd});
+        const data=await r.json();
+        if(data.success){showToast(data.message||'Marked as deceased','success');closeModal('deceasedModal');setTimeout(()=>location.reload(),1000);}
+        else{showToast(data.message||'Failed','error');}
+    }catch{showToast('Network error','error');}
+}
+
+async function submitEditDog(){
+    const id = document.getElementById('ed_id').value;
+    const name = document.getElementById('ed_name').value.trim();
+    const breed = document.getElementById('ed_breed').value.trim();
+    const color = document.getElementById('ed_color').value.trim();
+    const dob = document.getElementById('ed_dateOfBirth').value;
+    const dod = document.getElementById('ed_dateOfDeath').value; // empty string = cleared
+    const gender = document.getElementById('ed_gender').value;
+    const microchip = document.getElementById('ed_microchip').value.trim();
+    const photoFile = document.getElementById('ed_photo').files[0];
+    const existingPhoto = document.getElementById('ed_existingPhoto').value;
+    const companyId = parseInt(document.getElementById('ed_companyId').value, 10) || 0;
+
+    // If date of death is cleared → restore to active, null out date of death
+    const dateOfDeath = dod ? dod : null;
+    const isActive = !dod; // cleared = alive = true, has date = deceased = false
+
+    if(!name){showToast('Name is required','error');return;}
+    if(!breed){showToast('Breed is required','error');return;}
+    if(!color){showToast('Color is required','error');return;}
+    if(!dob){showToast('Date of birth is required','error');return;}
+
+    setLoading('editDogBtn',true);
+    try{
+        let photoUrl = existingPhoto || null;
+
+        // Upload new photo if provided
+        if(photoFile){
+            const fd = new FormData();
+            fd.append('file', photoFile);
+            const upRes = await fetch('/Dogs/UploadPhoto',{method:'POST',body:fd});
+            const upData = await upRes.json();
+            if(!upData.success) throw new Error(upData.message||'Photo upload failed');
+            photoUrl = upData.url;
+        }
+
+        const res = await fetch('/Dogs/Update',{
+            method:'POST',
+            headers:{'Content-Type':'application/json'},
+            body:JSON.stringify({
+                Id: parseInt(id, 10),
+                Name: name,
+                Breed: breed,
+                Color: color,
+                DateOfBirth: dob,
+                DateOfDeath: dateOfDeath,
+                Gender: gender||null,
+                MicrochipNumber: microchip||null,
+                PhotoUrl: photoUrl,
+                CompanyId: parseInt(companyId, 10) || 0,
+                IsActive: isActive
+            })
+        });
+        const data = await res.json();
+        if(data.success){
+            const msg = dateOfDeath === null && !isActive === false
+                ? 'Dog updated and marked as Active!'
+                : 'Dog updated!';
+            showToast(data.message || msg,'success');
+            closeModal('editDogModal');
+            setTimeout(()=>location.reload(),1000);
+        } else showToast(data.message||'Failed to update','error');
+    }catch(e){showToast(e.message||'Network error','error');}
+    finally{setLoading('editDogBtn',false,'<i class="bi bi-check2-circle"></i> Save Changes');}
+}
+</script>

@@ -1,0 +1,590 @@
+@model Dog.Portal.Models.ModulesListViewModel
+@{
+    Layout = "_AdminLayout";
+    ViewData["Title"] = "System Modules";
+}
+
+<style>
+    /* ── Shared table card system ─────────────────── */
+    .page-hdr { margin-bottom: 1.5rem; }
+    .page-hdr-inner { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; flex-wrap: wrap; }
+    .page-hdr h4 { font-size: 1.15rem; font-weight: 800; color: #0f172a; margin: 0 0 0.25rem; letter-spacing: -0.02em; }
+    .page-hdr p  { font-size: 0.845rem; color: #64748b; margin: 0; }
+
+    .total-chip {
+        display: inline-flex; align-items: center; gap: 0.375rem;
+        background: #ede9fe; color: #6d28d9;
+        font-size: 0.8rem; font-weight: 700;
+        padding: 0.35rem 0.875rem; border-radius: 20px;
+        white-space: nowrap;
+    }
+
+    /* ── Data card ───────────────────────────────── */
+    .dc { background: #fff; border-radius: 14px; border: 1px solid #e9eef4; box-shadow: 0 1px 4px rgba(0,0,0,0.04), 0 6px 20px rgba(0,0,0,0.04); overflow: hidden; }
+
+    .dc-head {
+        padding: 1rem 1.375rem;
+        border-bottom: 1px solid #f1f5f9;
+        display: flex; align-items: center; justify-content: space-between;
+        gap: 1rem; flex-wrap: wrap;
+        background: #fafbfc;
+    }
+
+    /* Search */
+    .srch-wrap { position: relative; }
+    .srch-wrap i { position: absolute; left: 0.875rem; top: 50%; transform: translateY(-50%); color: #94a3b8; font-size: 0.9rem; pointer-events: none; }
+    .srch-input {
+        width: 280px; padding: 0.6rem 0.875rem 0.6rem 2.375rem;
+        border: 1.5px solid #e2e8f0; border-radius: 9px;
+        font-size: 0.845rem; color: #1e293b; background: #fff;
+        outline: none; transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    .srch-input:focus { border-color: #667eea; box-shadow: 0 0 0 3px rgba(102,126,234,0.1); }
+    .srch-input::placeholder { color: #cbd5e1; }
+
+    .btn-srch {
+        padding: 0.6rem 1.125rem;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: #fff; border: none; border-radius: 9px;
+        font-size: 0.845rem; font-weight: 600; cursor: pointer;
+        transition: opacity 0.2s; white-space: nowrap;
+        display: inline-flex; align-items: center; gap: 0.375rem;
+    }
+    .btn-srch:hover { opacity: 0.9; }
+
+    .btn-clr {
+        padding: 0.6rem 0.875rem;
+        background: #f1f5f9; color: #64748b;
+        border: 1.5px solid #e2e8f0; border-radius: 9px;
+        font-size: 0.845rem; font-weight: 500; cursor: pointer;
+        text-decoration: none; white-space: nowrap;
+        display: inline-flex; align-items: center; gap: 0.3rem;
+        transition: all 0.18s;
+    }
+    .btn-clr:hover { background: #e2e8f0; color: #334155; }
+
+    /* ── Table ───────────────────────────────────── */
+    .tbl-wrap { overflow-x: auto; }
+
+    .dt { width: 100%; border-collapse: collapse; }
+
+    .dt thead th {
+        padding: 0.75rem 1.125rem;
+        font-size: 0.7rem; font-weight: 700;
+        color: #64748b; text-transform: uppercase; letter-spacing: 0.09em;
+        background: #f8fafc; border-bottom: 1px solid #f0f4f8;
+        white-space: nowrap;
+    }
+
+    .dt tbody td {
+        padding: 0.9rem 1.125rem;
+        font-size: 0.855rem; color: #374151;
+        border-bottom: 1px solid #f8fafc;
+        vertical-align: middle;
+    }
+
+    .dt tbody tr:last-child td { border-bottom: none; }
+    .dt tbody tr { transition: background 0.15s; }
+    .dt tbody tr:hover td { background: #fafbff; }
+
+    /* Row number */
+    .rn { color: #cbd5e1; font-size: 0.8rem; font-weight: 600; }
+
+    /* Icon chip */
+    .ic {
+        width: 36px; height: 36px; border-radius: 9px;
+        background: linear-gradient(135deg, #ede9fe, #ddd6fe);
+        display: flex; align-items: center; justify-content: center;
+        font-size: 1rem; color: #7c3aed;
+    }
+
+    /* Name + subtitle cell */
+    .cn-main { font-weight: 600; color: #1e293b; }
+    .cn-sub  { font-size: 0.77rem; color: #94a3b8; margin-top: 0.1rem; }
+
+    /* Code tag */
+    .ctag {
+        display: inline-block;
+        background: #f1f5f9; border: 1px solid #e2e8f0;
+        color: #475569; font-size: 0.76rem;
+        font-family: 'Consolas', 'Monaco', monospace;
+        padding: 0.2rem 0.5rem; border-radius: 5px;
+        white-space: nowrap;
+    }
+
+    /* Count chip */
+    .cc {
+        display: inline-flex; align-items: center; justify-content: center;
+        min-width: 24px; height: 22px; padding: 0 0.5rem;
+        background: #ede9fe; color: #7c3aed;
+        font-size: 0.76rem; font-weight: 700; border-radius: 20px;
+    }
+
+    /* Status badge */
+    .s-on  { background: #d1fae5; color: #065f46; font-size: 0.74rem; font-weight: 600; padding: 0.25rem 0.65rem; border-radius: 20px; display: inline-flex; align-items: center; gap: 0.3rem; }
+    .s-off { background: #fee2e2; color: #991b1b; font-size: 0.74rem; font-weight: 600; padding: 0.25rem 0.65rem; border-radius: 20px; display: inline-flex; align-items: center; gap: 0.3rem; }
+
+    /* Action button */
+    .ab {
+        display: inline-flex; align-items: center; gap: 0.35rem;
+        padding: 0.375rem 0.875rem;
+        background: #eef2ff; color: #4338ca;
+        border: 1.5px solid #e0e7ff; border-radius: 7px;
+        font-size: 0.8rem; font-weight: 600;
+        text-decoration: none; transition: all 0.18s;
+        white-space: nowrap;
+    }
+    .ab:hover { background: #e0e7ff; color: #3730a3; border-color: #c7d2fe; }
+
+    /* ── Footer ──────────────────────────────────── */
+    .dc-foot {
+        padding: 0.9rem 1.375rem;
+        border-top: 1px solid #f1f5f9; background: #fafbfc;
+        display: flex; align-items: center; justify-content: space-between;
+        flex-wrap: wrap; gap: 0.75rem;
+    }
+
+    .ri { font-size: 0.82rem; color: #94a3b8; }
+    .ri strong { color: #374151; }
+
+    /* ── Pagination ──────────────────────────────── */
+    .pgn { display: flex; align-items: center; gap: 0.25rem; }
+
+    .pb {
+        display: flex; align-items: center; justify-content: center;
+        min-width: 32px; height: 32px; padding: 0 0.5rem;
+        border: 1.5px solid #e2e8f0; border-radius: 7px;
+        font-size: 0.8rem; font-weight: 500; color: #64748b;
+        text-decoration: none; transition: all 0.18s; background: #fff;
+    }
+    .pb:hover     { background: #f8fafc; color: #334155; border-color: #cbd5e1; }
+    .pb.cur       { background: linear-gradient(135deg, #667eea, #764ba2); color: #fff; border-color: transparent; font-weight: 700; }
+    .pb.off       { opacity: 0.35; pointer-events: none; }
+    .pb.wide      { padding: 0 0.875rem; }
+    .pgn-dots     { padding: 0 0.25rem; color: #cbd5e1; font-size: 0.82rem; }
+
+    /* ── Empty state ─────────────────────────────── */
+    .es { text-align: center; padding: 4rem 2rem; }
+    .es-icon { font-size: 3rem; color: #e2e8f0; margin-bottom: 1rem; display: block; }
+    .es h6   { font-weight: 600; color: #64748b; margin: 0 0 0.375rem; }
+    .es p    { font-size: 0.845rem; color: #94a3b8; margin: 0; }
+
+    /* ── Alert ───────────────────────────────────── */
+    .alert-err {
+        background: #fef2f2; border: 1px solid #fecaca; border-radius: 10px;
+        padding: 0.875rem 1.125rem; color: #dc2626; font-size: 0.845rem;
+        display: flex; align-items: center; gap: 0.625rem; margin-bottom: 1.25rem;
+    }
+
+    @@media (max-width: 576px) {
+        .srch-input { width: 100%; }
+        .dc-head { flex-direction: column; align-items: stretch; }
+    }
+</style>
+
+<!-- ── Page header ──────────────────────────────────────────── -->
+<div class="page-hdr">
+    <div class="page-hdr-inner">
+        <div>
+            <h4><i class="bi bi-grid-3x3-gap-fill me-2" style="color:#667eea;"></i>System Modules</h4>
+            <p>View and navigate system modules, submodules, and permissions.</p>
+        </div>
+        <div class="d-flex align-items-center gap-2">
+            @if (Model.TotalCount > 0)
+            {
+                <span class="total-chip"><i class="bi bi-layers"></i> @Model.TotalCount module@(Model.TotalCount != 1 ? "s" : "")</span>
+            }
+            <button class="btn-srch" onclick="openCreateModule()" style="white-space:nowrap;">
+                <i class="bi bi-plus-circle"></i> Add Module
+            </button>
+        </div>
+    </div>
+</div>
+
+@if (!string.IsNullOrEmpty(ViewBag.FetchError as string))
+{
+    <div class="alert-err"><i class="bi bi-exclamation-circle-fill"></i>@ViewBag.FetchError</div>
+}
+
+@if (TempData["Error"] != null)
+{
+    <div class="alert-err"><i class="bi bi-exclamation-circle-fill"></i>@TempData["Error"]</div>
+}
+
+<!-- ── Data card ──────────────────────────────────────────────── -->
+<div class="dc">
+
+    <!-- Header: search -->
+    <div class="dc-head">
+        <form method="get" class="d-flex align-items-center gap-2 flex-wrap">
+            <div class="srch-wrap">
+                <i class="bi bi-search"></i>
+                <input class="srch-input" type="text" name="search"
+                       value="@Model.SearchTerm"
+                       placeholder="Search by name or access key…"
+                       autocomplete="off" />
+            </div>
+            <input type="hidden" name="page" value="1" />
+            <button type="submit" class="btn-srch"><i class="bi bi-search"></i> Search</button>
+            @if (!string.IsNullOrEmpty(Model.SearchTerm))
+            {
+                <a href="/SystemModules" class="btn-clr"><i class="bi bi-x-circle"></i> Clear</a>
+            }
+        </form>
+
+        <div class="d-flex align-items-center gap-2">
+            @if (!string.IsNullOrEmpty(Model.SearchTerm))
+            {
+                <span style="font-size:.82rem;color:#94a3b8;">
+                    Results for <strong style="color:#374151;">"@Model.SearchTerm"</strong>
+                </span>
+            }
+        </div>
+    </div>
+
+    <!-- Table -->
+    <div class="tbl-wrap">
+        <table class="dt">
+            <thead>
+                <tr>
+                    <th style="width:48px;">#</th>
+                    <th style="width:52px;">Icon</th>
+                    <th>Name</th>
+                    <th>Access Key</th>
+                    <th class="d-none d-lg-table-cell">Description</th>
+                    <th style="width:110px;">Submodules</th>
+                    <th style="width:70px;" class="d-none d-md-table-cell">Order</th>
+                    <th style="width:100px;">Status</th>
+                    <th style="width:90px;">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (Model.Modules.Any())
+                {
+                    @for (int i = 0; i < Model.Modules.Count; i++)
+                    {
+                        var m = Model.Modules[i];
+                        <tr>
+                            <td><span class="rn">@(Model.From + i)</span></td>
+                            <td>
+                                <div class="ic">
+                                    <i class="bi @(string.IsNullOrEmpty(m.Icon) ? "bi-grid" : m.Icon)"></i>
+                                </div>
+                            </td>
+                            <td>
+                                <div class="cn-main">@m.Name</div>
+                            </td>
+                            <td>
+                                @if (!string.IsNullOrEmpty(m.AccessName))
+                                {
+                                    <span class="ctag">@m.AccessName</span>
+                                }
+                                else
+                                {
+                                    <span style="color:#e2e8f0;">—</span>
+                                }
+                            </td>
+                            <td class="d-none d-lg-table-cell" style="max-width:200px;">
+                                <span style="color:#64748b;font-size:.83rem;">
+                                    @(string.IsNullOrEmpty(m.Description) ? "—" : m.Description)
+                                </span>
+                            </td>
+                            <td>
+                                <span class="cc">@m.Children.Count</span>
+                                <span style="font-size:.78rem;color:#94a3b8;margin-left:.3rem;">
+                                    @(m.Children.Count == 1 ? "sub" : "subs")
+                                </span>
+                            </td>
+                            <td class="d-none d-md-table-cell">
+                                <span style="color:#94a3b8;font-weight:600;font-size:.82rem;">@m.SortOrder</span>
+                            </td>
+                            <td>
+                                @if (m.IsActive)
+                                {
+                                    <span class="s-on"><i class="bi bi-circle-fill" style="font-size:.45rem;"></i>Active</span>
+                                }
+                                else
+                                {
+                                    <span class="s-off"><i class="bi bi-circle-fill" style="font-size:.45rem;"></i>Inactive</span>
+                                }
+                            </td>
+                            <td>
+                                <div class="d-flex align-items-center gap-1">
+                                    <a href="/SystemModules/Details/@m.Id" class="ab" style="padding:.3rem .7rem;font-size:.78rem;">
+                                        <i class="bi bi-eye"></i> View
+                                    </a>
+                                    <button class="ab" style="padding:.3rem .7rem;font-size:.78rem;background:#fef3c7;color:#92400e;border-color:#fde68a;" onclick="openEditModule(@m.Id, '@m.Name', '@m.Icon', '@(m.Description ?? "")', '@(m.AccessName ?? "")', @m.SortOrder, @(m.IsActive ? "true" : "false"))">
+                                        <i class="bi bi-pencil"></i>
+                                    </button>
+                                    <button class="ab" style="padding:.3rem .7rem;font-size:.78rem;background:#fee2e2;color:#991b1b;border-color:#fecaca;" onclick="openDeleteModule(@m.Id, '@m.Name')">
+                                        <i class="bi bi-trash3"></i>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                }
+                else
+                {
+                    <tr>
+                        <td colspan="9">
+                            <div class="es">
+                                <i class="bi bi-grid-3x3-gap es-icon"></i>
+                                <h6>
+                                    @(string.IsNullOrEmpty(Model.SearchTerm)
+                                        ? "No modules found"
+                                        : "No modules match your search")
+                                </h6>
+                                <p>
+                                    @(string.IsNullOrEmpty(Model.SearchTerm)
+                                        ? "System modules will appear here once they are created."
+                                        : $"Try a different keyword or clear the search filter.")
+                                </p>
+                            </div>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Footer: results info + pagination -->
+    @if (Model.TotalCount > 0)
+    {
+        <div class="dc-foot">
+            <div class="ri">
+                Showing <strong>@Model.From</strong>–<strong>@Model.To</strong>
+                of <strong>@Model.TotalCount</strong> module@(Model.TotalCount != 1 ? "s" : "")
+            </div>
+
+            @if (Model.TotalPages > 1)
+            {
+                <nav class="pgn" aria-label="Pagination">
+                    <!-- Prev -->
+                    @if (Model.Page > 1)
+                    {
+                        <a class="pb wide" href="?search=@Model.SearchTerm&page=@(Model.Page - 1)&pageSize=@Model.PageSize">
+                            <i class="bi bi-chevron-left" style="font-size:.7rem;"></i> Prev
+                        </a>
+                    }
+                    else
+                    {
+                        <span class="pb wide off"><i class="bi bi-chevron-left" style="font-size:.7rem;"></i> Prev</span>
+                    }
+
+                    <!-- Page numbers (smart with ellipsis) -->
+                    @{
+                        int tp = Model.TotalPages;
+                        int cp = Model.Page;
+                        var pages = new List<int?>();
+
+                        if (tp <= 7)
+                        {
+                            for (int p = 1; p <= tp; p++) pages.Add(p);
+                        }
+                        else
+                        {
+                            pages.Add(1);
+                            if (cp > 3) pages.Add(null); // ellipsis
+                            for (int p = Math.Max(2, cp - 1); p <= Math.Min(tp - 1, cp + 1); p++)
+                                pages.Add(p);
+                            if (cp < tp - 2) pages.Add(null); // ellipsis
+                            pages.Add(tp);
+                        }
+                    }
+
+                    @foreach (var pn in pages)
+                    {
+                        if (pn == null)
+                        {
+                            <span class="pgn-dots">…</span>
+                        }
+                        else
+                        {
+                            <a class="pb @(pn == Model.Page ? "cur" : "")"
+                               href="?search=@Model.SearchTerm&page=@pn&pageSize=@Model.PageSize">@pn</a>
+                        }
+                    }
+
+                    <!-- Next -->
+                    @if (Model.Page < Model.TotalPages)
+                    {
+                        <a class="pb wide" href="?search=@Model.SearchTerm&page=@(Model.Page + 1)&pageSize=@Model.PageSize">
+                            Next <i class="bi bi-chevron-right" style="font-size:.7rem;"></i>
+                        </a>
+                    }
+                    else
+                    {
+                        <span class="pb wide off">Next <i class="bi bi-chevron-right" style="font-size:.7rem;"></i></span>
+                    }
+                </nav>
+            }
+        </div>
+    }
+</div>
+
+
+<!-- Toast -->
+<div style="position:fixed;bottom:1.75rem;right:1.75rem;z-index:9999;display:flex;flex-direction:column;gap:.5rem;pointer-events:none;" id="toastWrap"></div>
+
+<!-- Module Modal -->
+<div class="modal fade" id="moduleModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content" style="border-radius:14px;border:none;box-shadow:0 20px 60px rgba(0,0,0,.2);">
+            <div class="modal-header" style="border-bottom:1px solid #f1f5f9;">
+                <h5 class="modal-title" id="moduleModalTitle">Add Module</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="m_id" value="0" />
+                <div class="mb-3">
+                    <label class="form-label">Name <span style="color:#ef4444;">*</span></label>
+                    <input type="text" class="form-control" id="m_name" placeholder="e.g. Configuration" />
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Icon (Bootstrap Icon class)</label>
+                    <input type="text" class="form-control" id="m_icon" placeholder="e.g. bi-gear-fill" />
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Description</label>
+                    <textarea class="form-control" id="m_desc" rows="2" placeholder="Brief description"></textarea>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Access Name</label>
+                    <input type="text" class="form-control" id="m_access" placeholder="e.g. configuration" />
+                </div>
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">Sort Order</label>
+                        <input type="number" class="form-control" id="m_order" value="0" />
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">Status</label>
+                        <select class="form-select" id="m_active">
+                            <option value="true">Active</option>
+                            <option value="false">Inactive</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer" style="border-top:1px solid #f1f5f9;">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" id="saveModuleBtn" onclick="saveModule()">Save Module</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Delete Module Modal -->
+<div class="modal fade" id="deleteModuleModal" tabindex="-1">
+    <div class="modal-dialog modal-sm">
+        <div class="modal-content" style="border-radius:14px;border:none;">
+            <div class="modal-header border-0">
+                <h5 class="modal-title text-danger">Delete Module</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body text-center">
+                <input type="hidden" id="dm_id" />
+                <i class="bi bi-trash3 text-danger" style="font-size:3rem;"></i>
+                <p class="mt-3">Delete <strong id="dm_name"></strong>?</p>
+                <p class="text-muted small">This action cannot be undone.</p>
+            </div>
+            <div class="modal-footer border-0">
+                <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-danger btn-sm" onclick="confirmDeleteModule()">Delete</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function openCreateModule() {
+    document.getElementById('m_id').value = '0';
+    document.getElementById('m_name').value = '';
+    document.getElementById('m_icon').value = '';
+    document.getElementById('m_desc').value = '';
+    document.getElementById('m_access').value = '';
+    document.getElementById('m_order').value = '0';
+    document.getElementById('m_active').value = 'true';
+    document.getElementById('moduleModalTitle').textContent = 'Add Module';
+    new bootstrap.Modal(document.getElementById('moduleModal')).show();
+}
+
+function openEditModule(id, name, icon, desc, access, order, active) {
+    document.getElementById('m_id').value = id;
+    document.getElementById('m_name').value = name;
+    document.getElementById('m_icon').value = icon;
+    document.getElementById('m_desc').value = desc;
+    document.getElementById('m_access').value = access;
+    document.getElementById('m_order').value = order;
+    document.getElementById('m_active').value = active;
+    document.getElementById('moduleModalTitle').textContent = 'Edit Module';
+    new bootstrap.Modal(document.getElementById('moduleModal')).show();
+}
+
+async function saveModule() {
+    const id = parseInt(document.getElementById('m_id').value);
+    const payload = {
+        name: document.getElementById('m_name').value.trim(),
+        icon: document.getElementById('m_icon').value.trim(),
+        description: document.getElementById('m_desc').value.trim() || null,
+        accessName: document.getElementById('m_access').value.trim() || null,
+        sortOrder: parseInt(document.getElementById('m_order').value),
+        isActive: document.getElementById('m_active').value === 'true'
+    };
+    if (!payload.name) { showToast('Name is required', 'error'); return; }
+    
+    const btn = document.getElementById('saveModuleBtn');
+    btn.disabled = true;
+    btn.textContent = 'Saving...';
+    
+    try {
+        const url = id > 0 ? `/SystemModules/UpdateModule/${id}` : '/SystemModules/CreateModule';
+        const res = await fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+        if (data.success) {
+            showToast(data.message || 'Saved!', 'success');
+            bootstrap.Modal.getInstance(document.getElementById('moduleModal')).hide();
+            setTimeout(() => location.reload(), 800);
+        } else {
+            showToast(data.message || 'Failed', 'error');
+        }
+    } catch { showToast('Network error', 'error'); }
+    finally { btn.disabled = false; btn.textContent = 'Save Module'; }
+}
+
+function openDeleteModule(id, name) {
+    document.getElementById('dm_id').value = id;
+    document.getElementById('dm_name').textContent = name;
+    new bootstrap.Modal(document.getElementById('deleteModuleModal')).show();
+}
+
+async function confirmDeleteModule() {
+    const id = document.getElementById('dm_id').value;
+    try {
+        const res = await fetch(`/SystemModules/DeleteModule/${id}`, { method: 'POST' });
+        const data = await res.json();
+        if (data.success) {
+            showToast(data.message || 'Deleted', 'success');
+            bootstrap.Modal.getInstance(document.getElementById('deleteModuleModal')).hide();
+            setTimeout(() => location.reload(), 800);
+        } else {
+            showToast(data.message || 'Failed', 'error');
+        }
+    } catch { showToast('Network error', 'error'); }
+}
+
+function showToast(msg, type) {
+    const wrap = document.getElementById('toastWrap');
+    const el = document.createElement('div');
+    el.className = `alert alert-${type === 'success' ? 'success' : 'danger'} alert-dismissible fade show`;
+    el.style.cssText = 'pointer-events:all;box-shadow:0 8px 32px rgba(0,0,0,.15);';
+    el.innerHTML = `${msg}<button type="button" class="btn-close" data-bs-dismiss="alert"></button>`;
+    wrap.appendChild(el);
+    setTimeout(() => el.remove(), 3500);
+}
+</script>

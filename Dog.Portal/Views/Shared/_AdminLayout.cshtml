@@ -1,0 +1,824 @@
+@using System.Text.Json
+@using Dog.Portal.Models
+@{
+    var userSessionJson = Context.Session.GetString("UserSession");
+    var userSession = string.IsNullOrEmpty(userSessionJson) ? null : JsonSerializer.Deserialize<UserSessionModel>(userSessionJson);
+    var currentBranch = userSession?.Branches?.FirstOrDefault(b => b.Id == userSession.CurrentBranchId);
+
+    var currentController = ViewContext.RouteData.Values["controller"]?.ToString()?.ToLower() ?? "";
+    var currentAction = ViewContext.RouteData.Values["action"]?.ToString()?.ToLower() ?? "";
+    var currentPath = Context.Request.Path.Value?.ToLower() ?? "";
+
+    var userName = userSession?.Name ?? "User";
+    var nameParts = userName.Split(new[]{' '}, StringSplitOptions.RemoveEmptyEntries);
+    var initials = nameParts.Length >= 2
+        ? $"{char.ToUpper(nameParts[0][0])}{char.ToUpper(nameParts[nameParts.Length - 1][0])}"
+        : userName.Length >= 1 ? char.ToUpper(userName[0]).ToString() : "U";
+}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] - Dog Section</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <style>
+        :root {
+            --sidebar-w: 264px;
+            --sidebar-w-collapsed: 72px;
+            --topbar-h: 64px;
+            --brand-1: #667eea;
+            --brand-2: #764ba2;
+            --sb-bg: #0f172a;
+            --sb-border: rgba(255,255,255,0.07);
+            --sb-text: rgba(148,163,184,1);
+            --sb-text-hover: #e2e8f0;
+            --sb-text-active: #ffffff;
+            --sb-item-hover: rgba(255,255,255,0.06);
+            --sb-item-active: rgba(102,126,234,0.18);
+            --sb-accent: #818cf8;
+            --content-bg: #f1f5f9;
+            --card-bg: #ffffff;
+            --card-shadow: 0 1px 3px rgba(0,0,0,0.06), 0 4px 16px rgba(0,0,0,0.05);
+            --card-shadow-hover: 0 4px 20px rgba(0,0,0,0.11), 0 8px 32px rgba(0,0,0,0.07);
+            --topbar-shadow: 0 1px 0 #e2e8f0, 0 2px 16px rgba(0,0,0,0.05);
+            --radius: 12px;
+            --transition: 0.3s cubic-bezier(0.4,0,0.2,1);
+        }
+
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: var(--content-bg);
+            color: #1e293b;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        /* ─── SIDEBAR ─────────────────────────────── */
+        .sidebar {
+            position: fixed;
+            inset: 0 auto 0 0;
+            width: var(--sidebar-w);
+            background: var(--sb-bg);
+            display: flex;
+            flex-direction: column;
+            transition: width var(--transition), transform var(--transition);
+            z-index: 1050;
+            overflow: hidden;
+            box-shadow: 4px 0 32px rgba(0,0,0,0.2);
+        }
+
+        .sidebar.collapsed { width: var(--sidebar-w-collapsed); }
+
+        /* header */
+        .sb-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 1rem;
+            height: var(--topbar-h);
+            border-bottom: 1px solid var(--sb-border);
+            flex-shrink: 0;
+        }
+
+        .sb-brand {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            text-decoration: none;
+            overflow: hidden;
+            flex: 1;
+        }
+
+        .sb-brand-icon {
+            width: 38px;
+            height: 38px;
+            background: linear-gradient(135deg, var(--brand-1) 0%, var(--brand-2) 100%);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #fff;
+            font-size: 1.1rem;
+            flex-shrink: 0;
+            box-shadow: 0 4px 12px rgba(102,126,234,0.4);
+        }
+
+        .sb-brand-text {
+            overflow: hidden;
+            transition: opacity 0.2s, width var(--transition);
+            white-space: nowrap;
+        }
+
+        .sb-brand-text strong {
+            display: block;
+            color: #f1f5f9;
+            font-size: 0.95rem;
+            font-weight: 700;
+            line-height: 1.2;
+        }
+
+        .sb-brand-text small {
+            color: var(--sb-text);
+            font-size: 0.7rem;
+            font-weight: 400;
+        }
+
+        .sb-collapse-btn {
+            width: 30px;
+            height: 30px;
+            background: rgba(255,255,255,0.07);
+            border: 1px solid var(--sb-border);
+            border-radius: 7px;
+            color: var(--sb-text);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.9rem;
+            flex-shrink: 0;
+            transition: background 0.2s, color 0.2s;
+        }
+
+        .sb-collapse-btn:hover { background: rgba(255,255,255,0.12); color: #fff; }
+
+        /* scroll area */
+        .sb-scroll {
+            flex: 1;
+            overflow-y: auto;
+            overflow-x: hidden;
+            padding: 0.625rem 0;
+            scrollbar-width: thin;
+            scrollbar-color: rgba(255,255,255,0.08) transparent;
+        }
+
+        .sb-scroll::-webkit-scrollbar { width: 3px; }
+        .sb-scroll::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 2px; }
+
+        /* section label */
+        .sb-section {
+            padding: 1rem 1.125rem 0.3rem;
+            font-size: 0.6rem;
+            font-weight: 700;
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+            color: rgba(148,163,184,0.4);
+            white-space: nowrap;
+            overflow: hidden;
+            transition: opacity 0.2s;
+        }
+
+        /* nav item */
+        .sb-item {
+            display: flex;
+            align-items: center;
+            gap: 0.875rem;
+            padding: 0.625rem 1.125rem;
+            color: var(--sb-text);
+            text-decoration: none;
+            border: none;
+            background: transparent;
+            width: 100%;
+            text-align: left;
+            cursor: pointer;
+            position: relative;
+            transition: background 0.18s, color 0.18s;
+            border-radius: 0;
+            white-space: nowrap;
+        }
+
+        .sb-item:hover {
+            background: var(--sb-item-hover);
+            color: var(--sb-text-hover);
+        }
+
+        .sb-item.active {
+            background: var(--sb-item-active);
+            color: var(--sb-text-active);
+        }
+
+        .sb-item.active::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 20%;
+            height: 60%;
+            width: 3px;
+            background: var(--sb-accent);
+            border-radius: 0 2px 2px 0;
+        }
+
+        .sb-item-icon {
+            width: 20px;
+            text-align: center;
+            flex-shrink: 0;
+            font-size: 1rem;
+            line-height: 1;
+        }
+
+        .sb-item-label {
+            flex: 1;
+            font-size: 0.855rem;
+            font-weight: 500;
+            overflow: hidden;
+            white-space: nowrap;
+            transition: opacity 0.15s;
+        }
+
+        .sb-arrow {
+            font-size: 0.65rem;
+            flex-shrink: 0;
+            transition: transform 0.25s ease, opacity 0.15s;
+            color: rgba(148,163,184,0.5);
+        }
+
+        .sb-arrow.open { transform: rotate(90deg); }
+
+        /* submenu */
+        .sb-sub-wrap {
+            display: grid;
+            grid-template-rows: 0fr;
+            transition: grid-template-rows 0.28s ease;
+            overflow: hidden;
+        }
+
+        .sb-sub-wrap.open { grid-template-rows: 1fr; }
+
+        .sb-sub-inner { overflow: hidden; }
+
+        .sb-sub-item {
+            display: flex;
+            align-items: center;
+            gap: 0.625rem;
+            padding: 0.5rem 1.125rem 0.5rem 3.125rem;
+            color: rgba(148,163,184,0.7);
+            text-decoration: none;
+            font-size: 0.82rem;
+            font-weight: 400;
+            transition: color 0.18s, background 0.18s;
+            white-space: nowrap;
+            position: relative;
+        }
+
+        .sb-sub-item::before {
+            content: '';
+            position: absolute;
+            left: 2.25rem;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 5px;
+            height: 5px;
+            border-radius: 50%;
+            background: rgba(148,163,184,0.25);
+            transition: background 0.18s, width 0.18s, height 0.18s;
+        }
+
+        .sb-sub-item:hover {
+            color: #e2e8f0;
+            background: rgba(255,255,255,0.04);
+        }
+
+        .sb-sub-item:hover::before { background: var(--sb-accent); }
+
+        .sb-sub-item.active {
+            color: #ffffff;
+            font-weight: 500;
+        }
+
+        .sb-sub-item.active::before {
+            background: var(--sb-accent);
+            width: 7px;
+            height: 7px;
+        }
+
+        /* collapsed state — hide text */
+        .sidebar.collapsed .sb-brand-text,
+        .sidebar.collapsed .sb-section,
+        .sidebar.collapsed .sb-item-label,
+        .sidebar.collapsed .sb-arrow,
+        .sidebar.collapsed .sb-footer-info {
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .sidebar.collapsed .sb-item { justify-content: center; padding: 0.7rem; }
+        .sidebar.collapsed .sb-sub-wrap { grid-template-rows: 0fr !important; }
+        .sidebar.collapsed .sb-collapse-btn i { transform: scaleX(-1); }
+
+        /* footer */
+        .sb-footer {
+            padding: 0.875rem 1rem;
+            border-top: 1px solid var(--sb-border);
+            flex-shrink: 0;
+        }
+
+        .sb-user {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            overflow: hidden;
+        }
+
+        .sb-avatar {
+            width: 34px;
+            height: 34px;
+            border-radius: 8px;
+            background: linear-gradient(135deg, var(--brand-1) 0%, var(--brand-2) 100%);
+            color: #fff;
+            font-size: 0.75rem;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            letter-spacing: 0.03em;
+        }
+
+        .sb-footer-info { overflow: hidden; transition: opacity 0.15s; }
+
+        .sb-footer-info .name {
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: #f1f5f9;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .sb-footer-info .role {
+            font-size: 0.7rem;
+            color: var(--sb-text);
+            white-space: nowrap;
+        }
+
+        .sidebar.collapsed .sb-footer { padding: 0.875rem 0.625rem; }
+        .sidebar.collapsed .sb-user { justify-content: center; }
+
+        /* ─── MAIN WRAPPER ─────────────────────────── */
+        .main-wrap {
+            margin-left: var(--sidebar-w);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            transition: margin-left var(--transition);
+        }
+
+        .main-wrap.sb-collapsed { margin-left: var(--sidebar-w-collapsed); }
+
+        /* ─── TOPBAR ──────────────────────────────── */
+        .topbar {
+            background: var(--card-bg);
+            height: var(--topbar-h);
+            display: flex;
+            align-items: center;
+            padding: 0 1.5rem;
+            position: sticky;
+            top: 0;
+            z-index: 1040;
+            box-shadow: var(--topbar-shadow);
+            gap: 0.75rem;
+        }
+
+        .mobile-menu-btn {
+            display: none;
+            background: none;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            width: 38px;
+            height: 38px;
+            font-size: 1.2rem;
+            color: #64748b;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            flex-shrink: 0;
+            transition: background 0.18s;
+        }
+
+        .mobile-menu-btn:hover { background: #f8fafc; }
+
+        .topbar-title {
+            font-size: 0.92rem;
+            color: #64748b;
+            font-weight: 500;
+        }
+
+        .topbar-title strong { color: #1e293b; font-weight: 700; }
+
+        .topbar-right {
+            margin-left: auto;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .tb-icon-btn {
+            width: 38px;
+            height: 38px;
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 9px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #64748b;
+            font-size: 1rem;
+            text-decoration: none;
+            transition: all 0.18s;
+            cursor: pointer;
+        }
+
+        .tb-icon-btn:hover { background: #f1f5f9; color: #334155; border-color: #cbd5e1; }
+
+        .branch-pill {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 9px;
+            padding: 0.4rem 0.875rem;
+            font-size: 0.82rem;
+            font-weight: 500;
+            color: #374151;
+            cursor: pointer;
+            transition: all 0.18s;
+            white-space: nowrap;
+        }
+
+        .branch-pill:hover { background: #f1f5f9; border-color: #cbd5e1; }
+        .branch-pill .bi-building { color: var(--brand-1); }
+        .branch-pill .chevron { font-size: 0.6rem; color: #94a3b8; }
+
+        .user-pill {
+            display: flex;
+            align-items: center;
+            gap: 0.625rem;
+            padding: 0.3rem 0.75rem 0.3rem 0.3rem;
+            border: 1px solid #e2e8f0;
+            border-radius: 50px;
+            background: #f8fafc;
+            cursor: pointer;
+            transition: all 0.18s;
+        }
+
+        .user-pill:hover { background: #f1f5f9; border-color: #cbd5e1; }
+
+        .user-pill-avatar {
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--brand-1) 0%, var(--brand-2) 100%);
+            color: #fff;
+            font-size: 0.7rem;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .user-pill-name {
+            font-size: 0.82rem;
+            font-weight: 600;
+            color: #334155;
+        }
+
+        /* ─── CONTENT ─────────────────────────────── */
+        .content-area {
+            padding: 1.75rem 2rem;
+            flex: 1;
+        }
+
+        /* ─── DROPDOWN ────────────────────────────── */
+        .dropdown-menu {
+            border: 1px solid #e2e8f0;
+            box-shadow: 0 4px 6px -2px rgba(0,0,0,0.06), 0 12px 32px rgba(0,0,0,0.1);
+            border-radius: 12px;
+            padding: 0.5rem;
+            min-width: 200px;
+        }
+
+        .dropdown-item {
+            border-radius: 7px;
+            padding: 0.5rem 0.875rem;
+            font-size: 0.855rem;
+            color: #374151;
+            transition: background 0.15s;
+        }
+
+        .dropdown-item:hover { background: #f8fafc; color: #111827; }
+        .dropdown-item.text-danger:hover { background: #fef2f2; }
+        .dropdown-header { padding: 0.5rem 0.875rem; font-size: 0.775rem; color: #94a3b8; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; }
+        .dropdown-divider { margin: 0.375rem 0; border-color: #f1f5f9; }
+
+        /* ─── MOBILE OVERLAY ─────────────────────── */
+        .mobile-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.45);
+            z-index: 1049;
+            backdrop-filter: blur(2px);
+        }
+
+        .mobile-overlay.show { display: block; }
+
+        /* ─── RESPONSIVE ──────────────────────────── */
+        @@media (max-width: 991.98px) {
+            .sidebar {
+                transform: translateX(-100%);
+                width: var(--sidebar-w) !important;
+            }
+
+            .sidebar.mobile-open { transform: translateX(0); }
+            .main-wrap { margin-left: 0 !important; }
+            .mobile-menu-btn { display: flex; }
+            .sb-collapse-btn { display: none; }
+        }
+
+        @@media (max-width: 575.98px) {
+            .content-area { padding: 1.25rem 1rem; }
+            .user-pill-name { display: none; }
+            .branch-pill .branch-name { display: none; }
+        }
+    </style>
+</head>
+<body>
+    <div class="mobile-overlay" id="mobileOverlay"></div>
+
+    <!-- ═══ SIDEBAR ══════════════════════════════════════════════ -->
+    <aside class="sidebar" id="sidebar">
+        <!-- Brand header -->
+        <div class="sb-header">
+            <a href="/Dashboard" class="sb-brand">
+                <div class="sb-brand-icon"><i class="bi bi-heart-fill"></i></div>
+                <div class="sb-brand-text">
+                    <strong>Dog Section</strong>
+                    <small>Management System</small>
+                </div>
+            </a>
+            <button class="sb-collapse-btn" id="sbCollapseBtn" title="Toggle sidebar">
+                <i class="bi bi-layout-sidebar-reverse"></i>
+            </button>
+        </div>
+
+        <!-- Navigation -->
+        <div class="sb-scroll">
+            <div class="sb-section">Main</div>
+
+            <a href="/Dashboard" class="sb-item @(currentController == "dashboard" ? "active" : "")">
+                <span class="sb-item-icon"><i class="bi bi-speedometer2"></i></span>
+                <span class="sb-item-label">Dashboard</span>
+            </a>
+
+            @if (userSession?.Menus != null && userSession.Menus.Any())
+            {
+                // Build a fast-lookup permission set.
+                // Rule: a submodule is only visible if the user has its AccessName as a permission.
+                // If a menu has children but none are accessible, hide the whole menu.
+                var permSet = new HashSet<string>(
+                    userSession.Permissions ?? new(),
+                    StringComparer.OrdinalIgnoreCase);
+
+                <div class="sb-section">Menu</div>
+
+                @foreach (var menu in userSession.Menus.OrderBy(m => m.SortOrder))
+                {
+                    if (menu.Children?.Any() == true)
+                    {
+                        // Filter submodules by permission
+                        var visibleChildren = menu.Children
+                            .Where(s => string.IsNullOrEmpty(s.AccessName) || permSet.Contains(s.AccessName))
+                            .OrderBy(s => s.Order)
+                            .ToList();
+
+                        // Menu assigned but role has no submodule permissions → hide menu entirely
+                        if (!visibleChildren.Any()) { continue; }
+
+                        var hasActiveChild = visibleChildren.Any(s =>
+                            !string.IsNullOrEmpty(s.Route) && currentPath.Contains(s.Route.ToLower()));
+
+                        <div class="sb-group">
+                            <button class="sb-item @(hasActiveChild ? "active" : "")" type="button"
+                                    onclick="toggleGroup(this)" aria-expanded="@(hasActiveChild ? "true" : "false")">
+                                <span class="sb-item-icon">
+                                    <i class="bi @(menu.Icon ?? "bi-folder2")"></i>
+                                </span>
+                                <span class="sb-item-label">@menu.Name</span>
+                                <i class="bi bi-chevron-right sb-arrow @(hasActiveChild ? "open" : "")"></i>
+                            </button>
+                            <div class="sb-sub-wrap @(hasActiveChild ? "open" : "")">
+                                <div class="sb-sub-inner">
+                                    @foreach (var sub in visibleChildren)
+                                    {
+                                        var isSubActive = !string.IsNullOrEmpty(sub.Route) &&
+                                                          currentPath.Contains(sub.Route.ToLower());
+                                        <a href="/@sub.Route" class="sb-sub-item @(isSubActive ? "active" : "")">
+                                            @sub.Name
+                                        </a>
+                                    }
+                                </div>
+                            </div>
+                        </div>
+                    }
+                    else
+                    {
+                        // Standalone menu: respect its AccessName permission too
+                        if (!string.IsNullOrEmpty(menu.AccessName) && !permSet.Contains(menu.AccessName)) { continue; }
+
+                        var isActive = !string.IsNullOrEmpty(menu.AccessName) &&
+                                       currentPath.Contains(menu.AccessName.ToLower());
+                        <a href="/@menu.AccessName" class="sb-item @(isActive ? "active" : "")">
+                            <span class="sb-item-icon">
+                                <i class="bi @(menu.Icon ?? "bi-circle")"></i>
+                            </span>
+                            <span class="sb-item-label">@menu.Name</span>
+                        </a>
+                    }
+                }
+            }
+        </div>
+
+        <!-- User footer -->
+        <div class="sb-footer">
+            <div class="sb-user">
+                <div class="sb-avatar">@initials</div>
+                <div class="sb-footer-info">
+                    <div class="name">@userSession?.Name</div>
+                    <div class="role">@(userSession?.Role ?? "User")</div>
+                </div>
+            </div>
+        </div>
+    </aside>
+
+    <!-- ═══ MAIN ════════════════════════════════════════════════ -->
+    <div class="main-wrap" id="mainWrap">
+
+        <!-- Topbar -->
+        <header class="topbar">
+            <button class="mobile-menu-btn" id="mobileMenuBtn">
+                <i class="bi bi-list"></i>
+            </button>
+
+            <div class="topbar-title d-none d-sm-block">
+                Dog Section &nbsp;/&nbsp; <strong>@ViewData["Title"]</strong>
+            </div>
+
+            <div class="topbar-right">
+                @if (userSession?.IsHeadOffice == true && userSession.Branches?.Any() == true)
+                {
+                    <div class="dropdown">
+                        <button class="branch-pill" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                            <i class="bi bi-building"></i>
+                            <span class="branch-name">@(currentBranch?.CompanyName ?? "Select Branch")</span>
+                            <i class="bi bi-chevron-down chevron"></i>
+                        </button>
+                        <ul class="dropdown-menu dropdown-menu-end">
+                            <li><h6 class="dropdown-header">Switch Branch</h6></li>
+                            <li><hr class="dropdown-divider"></li>
+                            @foreach (var branch in userSession.Branches.Where(b => b.IsActive))
+                            {
+                                <li>
+                                    <a class="dropdown-item" href="#"
+                                       onclick="switchBranch(@branch.Id); return false;">
+                                        <div class="d-flex align-items-center gap-2">
+                                            <i class="bi bi-building-fill" style="color: var(--brand-1); font-size:.8rem;"></i>
+                                            <div style="flex:1;">
+                                                <div class="fw-semibold" style="font-size:.845rem;">@branch.CompanyName</div>
+                                                @if (branch.Location != null)
+                                                {
+                                                    <div class="text-muted" style="font-size:.75rem;">@branch.Location</div>
+                                                }
+                                            </div>
+                                            @if (branch.Id == userSession.CurrentBranchId)
+                                            {
+                                                <i class="bi bi-check2 text-success"></i>
+                                            }
+                                        </div>
+                                    </a>
+                                </li>
+                            }
+                        </ul>
+                    </div>
+                }
+
+                <div class="tb-icon-btn" title="Notifications">
+                    <i class="bi bi-bell"></i>
+                </div>
+
+                <div class="dropdown">
+                    <button class="user-pill border-0" type="button"
+                            data-bs-toggle="dropdown" aria-expanded="false">
+                        <div class="user-pill-avatar">@initials</div>
+                        <span class="user-pill-name">@userSession?.Name</span>
+                        <i class="bi bi-chevron-down" style="font-size:.6rem; color:#94a3b8; margin-left:.1rem;"></i>
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-end" style="min-width:220px;">
+                        <li>
+                            <div class="px-3 py-2 d-flex align-items-center gap-2">
+                                <div class="user-pill-avatar" style="width:38px;height:38px;border-radius:9px;font-size:.85rem;">@initials</div>
+                                <div>
+                                    <div style="font-size:.855rem;font-weight:600;color:#1e293b;">@userSession?.Name</div>
+                                    <div style="font-size:.775rem;color:#64748b;">@userSession?.Email</div>
+                                </div>
+                            </div>
+                        </li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li><a class="dropdown-item" href="#"><i class="bi bi-person me-2 text-muted"></i>Profile</a></li>
+                        <li><a class="dropdown-item" href="#"><i class="bi bi-gear me-2 text-muted"></i>Settings</a></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li>
+                            <form asp-controller="Auth" asp-action="Logout" method="post" class="m-0">
+                                <button type="submit" class="dropdown-item text-danger">
+                                    <i class="bi bi-box-arrow-right me-2"></i>Logout
+                                </button>
+                            </form>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </header>
+
+        <!-- Page content -->
+        <main class="content-area">
+            @RenderBody()
+        </main>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        const sidebar   = document.getElementById('sidebar');
+        const mainWrap  = document.getElementById('mainWrap');
+        const overlay   = document.getElementById('mobileOverlay');
+        const collapseBtn = document.getElementById('sbCollapseBtn');
+        const mobileBtn = document.getElementById('mobileMenuBtn');
+
+        // ── Desktop collapse ──────────────────────────────────
+        collapseBtn?.addEventListener('click', () => {
+            const collapsed = sidebar.classList.toggle('collapsed');
+            mainWrap.classList.toggle('sb-collapsed', collapsed);
+            localStorage.setItem('sb_collapsed', collapsed ? '1' : '0');
+        });
+
+        if (localStorage.getItem('sb_collapsed') === '1') {
+            sidebar.classList.add('collapsed');
+            mainWrap.classList.add('sb-collapsed');
+        }
+
+        // ── Mobile toggle ─────────────────────────────────────
+        mobileBtn?.addEventListener('click', () => {
+            const open = sidebar.classList.toggle('mobile-open');
+            overlay.classList.toggle('show', open);
+        });
+
+        overlay?.addEventListener('click', () => {
+            sidebar.classList.remove('mobile-open');
+            overlay.classList.remove('show');
+        });
+
+        // ── Collapsible menu groups ───────────────────────────
+        function toggleGroup(btn) {
+            const group   = btn.closest('.sb-group');
+            const wrap    = group.querySelector('.sb-sub-wrap');
+            const arrow   = btn.querySelector('.sb-arrow');
+            const isOpen  = wrap.classList.contains('open');
+
+            // Close all other groups
+            document.querySelectorAll('.sb-sub-wrap.open').forEach(w => {
+                w.classList.remove('open');
+                w.closest('.sb-group')?.querySelector('.sb-arrow')?.classList.remove('open');
+            });
+
+            if (!isOpen) {
+                wrap.classList.add('open');
+                arrow?.classList.add('open');
+            }
+        }
+
+        // ── Branch switcher ───────────────────────────────────
+        async function switchBranch(branchId) {
+            try {
+                const res = await fetch('/Auth/SwitchBranch', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ branchId })
+                });
+                if (!res.ok) throw new Error('Network error');
+                const data = await res.json();
+                if (data.success) {
+                    location.reload();
+                } else {
+                    alert(data.message ?? 'Could not switch branch.');
+                }
+            } catch {
+                alert('Failed to switch branch. Please try again.');
+            }
+        }
+    </script>
+    @await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>

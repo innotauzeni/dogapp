@@ -1,0 +1,112 @@
+name: Deploy to DigitalOcean
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      # ── 1. Checkout ──────────────────────────────────────────────────────────
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # ── 2. Setup .NET 8 ──────────────────────────────────────────────────────
+      - name: Setup .NET 8
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      # ── 3. Restore ───────────────────────────────────────────────────────────
+      - name: Restore dependencies
+        run: dotnet restore Dog.slnx
+
+      # ── 4. Build ─────────────────────────────────────────────────────────────
+      - name: Build solution
+        run: dotnet build Dog.slnx --no-restore -c Release
+
+      # ── 5. Publish Dog.Api ───────────────────────────────────────────────────
+      - name: Publish Dog.Api
+        run: |
+          dotnet publish Dog.Api/Dog.Api.csproj \
+            -c Release \
+            --no-restore \
+            -o ./publish/api
+
+      # ── 6. Publish Dog.Portal ────────────────────────────────────────────────
+      - name: Publish Dog.Portal
+        run: |
+          dotnet publish Dog.Portal/Dog.Portal.csproj \
+            -c Release \
+            --no-restore \
+            -o ./publish/portal
+
+      # ── 7. Package artifacts ─────────────────────────────────────────────────
+      - name: Create deployment archives
+        run: |
+          tar -czf api.tar.gz -C ./publish/api .
+          tar -czf portal.tar.gz -C ./publish/portal .
+
+      # ── 8. Copy files to Droplet via SCP ─────────────────────────────────────
+      - name: Copy archives to server
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.DO_HOST }}
+          username: ${{ secrets.DO_USER }}
+          key: ${{ secrets.DO_SSH_KEY }}
+          port: 22
+          source: "api.tar.gz,portal.tar.gz"
+          target: "/tmp/"
+
+      # ── 9. Deploy on Droplet ─────────────────────────────────────────────────
+      - name: Deploy on server
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.DO_HOST }}
+          username: ${{ secrets.DO_USER }}
+          key: ${{ secrets.DO_SSH_KEY }}
+          port: 22
+          script: |
+            set -e
+
+            # ── Stop services ──────────────────────────────────────────────────
+            sudo systemctl stop dog-api   || true
+            sudo systemctl stop dog-portal || true
+
+            # ── Deploy API ─────────────────────────────────────────────────────
+            sudo mkdir -p /var/www/dog-api
+            sudo tar -xzf /tmp/api.tar.gz -C /var/www/dog-api
+            sudo chown -R www-data:www-data /var/www/dog-api
+
+            # ── Deploy Portal ──────────────────────────────────────────────────
+            sudo mkdir -p /var/www/dog-portal
+            sudo tar -xzf /tmp/portal.tar.gz -C /var/www/dog-portal
+            sudo chown -R www-data:www-data /var/www/dog-portal
+
+            # ── Inject production appsettings (API) ────────────────────────────
+            sudo tee /var/www/dog-api/appsettings.Production.json > /dev/null <<'APPSETTINGS'
+            ${{ secrets.API_APPSETTINGS }}
+            APPSETTINGS
+
+            # ── Inject production appsettings (Portal) ─────────────────────────
+            sudo tee /var/www/dog-portal/appsettings.Production.json > /dev/null <<'PORTALSETTINGS'
+            ${{ secrets.PORTAL_APPSETTINGS }}
+            PORTALSETTINGS
+
+            # ── Reload systemd and start services ──────────────────────────────
+            sudo systemctl daemon-reload
+            sudo systemctl start dog-api
+            sudo systemctl start dog-portal
+            sudo systemctl enable dog-api
+            sudo systemctl enable dog-portal
+
+            # ── Reload Apache ──────────────────────────────────────────────────
+            sudo systemctl reload apache2
+
+            # ── Cleanup ────────────────────────────────────────────────────────
+            rm -f /tmp/api.tar.gz /tmp/portal.tar.gz
+
+            echo "✅ Deployment complete"

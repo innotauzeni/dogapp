@@ -1,0 +1,633 @@
+
+@using System.Text.Json
+@using Dog.Portal.Models
+@model Dog.Portal.Models.DashboardViewModel
+@{
+    Layout = "_AdminLayout";
+    ViewData["Title"] = "Dashboard";
+    var userSessionJson = Context.Session.GetString("UserSession");
+    var userSession = string.IsNullOrEmpty(userSessionJson) ? null : JsonSerializer.Deserialize<UserSessionModel>(userSessionJson);
+    var firstName = userSession?.Name?.Split(' ').FirstOrDefault() ?? "User";
+    var hour = DateTime.Now.Hour;
+    var greeting = hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
+    var currentBranch = userSession?.Branches?.FirstOrDefault(b => b.Id == userSession.CurrentBranchId);
+    var maxBreed = Model.TopBreeds.Count > 0 ? Model.TopBreeds.Max(b => b.Count) : 1;
+}
+<style>
+.dash-hero{background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);border-radius:16px;padding:2rem 2.25rem;color:#fff;position:relative;overflow:hidden;margin-bottom:1.75rem;box-shadow:0 8px 32px rgba(102,126,234,.3)}
+.dash-hero::before{content:'';position:absolute;width:220px;height:220px;background:rgba(255,255,255,.07);border-radius:50%;top:-80px;right:-60px}
+.dash-hero::after{content:'';position:absolute;width:140px;height:140px;background:rgba(255,255,255,.05);border-radius:50%;bottom:-50px;right:120px}
+.dash-hero-title{font-size:1.5rem;font-weight:700;margin:0 0 .35rem;position:relative;z-index:1}
+.dash-hero-sub{font-size:.9rem;color:rgba(255,255,255,.78);margin:0;position:relative;z-index:1}
+.dash-hero-emoji{font-size:2.75rem;line-height:1;position:relative;z-index:1;filter:drop-shadow(0 2px 8px rgba(0,0,0,.15))}
+.dash-date{font-size:.78rem;color:rgba(255,255,255,.6);margin-top:.75rem;position:relative;z-index:1}
+.kpi-card{background:#fff;border-radius:14px;padding:1.375rem 1.5rem;box-shadow:0 1px 3px rgba(0,0,0,.05),0 4px 16px rgba(0,0,0,.05);border:1px solid rgba(0,0,0,.04);transition:transform .22s ease,box-shadow .22s ease;height:100%;text-decoration:none;display:block;color:inherit}
+.kpi-card:hover{transform:translateY(-3px);box-shadow:0 6px 24px rgba(0,0,0,.1),0 10px 32px rgba(0,0,0,.07);color:inherit}
+.kpi-icon{width:48px;height:48px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:1.25rem;flex-shrink:0}
+.kpi-value{font-size:1.8rem;font-weight:700;color:#0f172a;line-height:1;margin:.5rem 0 .2rem;letter-spacing:-.03em}
+.kpi-label{font-size:.8rem;color:#94a3b8;font-weight:500;text-transform:uppercase;letter-spacing:.05em;margin:0}
+.kpi-sub{font-size:.75rem;color:#64748b;margin-top:.4rem}
+.section-card{background:#fff;border-radius:14px;padding:1.5rem;box-shadow:0 1px 3px rgba(0,0,0,.05),0 4px 16px rgba(0,0,0,.05);border:1px solid rgba(0,0,0,.04);height:100%}
+.section-title{font-size:.9rem;font-weight:700;color:#1e293b;margin:0 0 1.25rem;display:flex;align-items:center;gap:.5rem}
+.section-title i{color:#667eea}
+.qa-btn{display:flex;align-items:center;gap:.875rem;padding:.875rem 1rem;border:1.5px solid #e2e8f0;border-radius:11px;text-decoration:none;color:#334155;font-size:.855rem;font-weight:500;background:#fafbfc;transition:all .2s ease}
+.qa-btn:hover{border-color:#667eea;color:#667eea;background:rgba(102,126,234,.04);transform:translateY(-1px);box-shadow:0 4px 16px rgba(102,126,234,.12)}
+.qa-icon{width:38px;height:38px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:1rem;flex-shrink:0}
+.feed-row{display:flex;align-items:flex-start;gap:.875rem;padding:.75rem 0;border-bottom:1px solid #f1f5f9}
+.feed-row:last-child{border-bottom:none}
+.feed-dot{width:9px;height:9px;border-radius:50%;flex-shrink:0;margin-top:.32rem}
+.feed-text{flex:1;font-size:.845rem;color:#334155;line-height:1.45}
+.feed-badge{font-size:.72rem;font-weight:600;padding:.2rem .55rem;border-radius:10px;white-space:nowrap;flex-shrink:0}
+.prog-item{margin-bottom:.875rem}
+.prog-item:last-child{margin-bottom:0}
+.prog-header{display:flex;justify-content:space-between;margin-bottom:.4rem;font-size:.83rem}
+.prog-header span:first-child{color:#334155;font-weight:500}
+.prog-header span:last-child{color:#94a3b8;font-weight:600}
+.prog-track{height:7px;background:#f1f5f9;border-radius:4px;overflow:hidden}
+.prog-fill{height:100%;border-radius:4px;transition:width .8s ease}
+.sum-row{display:flex;align-items:center;justify-content:space-between;padding:.75rem 0;border-bottom:1px solid #f1f5f9;font-size:.845rem}
+.sum-row:last-child{border-bottom:none}
+.sum-label{color:#64748b;font-weight:500;display:flex;align-items:center;gap:.4rem}
+.sum-val{font-weight:700;color:#1e293b}
+.stat-pill{display:inline-flex;align-items:center;gap:.25rem;font-size:.72rem;font-weight:600;padding:.2rem .55rem;border-radius:10px}
+.pill-green{background:#d1fae5;color:#065f46}
+.pill-blue{background:#dbeafe;color:#1d4ed8}
+.pill-amber{background:#fef3c7;color:#92400e}
+.pill-red{background:#fee2e2;color:#991b1b}
+.pill-purple{background:#ede9fe;color:#6d28d9}
+.empty-feed{text-align:center;padding:2rem 1rem;color:#94a3b8;font-size:.855rem}
+.empty-feed i{font-size:2rem;display:block;margin-bottom:.5rem;color:#cbd5e1}
+.dog-avatar{width:32px;height:32px;border-radius:8px;background:linear-gradient(135deg,#667eea,#764ba2);color:#fff;display:inline-flex;align-items:center;justify-content:center;font-size:.75rem;font-weight:700;flex-shrink:0}
+.table-mini{width:100%;font-size:.82rem;border-collapse:collapse}
+.table-mini th{font-size:.7rem;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.06em;padding:.5rem .75rem;background:#f8fafc;border-bottom:1px solid #f1f5f9}
+.table-mini td{padding:.65rem .75rem;border-bottom:1px solid #f8fafc;color:#374151;vertical-align:middle}
+.table-mini tr:last-child td{border-bottom:none}
+.table-mini tr:hover td{background:#fafbff}
+.s-dot{width:8px;height:8px;border-radius:50%;display:inline-block}
+@@media(max-width:576px){.kpi-value{font-size:1.4rem}.dash-hero-title{font-size:1.2rem}}
+</style>
+
+@if (Model.FetchError != null) {
+    <div style="background:#fef3c7;border:1px solid #fde68a;border-radius:10px;padding:.75rem 1rem;color:#92400e;font-size:.845rem;display:flex;align-items:center;gap:.5rem;margin-bottom:1.25rem">
+        <i class="bi bi-exclamation-triangle-fill"></i> @Model.FetchError
+    </div>
+}
+
+<!-- Hero -->
+<div class="dash-hero">
+    <div class="d-flex justify-content-between align-items-start">
+        <div>
+            <h2 class="dash-hero-title">@greeting, @firstName! 👋</h2>
+            <p class="dash-hero-sub">Here's your dog management overview for today.</p>
+            <p class="dash-date"><i class="bi bi-calendar3 me-1"></i>@DateTime.Now.ToString("dddd, dd MMMM yyyy")</p>
+        </div>
+        <div class="dash-hero-emoji d-none d-md-block">🐕</div>
+    </div>
+</div>
+
+<!-- KPI Row 1 — Core entities -->
+<div class="row g-3 mb-3">
+    <div class="col-6 col-sm-4 col-xl-2">
+        <a href="/Dogs" class="kpi-card">
+            <div class="d-flex justify-content-between align-items-start">
+                <div>
+                    <p class="kpi-label">Dogs</p>
+                    <div class="kpi-value">@Model.TotalDogs</div>
+                    <div class="kpi-sub"><span class="stat-pill pill-green">@Model.ActiveDogs active</span></div>
+                </div>
+                <div class="kpi-icon" style="background:#ede9fe"><i class="bi bi-heart-fill" style="color:#7c3aed"></i></div>
+            </div>
+        </a>
+    </div>
+    <div class="col-6 col-sm-4 col-xl-2">
+        <a href="/Customers" class="kpi-card">
+            <div class="d-flex justify-content-between align-items-start">
+                <div>
+                    <p class="kpi-label">Customers</p>
+                    <div class="kpi-value">@Model.TotalCustomers</div>
+                    <div class="kpi-sub"><span class="stat-pill pill-blue">registered</span></div>
+                </div>
+                <div class="kpi-icon" style="background:#dbeafe"><i class="bi bi-people-fill" style="color:#1d4ed8"></i></div>
+            </div>
+        </a>
+    </div>
+    <div class="col-6 col-sm-4 col-xl-2">
+        <a href="/Dogs" class="kpi-card">
+            <div class="d-flex justify-content-between align-items-start">
+                <div>
+                    <p class="kpi-label">Litters</p>
+                    <div class="kpi-value">@Model.TotalLitters</div>
+                    <div class="kpi-sub"><span class="stat-pill pill-purple">recorded</span></div>
+                </div>
+                <div class="kpi-icon" style="background:#fce7f3"><i class="bi bi-collection-fill" style="color:#be185d"></i></div>
+            </div>
+        </a>
+    </div>
+    <div class="col-6 col-sm-4 col-xl-2">
+        <a href="/Dogs" class="kpi-card">
+            <div class="d-flex justify-content-between align-items-start">
+                <div>
+                    <p class="kpi-label">Matings</p>
+                    <div class="kpi-value">@Model.TotalMatingRecords</div>
+                    <div class="kpi-sub"><span class="stat-pill pill-amber">records</span></div>
+                </div>
+                <div class="kpi-icon" style="background:#fef3c7"><i class="bi bi-gender-ambiguous" style="color:#b45309"></i></div>
+            </div>
+        </a>
+    </div>
+    <div class="col-6 col-sm-4 col-xl-2">
+        <a href="/Deployments" class="kpi-card">
+            <div class="d-flex justify-content-between align-items-start">
+                <div>
+                    <p class="kpi-label">Deployments</p>
+                    <div class="kpi-value">@Model.TotalDeployments</div>
+                    <div class="kpi-sub"><span class="stat-pill pill-green">@Model.ActiveDeployments active</span></div>
+                </div>
+                <div class="kpi-icon" style="background:#d1fae5"><i class="bi bi-geo-alt-fill" style="color:#065f46"></i></div>
+            </div>
+        </a>
+    </div>
+    <div class="col-6 col-sm-4 col-xl-2">
+        <a href="/Banks" class="kpi-card">
+            <div class="d-flex justify-content-between align-items-start">
+                <div>
+                    <p class="kpi-label">Banks</p>
+                    <div class="kpi-value">@Model.TotalBanks</div>
+                    <div class="kpi-sub"><span class="stat-pill pill-blue">@Model.TotalBankAccounts accounts</span></div>
+                </div>
+                <div class="kpi-icon" style="background:#e0f2fe"><i class="bi bi-bank2" style="color:#0369a1"></i></div>
+            </div>
+        </a>
+    </div>
+</div>
+
+<!-- Main panels -->
+<div class="row g-3 mb-3">
+    <!-- Quick Actions -->
+    <div class="col-lg-3 col-md-6">
+        <div class="section-card">
+            <h6 class="section-title"><i class="bi bi-lightning-charge-fill"></i> Quick Actions</h6>
+            <div class="d-flex flex-column gap-2">
+                <a href="/Dogs" class="qa-btn">
+                    <div class="qa-icon" style="background:#ede9fe"><i class="bi bi-plus-circle-fill" style="color:#7c3aed"></i></div>
+                    Register New Dog
+                </a>
+                <a href="/Dogs" class="qa-btn">
+                    <div class="qa-icon" style="background:#fce7f3"><i class="bi bi-heart-fill" style="color:#be185d"></i></div>
+                    Record Mating
+                </a>
+                <a href="/Customers" class="qa-btn">
+                    <div class="qa-icon" style="background:#dbeafe"><i class="bi bi-person-plus-fill" style="color:#1d4ed8"></i></div>
+                    Add Customer
+                </a>
+                <a href="/Deployments" class="qa-btn">
+                    <div class="qa-icon" style="background:#d1fae5"><i class="bi bi-geo-alt-fill" style="color:#065f46"></i></div>
+                    New Deployment
+                </a>
+                <a href="/Banks" class="qa-btn">
+                    <div class="qa-icon" style="background:#e0f2fe"><i class="bi bi-bank2" style="color:#0369a1"></i></div>
+                    Manage Banks
+                </a>
+                <a href="/Reports" class="qa-btn">
+                    <div class="qa-icon" style="background:#fef3c7"><i class="bi bi-file-earmark-bar-graph-fill" style="color:#b45309"></i></div>
+                    View Reports
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Recent Dogs -->
+    <div class="col-lg-5 col-md-6">
+        <div class="section-card">
+            <div class="d-flex align-items-center justify-content-between mb-3">
+                <h6 class="section-title mb-0"><i class="bi bi-heart-fill"></i> Recent Dogs</h6>
+                <a href="/Dogs" style="font-size:.78rem;color:#667eea;text-decoration:none;font-weight:600">View all <i class="bi bi-arrow-right"></i></a>
+            </div>
+            @if (Model.RecentDogs.Count > 0) {
+                <table class="table-mini">
+                    <thead><tr><th>Dog</th><th>Breed</th><th>Gender</th><th>Status</th></tr></thead>
+                    <tbody>
+                        @foreach (var d in Model.RecentDogs) {
+                            <tr>
+                                <td>
+                                    <div style="display:flex;align-items:center;gap:.5rem">
+                                        <div class="dog-avatar">@(d.Name.Length > 0 ? d.Name[0].ToString().ToUpper() : "?")</div>
+                                        <span style="font-weight:600;color:#1e293b">@d.Name</span>
+                                    </div>
+                                </td>
+                                <td style="color:#64748b">@d.Breed</td>
+                                <td>
+                                    @if (d.Gender?.ToLower() == "male") {
+                                        <span class="stat-pill pill-blue"><i class="bi bi-gender-male"></i> M</span>
+                                    } else if (d.Gender?.ToLower() == "female") {
+                                        <span class="stat-pill" style="background:#fce7f3;color:#be185d"><i class="bi bi-gender-female"></i> F</span>
+                                    } else {
+                                        <span style="color:#94a3b8;font-size:.78rem">—</span>
+                                    }
+                                </td>
+                                <td>
+                                    @if (d.IsActive) {
+                                        <span class="stat-pill pill-green"><span class="s-dot" style="background:#10b981"></span> Active</span>
+                                    } else {
+                                        <span class="stat-pill pill-red"><span class="s-dot" style="background:#ef4444"></span> Inactive</span>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            } else {
+                <div class="empty-feed"><i class="bi bi-heart"></i>No dogs registered yet.</div>
+            }
+        </div>
+    </div>
+
+    <!-- Breed Distribution -->
+    <div class="col-lg-4 col-md-12">
+        <div class="section-card">
+            <h6 class="section-title"><i class="bi bi-bar-chart-fill"></i> Breed Distribution</h6>
+            @if (Model.TopBreeds.Count > 0) {
+                var colors = new[] {
+                    "linear-gradient(90deg,#667eea,#764ba2)",
+                    "linear-gradient(90deg,#f093fb,#f5576c)",
+                    "linear-gradient(90deg,#4facfe,#00f2fe)",
+                    "linear-gradient(90deg,#43e97b,#38f9d7)",
+                    "linear-gradient(90deg,#fa709a,#fee140)"
+                };
+                for (int bi = 0; bi < Model.TopBreeds.Count; bi++) {
+                    var breed = Model.TopBreeds[bi];
+                    var pct = maxBreed > 0 ? (int)Math.Round(breed.Count * 100.0 / maxBreed) : 0;
+                    <div class="prog-item">
+                        <div class="prog-header">
+                            <span>@breed.Breed</span>
+                            <span>@breed.Count <span style="color:#cbd5e1;font-weight:400">(@breed.Percentage%)</span></span>
+                        </div>
+                        <div class="prog-track">
+                            <div class="prog-fill" style="width:@pct%;background:@colors[bi % colors.Length]"></div>
+                        </div>
+                    </div>
+                }
+            } else {
+                <div class="empty-feed"><i class="bi bi-bar-chart"></i>No breed data available yet.</div>
+            }
+
+            @if (Model.TotalDogs > 0) {
+                <div style="margin-top:1.25rem;padding-top:1rem;border-top:1px solid #f1f5f9">
+                    <div style="font-size:.78rem;color:#94a3b8;font-weight:600;text-transform:uppercase;letter-spacing:.05em;margin-bottom:.75rem">Gender Split</div>
+                    <div style="display:flex;gap:1rem">
+                        <div style="flex:1;text-align:center;background:#dbeafe;border-radius:10px;padding:.75rem">
+                            <div style="font-size:1.25rem;font-weight:800;color:#1d4ed8">@Model.MaleDogs</div>
+                            <div style="font-size:.72rem;color:#3b82f6;font-weight:600"><i class="bi bi-gender-male"></i> Male</div>
+                        </div>
+                        <div style="flex:1;text-align:center;background:#fce7f3;border-radius:10px;padding:.75rem">
+                            <div style="font-size:1.25rem;font-weight:800;color:#be185d">@Model.FemaleDogs</div>
+                            <div style="font-size:.72rem;color:#ec4899;font-weight:600"><i class="bi bi-gender-female"></i> Female</div>
+                        </div>
+                        @if (Model.TotalDogs - Model.MaleDogs - Model.FemaleDogs > 0) {
+                            <div style="flex:1;text-align:center;background:#f1f5f9;border-radius:10px;padding:.75rem">
+                                <div style="font-size:1.25rem;font-weight:800;color:#64748b">@(Model.TotalDogs - Model.MaleDogs - Model.FemaleDogs)</div>
+                                <div style="font-size:.72rem;color:#94a3b8;font-weight:600">Unknown</div>
+                            </div>
+                        }
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+<!-- Bottom row -->
+<div class="row g-3">
+    <!-- Recent Deployments -->
+    <div class="col-lg-6">
+        <div class="section-card">
+            <div class="d-flex align-items-center justify-content-between mb-3">
+                <h6 class="section-title mb-0"><i class="bi bi-geo-alt-fill"></i> Recent Deployments</h6>
+                <a href="/Deployments" style="font-size:.78rem;color:#667eea;text-decoration:none;font-weight:600">View all <i class="bi bi-arrow-right"></i></a>
+            </div>
+            @if (Model.RecentDeployments.Count > 0) {
+                <table class="table-mini">
+                    <thead><tr><th>Location</th><th>Deployed To</th><th>Guard</th><th>Status</th></tr></thead>
+                    <tbody>
+                        @foreach (var dep in Model.RecentDeployments) {
+                            <tr>
+                                <td style="font-weight:600;color:#1e293b" title="@dep.Location">
+                                    <div style="max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">@dep.Location</div>
+                                </td>
+                                <td style="color:#64748b" title="@dep.CompanyDeployedTo">
+                                    <div style="max-width:110px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">@dep.CompanyDeployedTo</div>
+                                </td>
+                                <td style="color:#64748b" title="@dep.SecurityGuardAssigned">
+                                    <div style="max-width:100px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">@dep.SecurityGuardAssigned</div>
+                                </td>
+                                <td>
+                                    @if (dep.IsActive) {
+                                        <span class="stat-pill pill-green"><span class="s-dot" style="background:#10b981"></span> Active</span>
+                                    } else {
+                                        <span class="stat-pill" style="background:#f1f5f9;color:#64748b">Ended</span>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            } else {
+                <div class="empty-feed"><i class="bi bi-geo-alt"></i>No deployments recorded yet.</div>
+            }
+        </div>
+    </div>
+
+    <!-- System Status + Recent Customers -->
+    <div class="col-lg-6">
+        <div class="row g-3 h-100">
+            <!-- System Status -->
+            <div class="col-12">
+                <div class="section-card">
+                    <h6 class="section-title"><i class="bi bi-info-circle-fill"></i> System Status</h6>
+                    <div class="sum-row">
+                        <span class="sum-label"><i class="bi bi-building"></i> Active Branch</span>
+                        <span class="sum-val">@(currentBranch?.CompanyName ?? "Head Office")</span>
+                    </div>
+                    <div class="sum-row">
+                        <span class="sum-label"><i class="bi bi-person-badge"></i> Logged in as</span>
+                        <span class="sum-val">@userSession?.Role</span>
+                    </div>
+                    <div class="sum-row">
+                        <span class="sum-label"><i class="bi bi-circle-fill" style="color:#10b981;font-size:.5rem"></i> Session</span>
+                        <span class="sum-val" style="color:#10b981">Active</span>
+                    </div>
+                    <div class="sum-row">
+                        <span class="sum-label"><i class="bi bi-calendar3"></i> Today</span>
+                        <span class="sum-val">@DateTime.Now.ToString("dd MMM yyyy")</span>
+                    </div>
+                    <div class="sum-row">
+                        <span class="sum-label"><i class="bi bi-dogs"></i> Total Dogs</span>
+                        <span class="sum-val">@Model.TotalDogs <span style="color:#94a3b8;font-weight:400;font-size:.8rem">(@Model.ActiveDogs active)</span></span>
+                    </div>
+                    <div class="sum-row">
+                        <span class="sum-label"><i class="bi bi-bank2"></i> Bank Accounts</span>
+                        <span class="sum-val">@Model.TotalBankAccounts <span style="color:#94a3b8;font-weight:400;font-size:.8rem">across @Model.TotalBanks banks</span></span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+<!-- Events Section -->
+<div class="row g-3 mt-1">
+    <div class="col-12">
+        <div class="section-card">
+            <div class="d-flex align-items-center justify-content-between mb-3">
+                <h6 class="section-title mb-0"><i class="bi bi-calendar-event-fill"></i> Events &amp; Reminders</h6>
+                <button class="qa-btn" style="padding:.5rem 1rem;font-size:.82rem" onclick="openEventModal()">
+                    <i class="bi bi-plus-lg" style="color:#667eea"></i> Add Event
+                </button>
+            </div>
+
+            <!-- Calendar strip — current week -->
+            <div id="calendarStrip" style="display:grid;grid-template-columns:repeat(7,1fr);gap:.5rem;margin-bottom:1.25rem"></div>
+
+            <!-- Upcoming events list -->
+            <div id="eventsList" style="min-height:80px">
+                <div style="text-align:center;padding:2rem;color:#94a3b8;font-size:.855rem" id="eventsEmpty">
+                    <i class="bi bi-calendar-x" style="font-size:2rem;display:block;margin-bottom:.5rem;color:#cbd5e1"></i>
+                    No events yet. Click <strong>Add Event</strong> to get started.
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ADD EVENT MODAL -->
+<div class="modal-backdrop-custom" id="eventModal">
+  <div class="modal-box" style="max-width:480px">
+    <div class="modal-hdr">
+      <h5><i class="bi bi-calendar-plus" style="color:#667eea"></i> Add Event</h5>
+      <button class="modal-close" onclick="closeModal('eventModal')"><i class="bi bi-x-lg"></i></button>
+    </div>
+    <div class="modal-body-p">
+      <div class="frow"><label>Title <span style="color:#ef4444">*</span></label><input class="finput" id="ev_title" placeholder="e.g. Vaccination due for Rex"></div>
+      <div class="frow-2">
+        <div class="frow"><label>Date <span style="color:#ef4444">*</span></label><input class="finput" type="date" id="ev_date"></div>
+        <div class="frow"><label>Time</label><input class="finput" type="time" id="ev_time"></div>
+      </div>
+      <div class="frow"><label>Category</label>
+        <select class="finput" id="ev_category">
+          <option value="general">📌 General</option>
+          <option value="vaccination">💉 Vaccination</option>
+          <option value="mating">❤️ Mating</option>
+          <option value="litter">🐾 Litter</option>
+          <option value="deployment">📍 Deployment</option>
+          <option value="other">📎 Other</option>
+        </select>
+      </div>
+      <div class="frow"><label>Description</label><textarea class="finput" id="ev_desc" rows="2" placeholder="Optional notes..."></textarea></div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn-cancel" onclick="closeModal('eventModal')">Cancel</button>
+      <button class="btn-pm" id="evSaveBtn" onclick="submitEvent()"><i class="bi bi-calendar-check"></i> Save Event</button>
+    </div>
+  </div>
+</div>
+
+<style>
+.cal-day{border-radius:10px;padding:.6rem .25rem;text-align:center;border:1.5px solid #f1f5f9;background:#fafbfc;cursor:default;transition:all .15s}
+.cal-day.today{background:linear-gradient(135deg,#667eea,#764ba2);color:#fff;border-color:transparent;box-shadow:0 4px 12px rgba(102,126,234,.3)}
+.cal-day.has-event{border-color:#667eea}
+.cal-day-name{font-size:.65rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#94a3b8;margin-bottom:.2rem}
+.cal-day.today .cal-day-name{color:rgba(255,255,255,.75)}
+.cal-day-num{font-size:1rem;font-weight:700;color:#1e293b;line-height:1}
+.cal-day.today .cal-day-num{color:#fff}
+.cal-day-dot{width:5px;height:5px;border-radius:50%;background:#667eea;margin:.3rem auto 0;display:none}
+.cal-day.has-event .cal-day-dot{display:block}
+.cal-day.today .cal-day-dot{background:rgba(255,255,255,.8)}
+.ev-item{display:flex;align-items:flex-start;gap:.75rem;padding:.75rem;border-radius:10px;border:1.5px solid #f1f5f9;margin-bottom:.5rem;transition:all .15s;background:#fff}
+.ev-item:hover{border-color:#e2e8f0;box-shadow:0 2px 8px rgba(0,0,0,.06)}
+.ev-item.completed{opacity:.55}
+.ev-item.completed .ev-title{text-decoration:line-through;color:#94a3b8}
+.ev-color-bar{width:4px;border-radius:4px;flex-shrink:0;align-self:stretch;min-height:40px}
+.ev-title{font-size:.875rem;font-weight:600;color:#1e293b;margin-bottom:.15rem}
+.ev-meta{font-size:.75rem;color:#94a3b8;display:flex;align-items:center;gap:.5rem;flex-wrap:wrap}
+.ev-cat-badge{font-size:.68rem;font-weight:600;padding:.15rem .45rem;border-radius:8px}
+.ev-actions{display:flex;gap:.375rem;margin-left:auto;flex-shrink:0}
+.ev-btn{width:28px;height:28px;border:1px solid #e2e8f0;border-radius:7px;background:#fff;color:#64748b;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:.8rem;transition:all .15s}
+.ev-btn:hover{background:#f8fafc}
+.ev-btn.done:hover{background:#d1fae5;color:#065f46;border-color:#a7f3d0}
+.ev-btn.del:hover{background:#fef2f2;color:#dc2626;border-color:#fecaca}
+.ev-section-hdr{font-size:.72rem;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.07em;margin:.75rem 0 .4rem;padding-bottom:.3rem;border-bottom:1px solid #f1f5f9}
+.modal-backdrop-custom{position:fixed;inset:0;background:rgba(15,23,42,.45);backdrop-filter:blur(3px);z-index:1050;display:none;align-items:center;justify-content:center;padding:1rem}
+.modal-backdrop-custom.open{display:flex}
+.modal-box{background:#fff;border-radius:16px;box-shadow:0 20px 60px rgba(0,0,0,.2);width:100%;max-height:90vh;overflow-y:auto;animation:mslide .22s ease}
+@@keyframes mslide{from{opacity:0;transform:translateY(-16px)}to{opacity:1;transform:translateY(0)}}
+.modal-hdr{display:flex;align-items:center;justify-content:space-between;padding:1.25rem 1.5rem;border-bottom:1px solid #f1f5f9}
+.modal-hdr h5{font-size:1rem;font-weight:800;color:#0f172a;margin:0;display:flex;align-items:center;gap:.5rem}
+.modal-close{width:30px;height:30px;border:none;background:#f1f5f9;border-radius:7px;color:#64748b;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:.9rem}
+.modal-close:hover{background:#e2e8f0}
+.modal-body-p{padding:1.375rem 1.5rem}
+.modal-foot{padding:1rem 1.5rem;border-top:1px solid #f1f5f9;display:flex;align-items:center;justify-content:flex-end;gap:.625rem}
+.frow{margin-bottom:1rem}
+.frow label{display:block;font-size:.8rem;font-weight:600;color:#374151;margin-bottom:.375rem}
+.frow-2{display:grid;grid-template-columns:1fr 1fr;gap:.875rem}
+.finput{width:100%;padding:.65rem .875rem;border:1.5px solid #e2e8f0;border-radius:9px;font-size:.855rem;color:#1e293b;background:#fff;outline:none}
+.finput:focus{border-color:#667eea;box-shadow:0 0 0 3px rgba(102,126,234,.1)}
+.btn-cancel{padding:.65rem 1.25rem;background:#f1f5f9;color:#64748b;border:1.5px solid #e2e8f0;border-radius:9px;font-size:.855rem;font-weight:600;cursor:pointer}
+.btn-cancel:hover{background:#e2e8f0}
+.btn-pm{padding:.65rem 1.5rem;background:linear-gradient(135deg,#667eea,#764ba2);color:#fff;border:none;border-radius:9px;font-size:.855rem;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:.4rem;min-width:120px;justify-content:center}
+.btn-pm:disabled{opacity:.6;cursor:not-allowed}
+.spin{width:14px;height:14px;border:2px solid rgba(255,255,255,.35);border-top-color:#fff;border-radius:50%;animation:spin .65s linear infinite;flex-shrink:0}
+@@keyframes spin{to{transform:rotate(360deg)}}
+.toast-wrap{position:fixed;bottom:1.75rem;right:1.75rem;z-index:9999;display:flex;flex-direction:column;gap:.5rem;pointer-events:none}
+.toast-msg{display:flex;align-items:center;gap:.625rem;padding:.875rem 1.25rem;border-radius:12px;font-size:.855rem;font-weight:600;box-shadow:0 8px 32px rgba(0,0,0,.15);pointer-events:all;transform:translateX(120%);transition:transform .3s cubic-bezier(.4,0,.2,1);max-width:320px}
+.toast-msg.show{transform:translateX(0)}
+.toast-success{background:#065f46;color:#fff}
+.toast-error{background:#991b1b;color:#fff}
+</style>
+
+<div class="toast-wrap" id="evToastWrap"></div>
+
+<script>
+var _allEvents = [];
+
+var CAT_META = {
+    general:    { label: 'General',    icon: '📌', bg: '#ede9fe', color: '#6d28d9' },
+    vaccination:{ label: 'Vaccination',icon: '💉', bg: '#d1fae5', color: '#065f46' },
+    mating:     { label: 'Mating',     icon: '❤️', bg: '#fce7f3', color: '#be185d' },
+    litter:     { label: 'Litter',     icon: '🐾', bg: '#fef3c7', color: '#92400e' },
+    deployment: { label: 'Deployment', icon: '📍', bg: '#dbeafe', color: '#1d4ed8' },
+    other:      { label: 'Other',      icon: '📎', bg: '#f1f5f9', color: '#64748b' }
+};
+
+function openModal(id){document.getElementById(id).classList.add('open');document.body.style.overflow='hidden';}
+function closeModal(id){document.getElementById(id).classList.remove('open');document.body.style.overflow='';}
+document.querySelectorAll('.modal-backdrop-custom').forEach(function(bd){bd.addEventListener('click',function(e){if(e.target===bd)closeModal(bd.id);});});
+document.addEventListener('keydown',function(e){if(e.key==='Escape'){document.querySelectorAll('.modal-backdrop-custom.open').forEach(function(m){closeModal(m.id);});}});
+
+function openEventModal(){
+    document.getElementById('ev_title').value='';
+    document.getElementById('ev_date').value=new Date().toISOString().split('T')[0];
+    document.getElementById('ev_time').value='';
+    document.getElementById('ev_category').value='general';
+    document.getElementById('ev_desc').value='';
+    openModal('eventModal');
+}
+
+function setLoading(id,on,html){var b=document.getElementById(id);b.disabled=on;if(on)b.innerHTML='<span class="spin"></span> Saving...';else if(html)b.innerHTML=html;}
+function showToast(msg,type){var w=document.getElementById('evToastWrap');var el=document.createElement('div');el.className='toast-msg toast-'+type;el.innerHTML='<i class="bi '+(type==='success'?'bi-check-circle-fill':'bi-exclamation-circle-fill')+'"></i>'+msg;w.appendChild(el);requestAnimationFrame(function(){el.classList.add('show');});setTimeout(function(){el.classList.remove('show');setTimeout(function(){el.remove();},350);},3000);}
+
+async function submitEvent(){
+    var title=document.getElementById('ev_title').value.trim();
+    var date=document.getElementById('ev_date').value;
+    if(!title){showToast('Title is required.','error');return;}
+    if(!date){showToast('Date is required.','error');return;}
+    setLoading('evSaveBtn',true);
+    try{
+        var r=await fetch('/Events/Create',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({title:title,description:document.getElementById('ev_desc').value.trim(),eventDate:date,eventTime:document.getElementById('ev_time').value,category:document.getElementById('ev_category').value})});
+        var d=await r.json();
+        if(d.success){showToast('Event added!','success');closeModal('eventModal');loadEvents();}
+        else showToast(d.message||'Failed.','error');
+    }catch(e){showToast('Network error.','error');}
+    finally{setLoading('evSaveBtn',false,'<i class="bi bi-calendar-check"></i> Save Event');}
+}
+
+async function toggleEvent(id){
+    try{var r=await fetch('/Events/Toggle/'+id,{method:'POST'});var d=await r.json();if(d.success)loadEvents();}
+    catch(e){showToast('Error.','error');}
+}
+
+async function deleteEvent(id){
+    if(!confirm('Delete this event?'))return;
+    try{var r=await fetch('/Events/Delete/'+id,{method:'POST'});var d=await r.json();if(d.success){showToast('Event deleted.','success');loadEvents();}else showToast(d.message||'Failed.','error');}
+    catch(e){showToast('Error.','error');}
+}
+
+function fmtDate(s){
+    var d=new Date(s);
+    return d.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric',year:'numeric'});
+}
+
+function renderCalendarStrip(events){
+    var strip=document.getElementById('calendarStrip');
+    var today=new Date();today.setHours(0,0,0,0);
+    var days=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+    var html='';
+    for(var i=0;i<7;i++){
+        var d=new Date(today);d.setDate(today.getDate()-today.getDay()+i);
+        var isToday=d.getTime()===today.getTime();
+        var ds=d.toISOString().split('T')[0];
+        var hasEv=events.some(function(e){return e.eventDate&&e.eventDate.startsWith(ds);});
+        html+='<div class="cal-day'+(isToday?' today':'')+(hasEv?' has-event':'')+'">'+
+            '<div class="cal-day-name">'+days[d.getDay()]+'</div>'+
+            '<div class="cal-day-num">'+d.getDate()+'</div>'+
+            '<div class="cal-day-dot"></div>'+
+            '</div>';
+    }
+    strip.innerHTML=html;
+}
+
+function renderEvents(events){
+    var container=document.getElementById('eventsList');
+    var empty=document.getElementById('eventsEmpty');
+    if(!events||events.length===0){
+        if(empty)empty.style.display='block';
+        container.innerHTML='<div style="text-align:center;padding:2rem;color:#94a3b8;font-size:.855rem"><i class="bi bi-calendar-x" style="font-size:2rem;display:block;margin-bottom:.5rem;color:#cbd5e1"></i>No events yet. Click <strong>Add Event</strong> to get started.</div>';
+        return;
+    }
+    if(empty)empty.style.display='none';
+
+    var today=new Date();today.setHours(0,0,0,0);
+    var upcoming=events.filter(function(e){return new Date(e.eventDate)>=today&&!e.isCompleted;}).sort(function(a,b){return new Date(a.eventDate)-new Date(b.eventDate);});
+    var past=events.filter(function(e){return new Date(e.eventDate)<today||e.isCompleted;}).sort(function(a,b){return new Date(b.eventDate)-new Date(a.eventDate);});
+
+    var html='';
+    if(upcoming.length>0){
+        html+='<div class="ev-section-hdr"><i class="bi bi-clock me-1"></i>Upcoming ('+upcoming.length+')</div>';
+        upcoming.forEach(function(ev){html+=renderEventItem(ev);});
+    }
+    if(past.length>0){
+        html+='<div class="ev-section-hdr"><i class="bi bi-check2-all me-1"></i>Past / Completed ('+past.length+')</div>';
+        past.slice(0,5).forEach(function(ev){html+=renderEventItem(ev);});
+    }
+    container.innerHTML=html;
+}
+
+function renderEventItem(ev){
+    var cat=CAT_META[ev.category]||CAT_META.general;
+    var timeStr=ev.eventTime?(' · '+ev.eventTime):'';
+    return '<div class="ev-item'+(ev.isCompleted?' completed':'')+'">'+
+        '<div class="ev-color-bar" style="background:'+ev.color+'"></div>'+
+        '<div style="flex:1;min-width:0">'+
+            '<div class="ev-title">'+escHtml(ev.title)+'</div>'+
+            '<div class="ev-meta">'+
+                '<span class="ev-cat-badge" style="background:'+cat.bg+';color:'+cat.color+'">'+cat.icon+' '+cat.label+'</span>'+
+                '<span><i class="bi bi-calendar3"></i> '+fmtDate(ev.eventDate)+timeStr+'</span>'+
+                (ev.description?'<span title="'+escHtml(ev.description)+'"><i class="bi bi-chat-text"></i></span>':'')+
+            '</div>'+
+        '</div>'+
+        '<div class="ev-actions">'+
+            '<button class="ev-btn done" onclick="toggleEvent(\''+ev.id+'\')" title="'+(ev.isCompleted?'Mark incomplete':'Mark complete')+'">'+
+                '<i class="bi '+(ev.isCompleted?'bi-arrow-counterclockwise':'bi-check-lg')+'"></i>'+
+            '</button>'+
+            '<button class="ev-btn del" onclick="deleteEvent(\''+ev.id+'\')" title="Delete"><i class="bi bi-trash3"></i></button>'+
+        '</div>'+
+    '</div>';
+}
+
+function escHtml(s){if(!s)return'';return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+
+async function loadEvents(){
+    try{
+        var r=await fetch('/Events/GetAll');
+        var d=await r.json();
+        if(d.success){
+            _allEvents=d.data||[];
+            renderCalendarStrip(_allEvents);
+            renderEvents(_allEvents);
+        }
+    }catch(e){console.error('Events load error:',e);}
+}
+
+// Load on page ready
+document.addEventListener('DOMContentLoaded',function(){loadEvents();});
+</script>

@@ -1,0 +1,680 @@
+@model Dog.Portal.Models.CountriesListViewModel
+@{
+    Layout = "_AdminLayout";
+    ViewData["Title"] = "Countries";
+}
+
+<style>
+    /* ── Header ─────────────────────────────────── */
+    .pg-hdr { display:flex; align-items:flex-start; justify-content:space-between; gap:1rem; flex-wrap:wrap; margin-bottom:1.5rem; }
+    .pg-hdr h4 { font-size:1.15rem; font-weight:800; color:#0f172a; margin:0 0 .25rem; letter-spacing:-.02em; }
+    .pg-hdr p  { font-size:.845rem; color:#64748b; margin:0; }
+    .hdr-acts { display:flex; align-items:center; gap:.5rem; flex-wrap:wrap; }
+
+    /* Stats */
+    .stats-row { display:grid; grid-template-columns:repeat(auto-fill,minmax(170px,1fr)); gap:.875rem; margin-bottom:1.5rem; }
+    .stat-card { background:#fff; border-radius:12px; border:1px solid #e9eef4; box-shadow:0 1px 4px rgba(0,0,0,.04); padding:1rem 1.25rem; display:flex; align-items:center; gap:.875rem; }
+    .stat-icon { width:42px; height:42px; border-radius:11px; display:flex; align-items:center; justify-content:center; font-size:1.1rem; flex-shrink:0; }
+    .si-total { background:linear-gradient(135deg,#ede9fe,#ddd6fe); color:#7c3aed; }
+    .si-prov  { background:linear-gradient(135deg,#dbeafe,#bfdbfe); color:#1d4ed8; }
+    .si-world { background:linear-gradient(135deg,#d1fae5,#a7f3d0); color:#065f46; }
+    .stat-body .val { font-size:1.35rem; font-weight:800; color:#0f172a; line-height:1; }
+    .stat-body .lbl { font-size:.75rem; color:#94a3b8; font-weight:500; margin-top:.2rem; }
+
+    /* Buttons */
+    .btn-new    { display:inline-flex; align-items:center; gap:.4rem; padding:.6rem 1.25rem; background:linear-gradient(135deg,#667eea,#764ba2); color:#fff; border:none; border-radius:9px; font-size:.845rem; font-weight:700; cursor:pointer; box-shadow:0 4px 14px rgba(102,126,234,.3); transition:all .2s; }
+    .btn-new:hover { transform:translateY(-1px); box-shadow:0 6px 20px rgba(102,126,234,.4); }
+    .btn-import { display:inline-flex; align-items:center; gap:.4rem; padding:.6rem 1.125rem; background:#ede9fe; color:#6d28d9; border:1.5px solid #ddd6fe; border-radius:9px; font-size:.845rem; font-weight:600; cursor:pointer; transition:all .18s; }
+    .btn-import:hover:not(:disabled) { background:#ddd6fe; }
+    .btn-import:disabled { opacity:.6; cursor:not-allowed; }
+
+    /* Data card */
+    .dc { background:#fff; border-radius:14px; border:1px solid #e9eef4; box-shadow:0 1px 4px rgba(0,0,0,.04),0 6px 20px rgba(0,0,0,.04); overflow:hidden; }
+    .dc-head { padding:1rem 1.375rem; border-bottom:1px solid #f1f5f9; background:#fafbfc; display:flex; align-items:center; justify-content:space-between; gap:1rem; flex-wrap:wrap; }
+
+    /* Search */
+    .srch-wrap { position:relative; }
+    .srch-wrap i { position:absolute; left:.875rem; top:50%; transform:translateY(-50%); color:#94a3b8; font-size:.9rem; pointer-events:none; }
+    .srch-input { width:280px; padding:.6rem .875rem .6rem 2.375rem; border:1.5px solid #e2e8f0; border-radius:9px; font-size:.845rem; color:#1e293b; background:#fff; outline:none; transition:border-color .2s; }
+    .srch-input:focus { border-color:#667eea; box-shadow:0 0 0 3px rgba(102,126,234,.1); }
+    .btn-srch { padding:.6rem 1rem; background:linear-gradient(135deg,#667eea,#764ba2); color:#fff; border:none; border-radius:9px; font-size:.845rem; font-weight:600; cursor:pointer; display:inline-flex; align-items:center; gap:.375rem; }
+    .btn-clr  { padding:.6rem .875rem; background:#f1f5f9; color:#64748b; border:1.5px solid #e2e8f0; border-radius:9px; font-size:.845rem; font-weight:500; text-decoration:none; display:inline-flex; align-items:center; gap:.3rem; }
+    .btn-clr:hover { background:#e2e8f0; }
+
+    /* Table */
+    .tbl-wrap { overflow:visible; }
+    .dt { width:100%; border-collapse:collapse; }
+    .dt thead th { padding:.75rem 1.125rem; font-size:.7rem; font-weight:700; color:#64748b; text-transform:uppercase; letter-spacing:.09em; background:#f8fafc; border-bottom:1px solid #f0f4f8; white-space:nowrap; }
+    .dt tbody td { padding:.875rem 1.125rem; font-size:.855rem; color:#374151; border-bottom:1px solid #f8fafc; vertical-align:middle; }
+    .dt tbody tr.main-row:hover td { background:#fafbff; }
+    .rn { color:#cbd5e1; font-size:.8rem; font-weight:600; }
+
+    /* Flag emoji circle */
+    .flag-circle {
+        width:38px; height:38px; border-radius:50%;
+        background:linear-gradient(135deg,#ede9fe,#ddd6fe);
+        display:flex; align-items:center; justify-content:center;
+        font-size:1.25rem; flex-shrink:0;
+        border:2px solid #fff; box-shadow:0 0 0 1px #e2e8f0;
+    }
+
+    .code-tag { display:inline-block; background:#f1f5f9; border:1px solid #e2e8f0; color:#475569; font-size:.76rem; font-weight:700; font-family:'Consolas','Monaco',monospace; padding:.2rem .55rem; border-radius:6px; }
+    .cn-main { font-weight:700; color:#1e293b; font-size:.9rem; }
+    .prov-cnt { display:inline-flex; align-items:center; gap:.35rem; background:#dbeafe; color:#1d4ed8; font-size:.76rem; font-weight:700; padding:.25rem .65rem; border-radius:20px; }
+
+    /* Action buttons */
+    .acts { display:flex; align-items:center; gap:.375rem; }
+    .ab { display:inline-flex; align-items:center; gap:.3rem; padding:.35rem .7rem; border-radius:7px; font-size:.78rem; font-weight:600; cursor:pointer; border:1.5px solid; transition:all .18s; text-decoration:none; background:#fff; }
+    .ab-expand { color:#4338ca; border-color:#e0e7ff; background:#eef2ff; }
+    .ab-expand:hover { background:#e0e7ff; }
+    .ab-expand.open i { transform:rotate(90deg); }
+    .ab-expand i { transition:transform .2s; }
+    .ab-import { color:#6d28d9; border-color:#ddd6fe; background:#ede9fe; }
+    .ab-import:hover:not(:disabled) { background:#ddd6fe; }
+    .ab-edit   { color:#0369a1; border-color:#bae6fd; background:#f0f9ff; }
+    .ab-edit:hover { background:#e0f2fe; }
+    .ab-del    { color:#991b1b; border-color:#fecaca; background:#fef2f2; }
+    .ab-del:hover { background:#fee2e2; }
+
+    /* Expanded row / drilldown */
+    .drill-row td { padding:0 !important; background:#fafbfc; border-bottom:1px solid #f1f5f9 !important; }
+    .drill-row.hidden { display:none; }
+    .drill-panel { padding:1.25rem 2rem 1.5rem; border-top:2px solid #667eea; }
+    .drill-hdr { display:flex; align-items:center; justify-content:space-between; margin-bottom:.875rem; flex-wrap:wrap; gap:.5rem; }
+    .drill-title { font-size:.82rem; font-weight:700; color:#1e293b; display:flex; align-items:center; gap:.5rem; }
+    .drill-title i { color:#667eea; }
+    .drill-count { font-size:.72rem; font-weight:600; color:#94a3b8; background:#fff; border:1px solid #e2e8f0; padding:.15rem .5rem; border-radius:20px; }
+
+    .prov-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(260px,1fr)); gap:.625rem; }
+    .prov-card { background:#fff; border:1.5px solid #e9eef4; border-radius:10px; overflow:hidden; }
+    .prov-hdr { display:flex; align-items:center; justify-content:space-between; padding:.625rem .875rem; cursor:pointer; transition:background .15s; }
+    .prov-hdr:hover { background:#f8fafc; }
+    .prov-hdr-left { display:flex; align-items:center; gap:.5rem; min-width:0; }
+    .prov-dot { width:8px; height:8px; border-radius:50%; background:#667eea; flex-shrink:0; }
+    .prov-name { font-size:.825rem; font-weight:600; color:#1e293b; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .prov-city-badge { font-size:.68rem; font-weight:700; color:#64748b; background:#f1f5f9; padding:.1rem .45rem; border-radius:10px; flex-shrink:0; }
+    .prov-toggle { color:#94a3b8; transition:transform .2s; flex-shrink:0; font-size:.75rem; }
+    .prov-hdr.open .prov-toggle { transform:rotate(90deg); color:#667eea; }
+
+    .cities-list { display:none; padding:.5rem .875rem .75rem 1.5rem; border-top:1px solid #f1f5f9; background:#fafbfc; max-height:200px; overflow-y:auto; }
+    .cities-list.open { display:block; }
+    .city-item { font-size:.78rem; color:#475569; padding:.2rem 0; display:flex; align-items:center; gap:.375rem; }
+    .city-item i { color:#94a3b8; font-size:.7rem; }
+    .cities-empty { font-size:.76rem; color:#94a3b8; font-style:italic; padding:.25rem 0; }
+
+    /* Footer + pagination */
+    .dc-foot { padding:.9rem 1.375rem; border-top:1px solid #f1f5f9; background:#fafbfc; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:.75rem; }
+    .ri { font-size:.82rem; color:#94a3b8; }
+    .ri strong { color:#374151; }
+    .pgn { display:flex; align-items:center; gap:.25rem; }
+    .pb { display:flex; align-items:center; justify-content:center; min-width:32px; height:32px; padding:0 .5rem; border:1.5px solid #e2e8f0; border-radius:7px; font-size:.8rem; font-weight:500; color:#64748b; text-decoration:none; background:#fff; transition:all .18s; }
+    .pb:hover { background:#f8fafc; color:#334155; }
+    .pb.cur { background:linear-gradient(135deg,#667eea,#764ba2); color:#fff; border-color:transparent; font-weight:700; }
+    .pb.off { opacity:.35; pointer-events:none; }
+    .pb.wide { padding:0 .875rem; }
+    .pgn-dots { padding:0 .25rem; color:#cbd5e1; font-size:.82rem; }
+
+    /* Empty state */
+    .es { text-align:center; padding:4rem 2rem; }
+    .es i { font-size:3rem; color:#e2e8f0; display:block; margin-bottom:1rem; }
+    .es h6 { font-weight:600; color:#64748b; margin:0 0 .375rem; }
+    .es p  { font-size:.845rem; color:#94a3b8; margin:0 0 1rem; }
+
+    .alert-err { background:#fef2f2; border:1px solid #fecaca; border-radius:10px; padding:.875rem 1.125rem; color:#dc2626; font-size:.845rem; display:flex; align-items:center; gap:.625rem; margin-bottom:1.25rem; }
+
+    /* Loader */
+    .drill-loading { display:flex; align-items:center; justify-content:center; padding:1.5rem; color:#94a3b8; font-size:.82rem; gap:.5rem; }
+    .spin { width:14px; height:14px; border:2px solid rgba(102,126,234,.25); border-top-color:#667eea; border-radius:50%; animation:sp .65s linear infinite; flex-shrink:0; }
+    .spin-w { border-color:rgba(255,255,255,.35); border-top-color:#fff; }
+    @@keyframes sp { to { transform:rotate(360deg); } }
+
+    /* ── Modals ────────────────────────────────── */
+    .modal-bd { position:fixed; inset:0; background:rgba(15,23,42,.45); backdrop-filter:blur(3px); z-index:1050; display:none; align-items:center; justify-content:center; padding:1rem; }
+    .modal-bd.open { display:flex; }
+    .modal-box { background:#fff; border-radius:16px; box-shadow:0 20px 60px rgba(0,0,0,.2); width:100%; max-width:440px; animation:mslide .22s ease; }
+    @@keyframes mslide { from { opacity:0; transform:translateY(-16px); } to { opacity:1; transform:translateY(0); } }
+    .modal-hdr { display:flex; align-items:center; justify-content:space-between; padding:1.25rem 1.5rem; border-bottom:1px solid #f1f5f9; }
+    .modal-hdr h5 { font-size:1rem; font-weight:800; color:#0f172a; margin:0; display:flex; align-items:center; gap:.5rem; }
+    .modal-close { width:30px; height:30px; border:none; background:#f1f5f9; border-radius:7px; color:#64748b; cursor:pointer; display:flex; align-items:center; justify-content:center; font-size:.9rem; transition:all .15s; }
+    .modal-close:hover { background:#e2e8f0; }
+    .modal-body { padding:1.375rem 1.5rem; }
+    .modal-foot { padding:1rem 1.5rem; border-top:1px solid #f1f5f9; display:flex; align-items:center; justify-content:flex-end; gap:.625rem; }
+    .frow { margin-bottom:1rem; }
+    .frow label { display:block; font-size:.8rem; font-weight:600; color:#374151; margin-bottom:.375rem; }
+    .frow label .req { color:#ef4444; }
+    .finput { width:100%; padding:.65rem .875rem; border:1.5px solid #e2e8f0; border-radius:9px; font-size:.855rem; color:#1e293b; background:#fff; outline:none; transition:border-color .2s; }
+    .finput:focus { border-color:#667eea; box-shadow:0 0 0 3px rgba(102,126,234,.1); }
+    .fhint { font-size:.75rem; color:#94a3b8; margin-top:.3rem; }
+    .ferr { font-size:.75rem; color:#dc2626; margin-top:.3rem; display:none; }
+    .btn-cancel { padding:.65rem 1.25rem; background:#f1f5f9; color:#64748b; border:1.5px solid #e2e8f0; border-radius:9px; font-size:.855rem; font-weight:600; cursor:pointer; }
+    .btn-primary { padding:.65rem 1.5rem; background:linear-gradient(135deg,#667eea,#764ba2); color:#fff; border:none; border-radius:9px; font-size:.855rem; font-weight:700; cursor:pointer; display:inline-flex; align-items:center; gap:.4rem; min-width:120px; justify-content:center; box-shadow:0 2px 8px rgba(102,126,234,.3); }
+    .btn-primary:disabled { opacity:.65; cursor:not-allowed; }
+    .btn-danger { padding:.65rem 1.5rem; background:linear-gradient(135deg,#ef4444,#dc2626); color:#fff; border:none; border-radius:9px; font-size:.855rem; font-weight:700; cursor:pointer; display:inline-flex; align-items:center; gap:.4rem; min-width:120px; justify-content:center; box-shadow:0 2px 8px rgba(239,68,68,.3); }
+    .del-icon { width:56px; height:56px; border-radius:50%; background:#fef2f2; display:flex; align-items:center; justify-content:center; margin:0 auto 1rem; font-size:1.4rem; color:#dc2626; }
+
+    /* Import confirm dialog */
+    .imp-box { max-width:480px; }
+    .imp-icon { width:58px; height:58px; border-radius:14px; background:linear-gradient(135deg,#ede9fe,#ddd6fe); display:flex; align-items:center; justify-content:center; font-size:1.5rem; color:#6d28d9; margin:0 auto 1rem; }
+    .imp-summary { background:#f8fafc; border:1px solid #e9eef4; border-radius:10px; padding:.875rem 1rem; margin-top:1rem; display:none; }
+    .imp-row { display:flex; justify-content:space-between; font-size:.825rem; padding:.2rem 0; }
+    .imp-row span:first-child { color:#64748b; }
+    .imp-row span:last-child { font-weight:700; color:#0f172a; }
+
+    /* Toast */
+    .toast-wrap { position:fixed; bottom:1.75rem; right:1.75rem; z-index:9999; display:flex; flex-direction:column; gap:.5rem; pointer-events:none; }
+    .toast-msg { display:flex; align-items:center; gap:.625rem; padding:.875rem 1.25rem; border-radius:12px; font-size:.855rem; font-weight:600; box-shadow:0 8px 32px rgba(0,0,0,.15); pointer-events:all; transform:translateX(120%); transition:transform .3s cubic-bezier(.4,0,.2,1); max-width:320px; }
+    .toast-msg.show { transform:translateX(0); }
+    .toast-success { background:#065f46; color:#fff; }
+    .toast-error   { background:#991b1b; color:#fff; }
+    .toast-info    { background:#1e40af; color:#fff; }
+
+    @@media (max-width:576px) { .srch-input { width:100%; } .dc-head { flex-direction:column; align-items:stretch; } .prov-grid { grid-template-columns:1fr; } }
+</style>
+
+<div class="toast-wrap" id="toastWrap"></div>
+
+<!-- Page header -->
+<div class="pg-hdr">
+    <div>
+        <h4><i class="bi bi-globe2 me-2" style="color:#667eea;"></i>Countries</h4>
+        <p>Manage countries, provinces, and cities. Drill down into any country to see its structure.</p>
+    </div>
+    <div class="hdr-acts">
+        <button class="btn-import" id="btnImportAll" onclick="importFromWeb()">
+            <i class="bi bi-cloud-arrow-down-fill"></i> Import from Web
+        </button>
+        <button class="btn-new" onclick="openCreate()">
+            <i class="bi bi-plus-lg"></i> New Country
+        </button>
+    </div>
+</div>
+
+@if (!string.IsNullOrEmpty(ViewBag.FetchError as string))
+{
+    <div class="alert-err"><i class="bi bi-exclamation-circle-fill"></i>@ViewBag.FetchError</div>
+}
+
+<!-- Stats -->
+<div class="stats-row">
+    <div class="stat-card">
+        <div class="stat-icon si-total"><i class="bi bi-globe-americas"></i></div>
+        <div class="stat-body">
+            <div class="val">@Model.TotalCount</div>
+            <div class="lbl">Countries</div>
+        </div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon si-prov"><i class="bi bi-map-fill"></i></div>
+        <div class="stat-body">
+            <div class="val">@Model.TotalProvinces</div>
+            <div class="lbl">Provinces / States</div>
+        </div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon si-world"><i class="bi bi-pin-map-fill"></i></div>
+        <div class="stat-body">
+            <div class="val" style="font-size:.95rem;">Geo Data</div>
+            <div class="lbl">Import from Web</div>
+        </div>
+    </div>
+</div>
+
+<!-- Data card -->
+<div class="dc">
+    <div class="dc-head">
+        <form method="get" class="d-flex align-items-center gap-2 flex-wrap">
+            <input type="hidden" name="page" value="1" />
+            <div class="srch-wrap">
+                <i class="bi bi-search"></i>
+                <input class="srch-input" type="text" name="search" value="@Model.SearchTerm" placeholder="Search by name or code…" autocomplete="off" />
+            </div>
+            <button type="submit" class="btn-srch"><i class="bi bi-search"></i> Search</button>
+            @if (!string.IsNullOrEmpty(Model.SearchTerm))
+            {
+                <a href="/Country" class="btn-clr"><i class="bi bi-x-circle"></i> Clear</a>
+            }
+        </form>
+    </div>
+
+    <div class="tbl-wrap">
+        <table class="dt">
+            <thead>
+                <tr>
+                    <th style="width:48px;">#</th>
+                    <th style="width:60px;">Flag</th>
+                    <th>Country</th>
+                    <th style="width:100px;">Code</th>
+                    <th style="width:130px;">Provinces</th>
+                    <th style="width:260px;">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (Model.Countries.Any())
+                {
+                    @for (int i = 0; i < Model.Countries.Count; i++)
+                    {
+                        var c = Model.Countries[i];
+                        var flag = GetFlagEmoji(c.Code);
+                        <tr class="main-row" data-id="@c.Id">
+                            <td><span class="rn">@(Model.From + i)</span></td>
+                            <td><div class="flag-circle">@flag</div></td>
+                            <td>
+                                <div class="cn-main">@c.Name</div>
+                            </td>
+                            <td><span class="code-tag">@c.Code</span></td>
+                            <td><span class="prov-cnt"><i class="bi bi-map" style="font-size:.7rem;"></i> @c.ProvinceCount</span></td>
+                            <td>
+                                <div class="acts">
+                                    <button class="ab ab-expand" onclick="toggleDrill(@c.Id, this)">
+                                        <i class="bi bi-chevron-right"></i> Provinces
+                                    </button>
+                                    <button class="ab ab-import" onclick="importCities('@c.Code', this)" title="Import cities from the web">
+                                        <i class="bi bi-cloud-download"></i>
+                                    </button>
+                                    <button class="ab ab-edit" onclick="openEdit(@c.Id, '@(c.Code?.Replace("'","\\'"))', '@(c.Name?.Replace("'","\\'"))')" title="Edit">
+                                        <i class="bi bi-pencil"></i>
+                                    </button>
+                                    <button class="ab ab-del" onclick="openDelete(@c.Id, '@(c.Name?.Replace("'","\\'"))')" title="Delete">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                        <tr class="drill-row hidden" id="drill-@c.Id">
+                            <td colspan="6">
+                                <div class="drill-panel" id="drill-panel-@c.Id">
+                                    <div class="drill-loading"><span class="spin"></span> Loading provinces…</div>
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                }
+                else
+                {
+                    <tr><td colspan="6">
+                        <div class="es">
+                            <i class="bi bi-globe2"></i>
+                            <h6>@(string.IsNullOrEmpty(Model.SearchTerm) ? "No countries yet" : "No countries match your search")</h6>
+                            <p>@(string.IsNullOrEmpty(Model.SearchTerm) ? "Import from the web or create manually." : "Try a different keyword or clear the filter.")</p>
+                            @if (string.IsNullOrEmpty(Model.SearchTerm))
+                            {
+                                <button class="btn-import" onclick="importFromWeb()"><i class="bi bi-cloud-arrow-down-fill"></i> Import Countries from Web</button>
+                            }
+                        </div>
+                    </td></tr>
+                }
+            </tbody>
+        </table>
+    </div>
+
+    @if (Model.TotalCount > 0)
+    {
+        <div class="dc-foot">
+            <div class="ri">Showing <strong>@Model.From</strong>–<strong>@Model.To</strong> of <strong>@Model.TotalCount</strong> countries</div>
+            @if (Model.TotalPages > 1)
+            {
+                <nav class="pgn">
+                    <a class="pb wide @(Model.Page<=1?"off":"")" href="?search=@Model.SearchTerm&page=@(Model.Page-1)">
+                        <i class="bi bi-chevron-left" style="font-size:.7rem;"></i> Prev
+                    </a>
+                    @{
+                        int tp=Model.TotalPages,cp=Model.Page;
+                        var pages=new List<int?>();
+                        if(tp<=7){for(int p=1;p<=tp;p++)pages.Add(p);}
+                        else{pages.Add(1);if(cp>3)pages.Add(null);for(int p=Math.Max(2,cp-1);p<=Math.Min(tp-1,cp+1);p++)pages.Add(p);if(cp<tp-2)pages.Add(null);pages.Add(tp);}
+                    }
+                    @foreach(var pn in pages){
+                        if(pn==null){<span class="pgn-dots">…</span>}
+                        else{<a class="pb @(pn==Model.Page?"cur":"")" href="?search=@Model.SearchTerm&page=@pn">@pn</a>}
+                    }
+                    <a class="pb wide @(Model.Page>=Model.TotalPages?"off":"")" href="?search=@Model.SearchTerm&page=@(Model.Page+1)">
+                        Next <i class="bi bi-chevron-right" style="font-size:.7rem;"></i>
+                    </a>
+                </nav>
+            }
+        </div>
+    }
+</div>
+
+<!-- ══ CREATE / EDIT MODAL ═════════════════════════════════════ -->
+<div class="modal-bd" id="formModal">
+    <div class="modal-box">
+        <div class="modal-hdr">
+            <h5 id="formTitle"><i class="bi bi-globe-americas" style="color:#667eea;"></i> New Country</h5>
+            <button class="modal-close" onclick="closeModal('formModal')"><i class="bi bi-x-lg"></i></button>
+        </div>
+        <div class="modal-body">
+            <input type="hidden" id="f_id" value="0" />
+            <div class="frow">
+                <label>ISO Code <span class="req">*</span></label>
+                <input class="finput" id="f_code" type="text" placeholder="e.g. ZW" maxlength="3" style="text-transform:uppercase;" />
+                <div class="fhint">ISO 3166-1 alpha-2 or alpha-3 code (2–3 letters)</div>
+                <div class="ferr" id="f_code_err"></div>
+            </div>
+            <div class="frow">
+                <label>Country Name <span class="req">*</span></label>
+                <input class="finput" id="f_name" type="text" placeholder="e.g. Zimbabwe" />
+                <div class="ferr" id="f_name_err"></div>
+            </div>
+        </div>
+        <div class="modal-foot">
+            <button class="btn-cancel" onclick="closeModal('formModal')">Cancel</button>
+            <button class="btn-primary" id="formSaveBtn" onclick="saveCountry()">
+                <i class="bi bi-check2-circle"></i> Save
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- ══ DELETE MODAL ═════════════════════════════════════════ -->
+<div class="modal-bd" id="deleteModal">
+    <div class="modal-box">
+        <div class="modal-hdr">
+            <h5><i class="bi bi-trash3-fill" style="color:#dc2626;"></i> Delete Country</h5>
+            <button class="modal-close" onclick="closeModal('deleteModal')"><i class="bi bi-x-lg"></i></button>
+        </div>
+        <div class="modal-body" style="text-align:center;padding-top:1.5rem;">
+            <input type="hidden" id="d_id" />
+            <div class="del-icon"><i class="bi bi-globe2"></i></div>
+            <p style="font-size:.9rem;color:#374151;margin-bottom:.5rem;">Are you sure you want to delete</p>
+            <p style="font-weight:700;font-size:1rem;color:#1e293b;margin-bottom:.5rem;" id="d_name"></p>
+            <p style="font-size:.82rem;color:#94a3b8;margin:0;">
+                All associated provinces and cities will also be removed. This cannot be undone.
+            </p>
+        </div>
+        <div class="modal-foot">
+            <button class="btn-cancel" onclick="closeModal('deleteModal')">Cancel</button>
+            <button class="btn-danger" id="deleteBtn" onclick="confirmDelete()">
+                <i class="bi bi-trash3-fill"></i> Delete
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- ══ IMPORT FROM WEB CONFIRM ══════════════════════════════ -->
+<div class="modal-bd" id="importModal">
+    <div class="modal-box imp-box">
+        <div class="modal-hdr">
+            <h5><i class="bi bi-cloud-arrow-down-fill" style="color:#6d28d9;"></i> Import from Web</h5>
+            <button class="modal-close" onclick="closeModal('importModal')"><i class="bi bi-x-lg"></i></button>
+        </div>
+        <div class="modal-body" style="text-align:center;padding-top:1.5rem;">
+            <div class="imp-icon"><i class="bi bi-cloud-arrow-down-fill"></i></div>
+            <p style="font-size:.95rem;font-weight:700;color:#0f172a;margin-bottom:.5rem;">Import world geographic data</p>
+            <p style="font-size:.845rem;color:#64748b;margin:0;">
+                This will fetch all countries and their provinces from the REST Countries API and add any new ones to your database. Existing records will be skipped.
+            </p>
+            <div class="imp-summary" id="impSummary">
+                <div class="imp-row"><span>Countries imported</span><span id="imp_countries">0</span></div>
+                <div class="imp-row"><span>Provinces imported</span><span id="imp_provinces">0</span></div>
+                <div class="imp-row"><span>Cities imported</span><span id="imp_cities">0</span></div>
+                <div class="imp-row"><span>Skipped</span><span id="imp_skipped">0</span></div>
+            </div>
+        </div>
+        <div class="modal-foot">
+            <button class="btn-cancel" onclick="closeModal('importModal')">Cancel</button>
+            <button class="btn-primary" id="importBtn" onclick="confirmImport()">
+                <i class="bi bi-cloud-arrow-down-fill"></i> Start Import
+            </button>
+        </div>
+    </div>
+</div>
+
+@functions {
+    // Convert ISO2 code to flag emoji. Returns 🌐 if unknown.
+    static string GetFlagEmoji(string? code)
+    {
+        if (string.IsNullOrEmpty(code) || code.Length != 2) return "🌐";
+        var upper = code.ToUpperInvariant();
+        if (upper[0] < 'A' || upper[0] > 'Z' || upper[1] < 'A' || upper[1] > 'Z') return "🌐";
+        var a = char.ConvertFromUtf32(0x1F1E6 + (upper[0] - 'A'));
+        var b = char.ConvertFromUtf32(0x1F1E6 + (upper[1] - 'A'));
+        return a + b;
+    }
+}
+
+<script>
+    // ── Modal helpers ─────────────────────────────────────────
+    function openModal(id) { document.getElementById(id).classList.add('open'); document.body.style.overflow = 'hidden'; }
+    function closeModal(id) { document.getElementById(id).classList.remove('open'); document.body.style.overflow = ''; }
+    document.querySelectorAll('.modal-bd').forEach(bd => bd.addEventListener('click', e => { if (e.target === bd) closeModal(bd.id); }));
+    document.addEventListener('keydown', e => { if (e.key === 'Escape') document.querySelectorAll('.modal-bd.open').forEach(m => closeModal(m.id)); });
+
+    // ── Toast ─────────────────────────────────────────────────
+    function showToast(msg, type) {
+        const wrap = document.getElementById('toastWrap');
+        const el = document.createElement('div');
+        el.className = `toast-msg toast-${type}`;
+        const icon = type === 'success' ? 'bi-check-circle-fill' : type === 'error' ? 'bi-exclamation-circle-fill' : 'bi-info-circle-fill';
+        el.innerHTML = `<i class="bi ${icon}"></i>${msg}`;
+        wrap.appendChild(el);
+        requestAnimationFrame(() => el.classList.add('show'));
+        setTimeout(() => { el.classList.remove('show'); setTimeout(() => el.remove(), 350); }, 3500);
+    }
+
+    function setLoading(btn, loading, restoreHtml) {
+        btn.disabled = loading;
+        if (loading) btn.innerHTML = '<span class="spin spin-w"></span> Working…';
+        else if (restoreHtml) btn.innerHTML = restoreHtml;
+    }
+
+    function showErr(id, msg) { const el = document.getElementById(id); if (!el) return; el.textContent = msg; el.style.display = msg ? 'block' : 'none'; }
+
+    // ── Create / Edit ─────────────────────────────────────────
+    function openCreate() {
+        document.getElementById('formTitle').innerHTML = '<i class="bi bi-globe-americas" style="color:#667eea;"></i> New Country';
+        document.getElementById('f_id').value = '0';
+        document.getElementById('f_code').value = '';
+        document.getElementById('f_name').value = '';
+        showErr('f_code_err',''); showErr('f_name_err','');
+        openModal('formModal');
+        setTimeout(() => document.getElementById('f_code').focus(), 100);
+    }
+
+    function openEdit(id, code, name) {
+        document.getElementById('formTitle').innerHTML = '<i class="bi bi-pencil-fill" style="color:#667eea;"></i> Edit Country';
+        document.getElementById('f_id').value = id;
+        document.getElementById('f_code').value = code || '';
+        document.getElementById('f_name').value = name || '';
+        showErr('f_code_err',''); showErr('f_name_err','');
+        openModal('formModal');
+        setTimeout(() => document.getElementById('f_name').focus(), 100);
+    }
+
+    async function saveCountry() {
+        showErr('f_code_err',''); showErr('f_name_err','');
+        const id   = parseInt(document.getElementById('f_id').value);
+        const code = document.getElementById('f_code').value.trim().toUpperCase();
+        const name = document.getElementById('f_name').value.trim();
+
+        let valid = true;
+        if (!code || code.length < 2 || code.length > 3) { showErr('f_code_err','Code must be 2 or 3 letters'); valid = false; }
+        if (!name) { showErr('f_name_err','Country name is required'); valid = false; }
+        if (!valid) return;
+
+        const btn = document.getElementById('formSaveBtn');
+        setLoading(btn, true);
+        try {
+            const url = id > 0 ? '/Country/Update' : '/Country/Create';
+            const body = id > 0 ? { id, code, name } : { code, name };
+            const res = await fetch(url, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) });
+            const data = await res.json();
+            if (data.success) {
+                showToast(data.message || 'Saved!', 'success');
+                closeModal('formModal');
+                setTimeout(() => location.reload(), 700);
+            } else {
+                showToast(data.message || 'Failed to save.', 'error');
+            }
+        } catch { showToast('Network error.', 'error'); }
+        finally { setLoading(btn, false, '<i class="bi bi-check2-circle"></i> Save'); }
+    }
+
+    // ── Delete ────────────────────────────────────────────────
+    function openDelete(id, name) {
+        document.getElementById('d_id').value = id;
+        document.getElementById('d_name').textContent = name;
+        openModal('deleteModal');
+    }
+
+    async function confirmDelete() {
+        const id = document.getElementById('d_id').value;
+        const btn = document.getElementById('deleteBtn');
+        setLoading(btn, true);
+        try {
+            const res = await fetch(`/Country/Delete/${id}`, { method:'POST', headers:{'Content-Type':'application/json'}, body:'{}' });
+            const data = await res.json();
+            closeModal('deleteModal');
+            if (data.success) {
+                showToast(data.message || 'Deleted.', 'success');
+                setTimeout(() => location.reload(), 700);
+            } else {
+                showToast(data.message || 'Delete failed.', 'error');
+            }
+        } catch { showToast('Network error.', 'error'); }
+        finally { setLoading(btn, false, '<i class="bi bi-trash3-fill"></i> Delete'); }
+    }
+
+    // ── Import from web (countries + provinces) ───────────────
+    function importFromWeb() {
+        document.getElementById('impSummary').style.display = 'none';
+        openModal('importModal');
+    }
+
+    async function confirmImport() {
+        const btn = document.getElementById('importBtn');
+        setLoading(btn, true);
+        try {
+            showToast('Import started. This may take a minute…', 'info');
+            const res = await fetch('/Country/ImportFromWeb', { method:'POST', headers:{'Content-Type':'application/json'}, body:'{}' });
+            const data = await res.json();
+            if (data.success) {
+                if (data.data) {
+                    document.getElementById('imp_countries').textContent = data.data.countriesImported ?? 0;
+                    document.getElementById('imp_provinces').textContent = data.data.provincesImported ?? 0;
+                    document.getElementById('imp_cities').textContent    = data.data.citiesImported ?? 0;
+                    document.getElementById('imp_skipped').textContent   = data.data.skipped ?? 0;
+                    document.getElementById('impSummary').style.display  = 'block';
+                }
+                showToast(data.message || 'Import complete!', 'success');
+                setTimeout(() => location.reload(), 2500);
+            } else {
+                showToast(data.message || 'Import failed.', 'error');
+            }
+        } catch { showToast('Network error.', 'error'); }
+        finally { setLoading(btn, false, '<i class="bi bi-cloud-arrow-down-fill"></i> Start Import'); }
+    }
+
+    // ── Import cities for a country ───────────────────────────
+    async function importCities(iso2, btn) {
+        const original = btn.innerHTML;
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spin"></span>';
+        showToast(`Importing cities for ${iso2}…`, 'info');
+        try {
+            const res = await fetch(`/Country/ImportCities/${iso2}`, { method:'POST', headers:{'Content-Type':'application/json'}, body:'{}' });
+            const data = await res.json();
+            if (data.success) {
+                const n = data.data?.citiesImported ?? 0;
+                showToast(`${n} cities imported for ${iso2}.`, 'success');
+                setTimeout(() => location.reload(), 1200);
+            } else {
+                showToast(data.message || 'City import failed.', 'error');
+                btn.disabled = false;
+                btn.innerHTML = original;
+            }
+        } catch {
+            showToast('Network error.', 'error');
+            btn.disabled = false;
+            btn.innerHTML = original;
+        }
+    }
+
+    // ── Drilldown: expand / collapse country ──────────────────
+    async function toggleDrill(countryId, btn) {
+        const row = document.getElementById('drill-' + countryId);
+        const isOpen = !row.classList.contains('hidden');
+        // Close all others
+        document.querySelectorAll('.drill-row').forEach(r => r.classList.add('hidden'));
+        document.querySelectorAll('.ab-expand.open').forEach(b => b.classList.remove('open'));
+
+        if (!isOpen) {
+            row.classList.remove('hidden');
+            btn.classList.add('open');
+            await loadProvinces(countryId);
+        }
+    }
+
+    async function loadProvinces(countryId) {
+        const panel = document.getElementById('drill-panel-' + countryId);
+        panel.innerHTML = '<div class="drill-loading"><span class="spin"></span> Loading provinces…</div>';
+        try {
+            const res = await fetch(`/Country/Provinces/${countryId}`);
+            const data = await res.json();
+            const provs = data.data || [];
+            if (!provs.length) {
+                panel.innerHTML = `
+                    <div class="drill-hdr">
+                        <div class="drill-title"><i class="bi bi-map-fill"></i> Provinces</div>
+                        <span class="drill-count">0</span>
+                    </div>
+                    <div style="text-align:center;padding:1.5rem;color:#94a3b8;font-size:.82rem;">
+                        <i class="bi bi-inbox" style="font-size:1.75rem;display:block;margin-bottom:.5rem;color:#e2e8f0;"></i>
+                        No provinces yet for this country.
+                    </div>`;
+                return;
+            }
+
+            const grid = provs.map(p => `
+                <div class="prov-card">
+                    <div class="prov-hdr" onclick="toggleCities(${p.id}, this)">
+                        <div class="prov-hdr-left">
+                            <span class="prov-dot"></span>
+                            <span class="prov-name" title="${escapeHtml(p.name)}">${escapeHtml(p.name)}</span>
+                        </div>
+                        <div class="d-flex align-items-center gap-2">
+                            <span class="prov-city-badge">${p.cityCount} cities</span>
+                            <i class="bi bi-chevron-right prov-toggle"></i>
+                        </div>
+                    </div>
+                    <div class="cities-list" id="cities-${p.id}"></div>
+                </div>
+            `).join('');
+
+            panel.innerHTML = `
+                <div class="drill-hdr">
+                    <div class="drill-title"><i class="bi bi-map-fill"></i> Provinces</div>
+                    <span class="drill-count">${provs.length} total</span>
+                </div>
+                <div class="prov-grid">${grid}</div>`;
+        } catch {
+            panel.innerHTML = '<div class="drill-loading" style="color:#dc2626;"><i class="bi bi-exclamation-circle-fill"></i> Failed to load provinces.</div>';
+        }
+    }
+
+    async function toggleCities(provinceId, hdr) {
+        const list = document.getElementById('cities-' + provinceId);
+        const isOpen = list.classList.contains('open');
+        if (isOpen) { list.classList.remove('open'); hdr.classList.remove('open'); return; }
+
+        hdr.classList.add('open');
+        list.classList.add('open');
+        list.innerHTML = '<div class="drill-loading" style="padding:.5rem;"><span class="spin"></span> Loading cities…</div>';
+        try {
+            const res = await fetch(`/Country/Cities/${provinceId}`);
+            const data = await res.json();
+            const cities = data.data || [];
+            if (!cities.length) {
+                list.innerHTML = '<div class="cities-empty">No cities yet.</div>';
+                return;
+            }
+            list.innerHTML = cities.map(c => `<div class="city-item"><i class="bi bi-geo-alt-fill"></i>${escapeHtml(c.name)}</div>`).join('');
+        } catch {
+            list.innerHTML = '<div class="cities-empty" style="color:#dc2626;">Failed to load.</div>';
+        }
+    }
+
+    function escapeHtml(s) {
+        return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]);
+    }
+</script>

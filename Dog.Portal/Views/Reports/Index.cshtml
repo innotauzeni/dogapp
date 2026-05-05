@@ -1,0 +1,296 @@
+@model Dog.Portal.Models.ReportsViewModel
+@{
+    Layout = "_AdminLayout";
+    ViewData["Title"] = "Reports";
+}
+<style>
+.page-hdr h4{font-size:1.15rem;font-weight:800;color:#0f172a;margin:0 0 .25rem;letter-spacing:-.02em}
+.page-hdr p{font-size:.845rem;color:#64748b;margin:0}
+.page-hdr-row{display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;flex-wrap:wrap;margin-bottom:1.5rem}
+.total-chip{display:inline-flex;align-items:center;gap:.375rem;background:#ede9fe;color:#6d28d9;font-size:.8rem;font-weight:700;padding:.35rem .875rem;border-radius:20px;white-space:nowrap}
+
+/* Stats */
+.stats-row{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:.875rem;margin-bottom:2rem}
+.stat-card{background:#fff;border-radius:12px;border:1px solid #e9eef4;box-shadow:0 1px 4px rgba(0,0,0,.04);padding:1.25rem 1.5rem;display:flex;align-items:center;gap:1rem}
+.stat-icon{width:48px;height:48px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:1.2rem;flex-shrink:0}
+.si-dogs{background:linear-gradient(135deg,#dbeafe,#bfdbfe);color:#1d4ed8}
+.si-vaccinated{background:linear-gradient(135deg,#d1fae5,#a7f3d0);color:#065f46}
+.si-litters{background:linear-gradient(135deg,#ede9fe,#ddd6fe);color:#7c3aed}
+.si-mating{background:linear-gradient(135deg,#fee2e2,#fecaca);color:#dc2626}
+.stat-body .val{font-size:1.5rem;font-weight:800;color:#0f172a;line-height:1}
+.stat-body .lbl{font-size:.8rem;color:#94a3b8;font-weight:500;margin-top:.3rem}
+
+/* Report cards */
+.reports-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:1.25rem}
+.report-card{background:#fff;border-radius:14px;border:1px solid #e9eef4;box-shadow:0 1px 4px rgba(0,0,0,.04);overflow:hidden;transition:all .2s}
+.report-card:hover{box-shadow:0 4px 12px rgba(0,0,0,.08);transform:translateY(-1px)}
+.report-hdr{padding:1.25rem 1.5rem;border-bottom:1px solid #f1f5f9;background:#fafbfc;display:flex;align-items:center;gap:.75rem}
+.report-icon{width:44px;height:44px;border-radius:11px;display:flex;align-items:center;justify-content:center;font-size:1.1rem;flex-shrink:0}
+.ri-dogs{background:linear-gradient(135deg,#dbeafe,#bfdbfe);color:#1d4ed8}
+.ri-vaccinated{background:linear-gradient(135deg,#d1fae5,#a7f3d0);color:#065f46}
+.ri-litters{background:linear-gradient(135deg,#ede9fe,#ddd6fe);color:#7c3aed}
+.ri-mating{background:linear-gradient(135deg,#fee2e2,#fecaca);color:#dc2626}
+.report-title{font-size:.95rem;font-weight:800;color:#0f172a;margin:0 0 .2rem}
+.report-desc{font-size:.8rem;color:#64748b;margin:0}
+.report-body{padding:1.25rem 1.5rem}
+.report-text{font-size:.85rem;color:#374151;line-height:1.5;margin-bottom:1.25rem}
+.export-btns{display:flex;gap:.5rem;flex-wrap:wrap}
+.btn-export{display:inline-flex;align-items:center;gap:.375rem;padding:.6rem 1rem;border:1.5px solid #e2e8f0;border-radius:8px;font-size:.8rem;font-weight:600;color:#374151;text-decoration:none;transition:all .18s;background:#fff}
+.btn-export:hover{background:#f8fafc;border-color:#cbd5e1;color:#1e293b;text-decoration:none}
+.btn-export.csv{border-color:#059669;color:#059669}
+.btn-export.csv:hover{background:#d1fae5;border-color:#047857}
+.btn-export.pdf{border-color:#dc2626;color:#dc2626}
+.btn-export.pdf:hover{background:#fee2e2;border-color:#b91c1c}
+
+/* Certificate section */
+.cert-section{background:#fff;border-radius:14px;border:1px solid #e9eef4;box-shadow:0 1px 4px rgba(0,0,0,.04);padding:1.5rem;margin-top:1.5rem}
+.cert-hdr{display:flex;align-items:center;gap:.75rem;margin-bottom:1rem}
+.cert-icon{width:48px;height:48px;border-radius:12px;background:linear-gradient(135deg,#f59e0b,#d97706);color:#fff;display:flex;align-items:center;justify-content:center;font-size:1.2rem}
+.cert-title{font-size:1.1rem;font-weight:800;color:#0f172a;margin:0}
+.cert-desc{font-size:.85rem;color:#64748b;margin:.5rem 0 1.25rem;line-height:1.5}
+.cert-form{display:flex;gap:.75rem;align-items:end;flex-wrap:wrap}
+.cert-input{flex:1;min-width:200px}
+.cert-input label{display:block;font-size:.8rem;font-weight:600;color:#374151;margin-bottom:.375rem}
+.cert-select{width:100%;padding:.65rem .875rem;border:1.5px solid #e2e8f0;border-radius:9px;font-size:.855rem;color:#1e293b;background:#fff;outline:none;transition:border-color .2s}
+.cert-select:focus{border-color:#667eea;box-shadow:0 0 0 3px rgba(102,126,234,.1)}
+.btn-cert{display:inline-flex;align-items:center;gap:.4rem;padding:.65rem 1.25rem;background:linear-gradient(135deg,#f59e0b,#d97706);color:#fff;border:none;border-radius:9px;font-size:.855rem;font-weight:700;cursor:pointer;transition:all .2s;box-shadow:0 2px 8px rgba(245,158,11,.3);white-space:nowrap}
+.btn-cert:hover{opacity:.9;transform:translateY(-1px)}
+.btn-cert:disabled{opacity:.6;cursor:not-allowed;transform:none}
+
+/* Toast */
+.toast-wrap{position:fixed;bottom:1.75rem;right:1.75rem;z-index:9999;display:flex;flex-direction:column;gap:.5rem;pointer-events:none}
+.toast-msg{display:flex;align-items:center;gap:.625rem;padding:.875rem 1.25rem;border-radius:12px;font-size:.855rem;font-weight:600;box-shadow:0 8px 32px rgba(0,0,0,.15);pointer-events:all;transform:translateX(120%);transition:transform .3s cubic-bezier(.4,0,.2,1);max-width:320px}
+.toast-msg.show{transform:translateX(0)}
+.toast-success{background:#065f46;color:#fff}
+.toast-error{background:#991b1b;color:#fff}
+.spin{width:14px;height:14px;border:2px solid rgba(255,255,255,.35);border-top-color:#fff;border-radius:50%;animation:spin .65s linear infinite;flex-shrink:0}
+@@keyframes spin{to{transform:rotate(360deg)}}
+
+@@media(max-width:768px){.cert-form{flex-direction:column;align-items:stretch}.cert-input{min-width:auto}}
+</style>
+
+<!-- Toast -->
+<div class="toast-wrap" id="toastWrap"></div>
+
+<!-- Page header -->
+<div class="page-hdr-row">
+    <div class="page-hdr">
+        <h4><i class="bi bi-file-earmark-bar-graph-fill me-2" style="color:#667eea;"></i>Reports</h4>
+        <p>Generate and export comprehensive reports for dogs, vaccinations, litters, and breeding records.</p>
+    </div>
+    <div class="hdr-actions">
+        <span class="total-chip"><i class="bi bi-file-earmark-text"></i> Data Analytics</span>
+    </div>
+</div>
+
+@if (!string.IsNullOrEmpty(ViewBag.FetchError as string))
+{
+    <div class="alert-err"><i class="bi bi-exclamation-circle-fill"></i>@ViewBag.FetchError</div>
+}
+
+<!-- Statistics -->
+<div class="stats-row">
+    <div class="stat-card">
+        <div class="stat-icon si-dogs"><i class="bi bi-people-fill"></i></div>
+        <div class="stat-body"><div class="val">@Model.TotalDogs</div><div class="lbl">Total Dogs</div></div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon si-vaccinated"><i class="bi bi-shield-fill-check"></i></div>
+        <div class="stat-body"><div class="val">@Model.VaccinatedDogs</div><div class="lbl">Vaccinated Dogs</div></div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon si-litters"><i class="bi bi-heart-eyes-fill"></i></div>
+        <div class="stat-body"><div class="val">@Model.TotalLitters</div><div class="lbl">Total Litters</div></div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon si-mating"><i class="bi bi-heart-fill"></i></div>
+        <div class="stat-body"><div class="val">@Model.TotalMatingRecords</div><div class="lbl">Mating Records</div></div>
+    </div>
+</div>
+
+<!-- Reports Grid -->
+<div class="reports-grid">
+    <!-- Dogs Report -->
+    <div class="report-card">
+        <div class="report-hdr">
+            <div class="report-icon ri-dogs"><i class="bi bi-people-fill"></i></div>
+            <div>
+                <h3 class="report-title">Dogs Report</h3>
+                <p class="report-desc">Complete list of all registered dogs</p>
+            </div>
+        </div>
+        <div class="report-body">
+            <p class="report-text">Export comprehensive information about all dogs including breed, color, birth dates, microchip numbers, and ownership details. Filter by status and gender as needed.</p>
+            <div class="export-btns">
+                <a href="/Reports/ExportDogs?format=csv" class="btn-export csv">
+                    <i class="bi bi-filetype-csv"></i> Export CSV
+                </a>
+                <a href="/Reports/ExportDogs?format=pdf" class="btn-export pdf">
+                    <i class="bi bi-filetype-pdf"></i> Export PDF
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Vaccinated Dogs Report -->
+    <div class="report-card">
+        <div class="report-hdr">
+            <div class="report-icon ri-vaccinated"><i class="bi bi-shield-fill-check"></i></div>
+            <div>
+                <h3 class="report-title">Vaccinated Dogs</h3>
+                <p class="report-desc">Vaccination status and schedules</p>
+            </div>
+        </div>
+        <div class="report-body">
+            <p class="report-text">Track vaccination records, due dates, and compliance status. Includes vaccine types, clinic information, and next scheduled vaccinations for proper health management.</p>
+            <div class="export-btns">
+                <a href="/Reports/ExportVaccinatedDogs?format=csv" class="btn-export csv">
+                    <i class="bi bi-filetype-csv"></i> Export CSV
+                </a>
+                <a href="/Reports/ExportVaccinatedDogs?format=pdf" class="btn-export pdf">
+                    <i class="bi bi-filetype-pdf"></i> Export PDF
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Litters Report -->
+    <div class="report-card">
+        <div class="report-hdr">
+            <div class="report-icon ri-litters"><i class="bi bi-heart-eyes-fill"></i></div>
+            <div>
+                <h3 class="report-title">Litters Report</h3>
+                <p class="report-desc">Breeding outcomes and puppy statistics</p>
+            </div>
+        </div>
+        <div class="report-body">
+            <p class="report-text">Detailed breeding results including litter sizes, survival rates, and puppy information. Essential for tracking breeding program success and genetic lineage.</p>
+            <div class="export-btns">
+                <a href="/Reports/ExportLitters?format=csv" class="btn-export csv">
+                    <i class="bi bi-filetype-csv"></i> Export CSV
+                </a>
+                <a href="/Reports/ExportLitters?format=pdf" class="btn-export pdf">
+                    <i class="bi bi-filetype-pdf"></i> Export PDF
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Mating Records Report -->
+    <div class="report-card">
+        <div class="report-hdr">
+            <div class="report-icon ri-mating"><i class="bi bi-heart-fill"></i></div>
+            <div>
+                <h3 class="report-title">Mating Records</h3>
+                <p class="report-desc">Breeding history and planning</p>
+            </div>
+        </div>
+        <div class="report-body">
+            <p class="report-text">Complete breeding history with sire and dam information, mating dates, locations, and expected due dates. Critical for breeding program management and planning.</p>
+            <div class="export-btns">
+                <a href="/Reports/ExportMatingRecords?format=csv" class="btn-export csv">
+                    <i class="bi bi-filetype-csv"></i> Export CSV
+                </a>
+                <a href="/Reports/ExportMatingRecords?format=pdf" class="btn-export pdf">
+                    <i class="bi bi-filetype-pdf"></i> Export PDF
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Dog Certificate Section -->
+<div class="cert-section">
+    <div class="cert-hdr">
+        <div class="cert-icon"><i class="bi bi-award-fill"></i></div>
+        <h3 class="cert-title">Dog Registration Certificate</h3>
+    </div>
+    <p class="cert-desc">Generate official registration certificates for individual dogs. These certificates include all essential information and can be used for official documentation, shows, or breeding purposes.</p>
+    
+    <div class="cert-form">
+        <div class="cert-input">
+            <label for="dogSelect">Select Dog</label>
+            <select id="dogSelect" class="cert-select">
+                <option value="">-- Select a Dog --</option>
+            </select>
+        </div>
+        <button id="certBtn" class="btn-cert" onclick="generateCertificate()" disabled>
+            <i class="bi bi-award-fill"></i> Generate Certificate
+        </button>
+    </div>
+</div>
+
+<script>
+// Load dogs for certificate dropdown
+async function loadDogsForCertificate() {
+    try {
+        const response = await fetch('/Dogs/GetAnimalsForDropdown');
+        if (!response.ok) throw new Error('Failed to load dogs');
+        const data = await response.json();
+        const dogs = Array.isArray(data) ? data : (data.data || []);
+        
+        const select = document.getElementById('dogSelect');
+        select.innerHTML = '<option value="">-- Select a Dog --</option>';
+        
+        dogs.forEach(dog => {
+            const option = document.createElement('option');
+            option.value = dog.id;
+            option.textContent = `${dog.name} (${dog.breed || 'Unknown breed'})`;
+            select.appendChild(option);
+        });
+        
+        // Enable/disable certificate button based on selection
+        select.addEventListener('change', function() {
+            const certBtn = document.getElementById('certBtn');
+            certBtn.disabled = !this.value;
+        });
+        
+    } catch (error) {
+        console.error('Error loading dogs:', error);
+        showToast('Failed to load dogs for certificate generation', 'error');
+    }
+}
+
+// Generate certificate
+async function generateCertificate() {
+    const dogId = document.getElementById('dogSelect').value;
+    if (!dogId) {
+        showToast('Please select a dog first', 'error');
+        return;
+    }
+    
+    const certBtn = document.getElementById('certBtn');
+    const originalHtml = certBtn.innerHTML;
+    certBtn.disabled = true;
+    certBtn.innerHTML = '<span class="spin"></span> Generating...';
+    
+    try {
+        // Open certificate in new window/tab
+        window.open(`/Reports/DogCertificate/${dogId}`, '_blank');
+        showToast('Certificate generated successfully!', 'success');
+    } catch (error) {
+        console.error('Error generating certificate:', error);
+        showToast('Failed to generate certificate', 'error');
+    } finally {
+        certBtn.disabled = false;
+        certBtn.innerHTML = originalHtml;
+    }
+}
+
+// Toast notification
+function showToast(msg, type) {
+    const wrap = document.getElementById('toastWrap');
+    const el = document.createElement('div');
+    el.className = `toast-msg toast-${type}`;
+    el.innerHTML = `<i class="bi ${type === 'success' ? 'bi-check-circle-fill' : 'bi-exclamation-circle-fill'}"></i>${msg}`;
+    wrap.appendChild(el);
+    requestAnimationFrame(() => el.classList.add('show'));
+    setTimeout(() => { 
+        el.classList.remove('show'); 
+        setTimeout(() => el.remove(), 350); 
+    }, 3500);
+}
+
+// Load dogs on page load
+document.addEventListener('DOMContentLoaded', loadDogsForCertificate);
+</script>
