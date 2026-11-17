@@ -6,6 +6,9 @@
 --
 --   mysql -u <user> -p <database> < Billing_LiveUpgrade.sql
 --
+-- ORDER: if this database does not have the Dog Training module yet, run DogTraining_LiveSetup.sql FIRST,
+-- then this file (the training columns are skipped when the training tables are missing).
+--
 -- Safe to run more than once: every statement checks first and nothing is dropped, renamed or deleted.
 -- Back the database up first anyway. Then deploy the new API + Portal and restart both.
 --
@@ -22,7 +25,8 @@ DROP PROCEDURE IF EXISTS _dog_add_fk;
 DELIMITER $$
 CREATE PROCEDURE _dog_add_col(IN t VARCHAR(64), IN c VARCHAR(64), IN ddl TEXT)
 BEGIN
-  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = t AND column_name = c) THEN
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = t)
+     AND NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = t AND column_name = c) THEN
     SET @s = CONCAT('ALTER TABLE `', t, '` ADD COLUMN `', c, '` ', ddl);
     PREPARE st FROM @s; EXECUTE st; DEALLOCATE PREPARE st;
   END IF;
@@ -265,7 +269,7 @@ CALL _dog_add_fk('ka_customers', 'FK_ka_customers_ka_customercompanies_CustomerC
   'FOREIGN KEY (`CustomerCompanyId`) REFERENCES `ka_customercompanies` (`Id`) ON DELETE SET NULL');
 
 -- Payments recorded before this upgrade were all received money: mark them CONFIRMED (the column default does this already).
-UPDATE ka_dogtrainingpayments SET Status = 'CONFIRMED' WHERE Status IS NULL OR Status = '';
+-- (training tables only exist once DogTraining_LiveSetup.sql has been run; the column default already marks old payments CONFIRMED)
 
 DROP PROCEDURE IF EXISTS _dog_add_col;
 DROP PROCEDURE IF EXISTS _dog_add_idx;
