@@ -26,6 +26,7 @@ namespace Dog.Infrastructure
         {
             services.AddScoped<IErrorLoggingService, ErrorLoggingService>();
             services.AddScoped<IJwtService, JwtService>();
+            services.AddScoped<IEmailService, SmtpEmailService>();
 
             
 
@@ -81,7 +82,7 @@ namespace Dog.Infrastructure
         public static IServiceCollection AddPersistanceServicesDependecy(this IServiceCollection services, IConfiguration configuration)
         {
             var connectionstring = configuration.GetConnectionString("DefaultConnection");
-            string hangfireConnectionString = configuration.GetConnectionString("QueueDb")!;
+            string? hangfireConnectionString = configuration.GetConnectionString("QueueDb");
 
             services.AddDbContextFactory<ApplicationDbContext>(options =>
             {
@@ -98,21 +99,25 @@ namespace Dog.Infrastructure
                 options.EnableDetailedErrors(false);
             });
 
-            services.AddHangfire(config => config
-                .UseSimpleAssemblyNameTypeSerializer()
-                .UseRecommendedSerializerSettings()
-                .UseStorage(new MySqlStorage(hangfireConnectionString, new MySqlStorageOptions
-                {
-                    QueuePollInterval = TimeSpan.FromSeconds(10),
-                    JobExpirationCheckInterval = TimeSpan.FromHours(1),
-                    CountersAggregateInterval = TimeSpan.FromMinutes(5),
-                    PrepareSchemaIfNecessary = true,
-                    DashboardJobListLimit = 25000,
-                    TransactionTimeout = TimeSpan.FromMinutes(1),
-                    TablesPrefix = "Hangfire",
-                })));
+            // Only configure Hangfire if connection string is available
+            if (!string.IsNullOrEmpty(hangfireConnectionString))
+            {
+                services.AddHangfire(config => config
+                    .UseSimpleAssemblyNameTypeSerializer()
+                    .UseRecommendedSerializerSettings()
+                    .UseStorage(new MySqlStorage(hangfireConnectionString, new MySqlStorageOptions
+                    {
+                        QueuePollInterval = TimeSpan.FromSeconds(10),
+                        JobExpirationCheckInterval = TimeSpan.FromHours(1),
+                        CountersAggregateInterval = TimeSpan.FromMinutes(5),
+                        PrepareSchemaIfNecessary = true,
+                        DashboardJobListLimit = 25000,
+                        TransactionTimeout = TimeSpan.FromMinutes(1),
+                        TablesPrefix = "Hangfire",
+                    })));
 
-            services.AddHangfireServer();
+                services.AddHangfireServer();
+            }
 
             services.AddIdentity<ApplicationUser, Role>(options =>
             {

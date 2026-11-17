@@ -20,6 +20,19 @@ namespace Dog.Core.Entities
         public int CityId { get; set; }
         public string? Address { get; set; }
         public string? Logo { get; set; }
+        /// Hex color (e.g. "#1D4ED8") used to brand the mobile app's welcome screen for this company.
+        public string? BrandColor { get; set; }
+
+        // Printed on invoices / used for fiscal-style invoices
+        public string? RegistrationNumber { get; set; }
+        public string? TaxNumber { get; set; }
+        public string? VatNumber { get; set; }
+        /// <summary>Default invoice terms and footer text (e.g. payment instructions, thank-you line).</summary>
+        public string? InvoiceTerms { get; set; }
+        public string? InvoiceFooter { get; set; }
+        [Column(TypeName = "decimal(5,2)")] public decimal DefaultVatRate { get; set; }
+        public bool FiscalEnabled { get; set; }
+        public string? FiscalDeviceSerial { get; set; }
         public string? UserId { get; set; }
         //public bool IsActive { get; set; } = false;
         public long TotalStorageUsedBytes { get; set; } = 0;

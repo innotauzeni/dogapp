@@ -8,4 +8,5 @@ namespace Dog.Application.Features.Companies.Commands
     public record UpdateCompanyCommand(UpdateCompanyDto Dto) : IRequest<ApiResponse<CompanyDto>>;
     public record DeleteCompanyCommand(int Id) : IRequest<ApiResponse<bool>>;
     public record ToggleCompanyStatusCommand(int Id) : IRequest<ApiResponse<bool>>;
+    public record UpdateCompanyBrandColorCommand(int Id, string? BrandColor) : IRequest<ApiResponse<string?>>;
 }

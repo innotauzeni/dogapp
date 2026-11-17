@@ -1,0 +1,1712 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Dog Profile - Sarara - Dog Section</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <style>
+        :root {
+            --sidebar-w: 264px;
+            --sidebar-w-collapsed: 72px;
+            --topbar-h: 64px;
+            --brand-1: #667eea;
+            --brand-2: #764ba2;
+            --sb-bg: #0f172a;
+            --sb-border: rgba(255,255,255,0.07);
+            --sb-text: rgba(148,163,184,1);
+            --sb-text-hover: #e2e8f0;
+            --sb-text-active: #ffffff;
+            --sb-item-hover: rgba(255,255,255,0.06);
+            --sb-item-active: rgba(102,126,234,0.18);
+            --sb-accent: #818cf8;
+            --content-bg: #f1f5f9;
+            --card-bg: #ffffff;
+            --card-shadow: 0 1px 3px rgba(0,0,0,0.06), 0 4px 16px rgba(0,0,0,0.05);
+            --card-shadow-hover: 0 4px 20px rgba(0,0,0,0.11), 0 8px 32px rgba(0,0,0,0.07);
+            --topbar-shadow: 0 1px 0 #e2e8f0, 0 2px 16px rgba(0,0,0,0.05);
+            --radius: 12px;
+            --transition: 0.3s cubic-bezier(0.4,0,0.2,1);
+        }
+
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: var(--content-bg);
+            color: #1e293b;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        /* ─── SIDEBAR ─────────────────────────────── */
+        .sidebar {
+            position: fixed;
+            inset: 0 auto 0 0;
+            width: var(--sidebar-w);
+            background: var(--sb-bg);
+            display: flex;
+            flex-direction: column;
+            transition: width var(--transition), transform var(--transition);
+            z-index: 1050;
+            overflow: hidden;
+            box-shadow: 4px 0 32px rgba(0,0,0,0.2);
+        }
+
+        .sidebar.collapsed { width: var(--sidebar-w-collapsed); }
+
+        /* header */
+        .sb-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 1rem;
+            height: var(--topbar-h);
+            border-bottom: 1px solid var(--sb-border);
+            flex-shrink: 0;
+        }
+
+        .sb-brand {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            text-decoration: none;
+            overflow: hidden;
+            flex: 1;
+        }
+
+        .sb-brand-icon {
+            width: 38px;
+            height: 38px;
+            background: linear-gradient(135deg, var(--brand-1) 0%, var(--brand-2) 100%);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #fff;
+            font-size: 1.1rem;
+            flex-shrink: 0;
+            box-shadow: 0 4px 12px rgba(102,126,234,0.4);
+        }
+
+        .sb-brand-text {
+            overflow: hidden;
+            transition: opacity 0.2s, width var(--transition);
+            white-space: nowrap;
+        }
+
+        .sb-brand-text strong {
+            display: block;
+            color: #f1f5f9;
+            font-size: 0.95rem;
+            font-weight: 700;
+            line-height: 1.2;
+        }
+
+        .sb-brand-text small {
+            color: var(--sb-text);
+            font-size: 0.7rem;
+            font-weight: 400;
+        }
+
+        .sb-collapse-btn {
+            width: 30px;
+            height: 30px;
+            background: rgba(255,255,255,0.07);
+            border: 1px solid var(--sb-border);
+            border-radius: 7px;
+            color: var(--sb-text);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.9rem;
+            flex-shrink: 0;
+            transition: background 0.2s, color 0.2s;
+        }
+
+        .sb-collapse-btn:hover { background: rgba(255,255,255,0.12); color: #fff; }
+
+        /* scroll area */
+        .sb-scroll {
+            flex: 1;
+            overflow-y: auto;
+            overflow-x: hidden;
+            padding: 0.625rem 0;
+            scrollbar-width: thin;
+            scrollbar-color: rgba(255,255,255,0.08) transparent;
+        }
+
+        .sb-scroll::-webkit-scrollbar { width: 3px; }
+        .sb-scroll::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 2px; }
+
+        /* section label */
+        .sb-section {
+            padding: 1rem 1.125rem 0.3rem;
+            font-size: 0.6rem;
+            font-weight: 700;
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+            color: rgba(148,163,184,0.4);
+            white-space: nowrap;
+            overflow: hidden;
+            transition: opacity 0.2s;
+        }
+
+        /* nav item */
+        .sb-item {
+            display: flex;
+            align-items: center;
+            gap: 0.875rem;
+            padding: 0.625rem 1.125rem;
+            color: var(--sb-text);
+            text-decoration: none;
+            border: none;
+            background: transparent;
+            width: 100%;
+            text-align: left;
+            cursor: pointer;
+            position: relative;
+            transition: background 0.18s, color 0.18s;
+            border-radius: 0;
+            white-space: nowrap;
+        }
+
+        .sb-item:hover {
+            background: var(--sb-item-hover);
+            color: var(--sb-text-hover);
+        }
+
+        .sb-item.active {
+            background: var(--sb-item-active);
+            color: var(--sb-text-active);
+        }
+
+        .sb-item.active::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 20%;
+            height: 60%;
+            width: 3px;
+            background: var(--sb-accent);
+            border-radius: 0 2px 2px 0;
+        }
+
+        .sb-item-icon {
+            width: 20px;
+            text-align: center;
+            flex-shrink: 0;
+            font-size: 1rem;
+            line-height: 1;
+        }
+
+        .sb-item-label {
+            flex: 1;
+            font-size: 0.855rem;
+            font-weight: 500;
+            overflow: hidden;
+            white-space: nowrap;
+            transition: opacity 0.15s;
+        }
+
+        .sb-arrow {
+            font-size: 0.65rem;
+            flex-shrink: 0;
+            transition: transform 0.25s ease, opacity 0.15s;
+            color: rgba(148,163,184,0.5);
+        }
+
+        .sb-arrow.open { transform: rotate(90deg); }
+
+        /* submenu */
+        .sb-sub-wrap {
+            display: grid;
+            grid-template-rows: 0fr;
+            transition: grid-template-rows 0.28s ease;
+            overflow: hidden;
+        }
+
+        .sb-sub-wrap.open { grid-template-rows: 1fr; }
+
+        .sb-sub-inner { overflow: hidden; }
+
+        .sb-sub-item {
+            display: flex;
+            align-items: center;
+            gap: 0.625rem;
+            padding: 0.5rem 1.125rem 0.5rem 3.125rem;
+            color: rgba(148,163,184,0.7);
+            text-decoration: none;
+            font-size: 0.82rem;
+            font-weight: 400;
+            transition: color 0.18s, background 0.18s;
+            white-space: nowrap;
+            position: relative;
+        }
+
+        .sb-sub-item::before {
+            content: '';
+            position: absolute;
+            left: 2.25rem;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 5px;
+            height: 5px;
+            border-radius: 50%;
+            background: rgba(148,163,184,0.25);
+            transition: background 0.18s, width 0.18s, height 0.18s;
+        }
+
+        .sb-sub-item:hover {
+            color: #e2e8f0;
+            background: rgba(255,255,255,0.04);
+        }
+
+        .sb-sub-item:hover::before { background: var(--sb-accent); }
+
+        .sb-sub-item.active {
+            color: #ffffff;
+            font-weight: 500;
+        }
+
+        .sb-sub-item.active::before {
+            background: var(--sb-accent);
+            width: 7px;
+            height: 7px;
+        }
+
+        /* collapsed state — hide text */
+        .sidebar.collapsed .sb-brand-text,
+        .sidebar.collapsed .sb-section,
+        .sidebar.collapsed .sb-item-label,
+        .sidebar.collapsed .sb-arrow,
+        .sidebar.collapsed .sb-footer-info {
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .sidebar.collapsed .sb-item { justify-content: center; padding: 0.7rem; }
+        .sidebar.collapsed .sb-sub-wrap { grid-template-rows: 0fr !important; }
+        .sidebar.collapsed .sb-collapse-btn i { transform: scaleX(-1); }
+
+        /* footer */
+        .sb-footer {
+            padding: 0.875rem 1rem;
+            border-top: 1px solid var(--sb-border);
+            flex-shrink: 0;
+        }
+
+        .sb-user {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            overflow: hidden;
+        }
+
+        .sb-avatar {
+            width: 34px;
+            height: 34px;
+            border-radius: 8px;
+            background: linear-gradient(135deg, var(--brand-1) 0%, var(--brand-2) 100%);
+            color: #fff;
+            font-size: 0.75rem;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            letter-spacing: 0.03em;
+        }
+
+        .sb-footer-info { overflow: hidden; transition: opacity 0.15s; }
+
+        .sb-footer-info .name {
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: #f1f5f9;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .sb-footer-info .role {
+            font-size: 0.7rem;
+            color: var(--sb-text);
+            white-space: nowrap;
+        }
+
+        .sidebar.collapsed .sb-footer { padding: 0.875rem 0.625rem; }
+        .sidebar.collapsed .sb-user { justify-content: center; }
+
+        /* ─── MAIN WRAPPER ─────────────────────────── */
+        .main-wrap {
+            margin-left: var(--sidebar-w);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            transition: margin-left var(--transition);
+        }
+
+        .main-wrap.sb-collapsed { margin-left: var(--sidebar-w-collapsed); }
+
+        /* ─── TOPBAR ──────────────────────────────── */
+        .topbar {
+            background: var(--card-bg);
+            height: var(--topbar-h);
+            display: flex;
+            align-items: center;
+            padding: 0 1.5rem;
+            position: sticky;
+            top: 0;
+            z-index: 1040;
+            box-shadow: var(--topbar-shadow);
+            gap: 0.75rem;
+        }
+
+        .mobile-menu-btn {
+            display: none;
+            background: none;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            width: 38px;
+            height: 38px;
+            font-size: 1.2rem;
+            color: #64748b;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            flex-shrink: 0;
+            transition: background 0.18s;
+        }
+
+        .mobile-menu-btn:hover { background: #f8fafc; }
+
+        .topbar-title {
+            font-size: 0.92rem;
+            color: #64748b;
+            font-weight: 500;
+        }
+
+        .topbar-title strong { color: #1e293b; font-weight: 700; }
+
+        .topbar-right {
+            margin-left: auto;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .tb-icon-btn {
+            width: 38px;
+            height: 38px;
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 9px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #64748b;
+            font-size: 1rem;
+            text-decoration: none;
+            transition: all 0.18s;
+            cursor: pointer;
+        }
+
+        .tb-icon-btn:hover { background: #f1f5f9; color: #334155; border-color: #cbd5e1; }
+
+        .branch-pill {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 9px;
+            padding: 0.4rem 0.875rem;
+            font-size: 0.82rem;
+            font-weight: 500;
+            color: #374151;
+            cursor: pointer;
+            transition: all 0.18s;
+            white-space: nowrap;
+        }
+
+        .branch-pill:hover { background: #f1f5f9; border-color: #cbd5e1; }
+        .branch-pill .bi-building { color: var(--brand-1); }
+        .branch-pill .chevron { font-size: 0.6rem; color: #94a3b8; }
+
+        .user-pill {
+            display: flex;
+            align-items: center;
+            gap: 0.625rem;
+            padding: 0.3rem 0.75rem 0.3rem 0.3rem;
+            border: 1px solid #e2e8f0;
+            border-radius: 50px;
+            background: #f8fafc;
+            cursor: pointer;
+            transition: all 0.18s;
+        }
+
+        .user-pill:hover { background: #f1f5f9; border-color: #cbd5e1; }
+
+        .user-pill-avatar {
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--brand-1) 0%, var(--brand-2) 100%);
+            color: #fff;
+            font-size: 0.7rem;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .user-pill-name {
+            font-size: 0.82rem;
+            font-weight: 600;
+            color: #334155;
+        }
+
+        /* ─── CONTENT ─────────────────────────────── */
+        .content-area {
+            padding: 1.75rem 2rem;
+            flex: 1;
+        }
+
+        /* ─── DROPDOWN ────────────────────────────── */
+        .dropdown-menu {
+            border: 1px solid #e2e8f0;
+            box-shadow: 0 4px 6px -2px rgba(0,0,0,0.06), 0 12px 32px rgba(0,0,0,0.1);
+            border-radius: 12px;
+            padding: 0.5rem;
+            min-width: 200px;
+        }
+
+        .dropdown-item {
+            border-radius: 7px;
+            padding: 0.5rem 0.875rem;
+            font-size: 0.855rem;
+            color: #374151;
+            transition: background 0.15s;
+        }
+
+        .dropdown-item:hover { background: #f8fafc; color: #111827; }
+        .dropdown-item.text-danger:hover { background: #fef2f2; }
+        .dropdown-header { padding: 0.5rem 0.875rem; font-size: 0.775rem; color: #94a3b8; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; }
+        .dropdown-divider { margin: 0.375rem 0; border-color: #f1f5f9; }
+
+        /* ─── MOBILE OVERLAY ─────────────────────── */
+        .mobile-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.45);
+            z-index: 1049;
+            backdrop-filter: blur(2px);
+        }
+
+        .mobile-overlay.show { display: block; }
+
+        /* ─── RESPONSIVE ──────────────────────────── */
+        @media (max-width: 991.98px) {
+            .sidebar {
+                transform: translateX(-100%);
+                width: var(--sidebar-w) !important;
+            }
+
+            .sidebar.mobile-open { transform: translateX(0); }
+            .main-wrap { margin-left: 0 !important; }
+            .mobile-menu-btn { display: flex; }
+            .sb-collapse-btn { display: none; }
+        }
+
+        @media (max-width: 575.98px) {
+            .content-area { padding: 1.25rem 1rem; }
+            .user-pill-name { display: none; }
+            .branch-pill .branch-name { display: none; }
+        }
+    </style>
+</head>
+<body>
+    <div class="mobile-overlay" id="mobileOverlay"></div>
+
+    <!-- ═══ SIDEBAR ══════════════════════════════════════════════ -->
+    <aside class="sidebar" id="sidebar">
+        <!-- Brand header -->
+        <div class="sb-header">
+            <a href="/Dashboard" class="sb-brand">
+                <div class="sb-brand-icon"><i class="bi bi-heart-fill"></i></div>
+                <div class="sb-brand-text">
+                    <strong>Dog Section</strong>
+                    <small>Management System</small>
+                </div>
+            </a>
+            <button class="sb-collapse-btn" id="sbCollapseBtn" title="Toggle sidebar">
+                <i class="bi bi-layout-sidebar-reverse"></i>
+            </button>
+        </div>
+
+        <!-- Navigation -->
+        <div class="sb-scroll">
+            <div class="sb-section">Main</div>
+
+            <a href="/Dashboard" class="sb-item ">
+                <span class="sb-item-icon"><i class="bi bi-speedometer2"></i></span>
+                <span class="sb-item-label">Dashboard</span>
+            </a>
+
+            
+
+                <div class="sb-section">Menu</div>
+                        <div class="sb-group">
+                            <button class="sb-item " type="button"
+                                    onclick="toggleGroup(this)" aria-expanded="false">
+                                <span class="sb-item-icon">
+                                    <i class="bi bi bi-sliders"></i>
+                                </span>
+                                <span class="sb-item-label">Configuration</span>
+                                <i class="bi bi-chevron-right sb-arrow "></i>
+                            </button>
+                            <div class="sb-sub-wrap ">
+                                <div class="sb-sub-inner">
+                                        <a href="/SystemModules/Index" class="sb-sub-item ">
+                                            System Modules
+                                        </a>
+                                        <a href="/Roles/Index" class="sb-sub-item ">
+                                            Roles
+                                        </a>
+                                        <a href="/Users/Index" class="sb-sub-item ">
+                                            Users
+                                        </a>
+                                        <a href="/Companies/Index" class="sb-sub-item ">
+                                            Companies
+                                        </a>
+                                        <a href="/Country/Index" class="sb-sub-item ">
+                                            Countries
+                                        </a>
+                                        <a href="/BreedGroups" class="sb-sub-item ">
+                                            Breed Groups
+                                        </a>
+                                        <a href="/Banks" class="sb-sub-item ">
+                                            Banks
+                                        </a>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="sb-group">
+                            <button class="sb-item " type="button"
+                                    onclick="toggleGroup(this)" aria-expanded="false">
+                                <span class="sb-item-icon">
+                                    <i class="bi bi-cash-coin"></i>
+                                </span>
+                                <span class="sb-item-label">Finance</span>
+                                <i class="bi bi-chevron-right sb-arrow "></i>
+                            </button>
+                            <div class="sb-sub-wrap ">
+                                <div class="sb-sub-inner">
+                                        <a href="/Currencies" class="sb-sub-item ">
+                                            Currencies
+                                        </a>
+                                        <a href="/ExchangeRates" class="sb-sub-item ">
+                                            Exchange Rates
+                                        </a>
+                                        <a href="/PaymentMethods" class="sb-sub-item ">
+                                            Payment Method
+                                        </a>
+                                        <a href="/Invoices" class="sb-sub-item ">
+                                            Invoices
+                                        </a>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="sb-group">
+                            <button class="sb-item active" type="button"
+                                    onclick="toggleGroup(this)" aria-expanded="true">
+                                <span class="sb-item-icon">
+                                    <i class="bi bi-mortarboard"></i>
+                                </span>
+                                <span class="sb-item-label">Managements</span>
+                                <i class="bi bi-chevron-right sb-arrow open"></i>
+                            </button>
+                            <div class="sb-sub-wrap open">
+                                <div class="sb-sub-inner">
+                                        <a href="/Customers" class="sb-sub-item ">
+                                            Customers
+                                        </a>
+                                        <a href="/Dogs" class="sb-sub-item active">
+                                            Dogs
+                                        </a>
+                                        <a href="/Deployments" class="sb-sub-item ">
+                                            Deployments
+                                        </a>
+                                        <a href="/DogHandler" class="sb-sub-item ">
+                                            Dog Handlers
+                                        </a>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="sb-group">
+                            <button class="sb-item " type="button"
+                                    onclick="toggleGroup(this)" aria-expanded="false">
+                                <span class="sb-item-icon">
+                                    <i class="bi bi-file-earmark-text"></i>
+                                </span>
+                                <span class="sb-item-label">Reports</span>
+                                <i class="bi bi-chevron-right sb-arrow "></i>
+                            </button>
+                            <div class="sb-sub-wrap ">
+                                <div class="sb-sub-inner">
+                                        <a href="/Reports" class="sb-sub-item ">
+                                            Reports
+                                        </a>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="sb-group">
+                            <button class="sb-item " type="button"
+                                    onclick="toggleGroup(this)" aria-expanded="false">
+                                <span class="sb-item-icon">
+                                    <i class="bi bi-gear-fill"></i>
+                                </span>
+                                <span class="sb-item-label">System Logs</span>
+                                <i class="bi bi-chevron-right sb-arrow "></i>
+                            </button>
+                            <div class="sb-sub-wrap ">
+                                <div class="sb-sub-inner">
+                                        <a href="/SystemActions" class="sb-sub-item ">
+                                            System Actions
+                                        </a>
+                                        <a href="/Audits" class="sb-sub-item ">
+                                            Audit logs
+                                        </a>
+                                        <a href="/SystemLogs" class="sb-sub-item ">
+                                            System Errors
+                                        </a>
+                                        <a href="/Systemworkers" class="sb-sub-item ">
+                                            System Workers
+                                        </a>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="sb-group">
+                            <button class="sb-item " type="button"
+                                    onclick="toggleGroup(this)" aria-expanded="false">
+                                <span class="sb-item-icon">
+                                    <i class="bi bi-broadcast"></i>
+                                </span>
+                                <span class="sb-item-label">Webhooks</span>
+                                <i class="bi bi-chevron-right sb-arrow "></i>
+                            </button>
+                            <div class="sb-sub-wrap ">
+                                <div class="sb-sub-inner">
+                                        <a href="/Webhooks" class="sb-sub-item ">
+                                            Webhooks
+                                        </a>
+                                        <a href="/Webhooks/Logs" class="sb-sub-item ">
+                                            Webhook Logs
+                                        </a>
+                                </div>
+                            </div>
+                        </div>
+        </div>
+
+        <!-- User footer -->
+        <div class="sb-footer">
+            <div class="sb-user">
+                <div class="sb-avatar">IT</div>
+                <div class="sb-footer-info">
+                    <div class="name">Innocent Tauzeni</div>
+                    <div class="role">SystemOwner</div>
+                </div>
+            </div>
+        </div>
+    </aside>
+
+    <!-- ═══ MAIN ════════════════════════════════════════════════ -->
+    <div class="main-wrap" id="mainWrap">
+
+        <!-- Topbar -->
+        <header class="topbar">
+            <button class="mobile-menu-btn" id="mobileMenuBtn">
+                <i class="bi bi-list"></i>
+            </button>
+
+            <div class="topbar-title d-none d-sm-block">
+                Dog Section &nbsp;/&nbsp; <strong>Dog Profile - Sarara</strong>
+            </div>
+
+            <div class="topbar-right">
+                    <div class="dropdown">
+                        <button class="branch-pill" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                            <i class="bi bi-building"></i>
+                                <span class="branch-name">All Branches</span>
+                            <i class="bi bi-chevron-down chevron"></i>
+                        </button>
+                        <ul class="dropdown-menu dropdown-menu-end">
+                            <li><h6 class="dropdown-header">Switch Context</h6></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li>
+                                <a class="dropdown-item" href="#" onclick="switchBranch(0); return false;">
+                                    <div class="d-flex align-items-center gap-2">
+                                        <i class="bi bi-building" style="color:#94a3b8;font-size:.8rem"></i>
+                                        <div style="flex:1">
+                                            <div class="fw-semibold" style="font-size:.845rem">All Branches</div>
+                                            <div class="text-muted" style="font-size:.75rem">Consolidated view</div>
+                                        </div>
+                                            <i class="bi bi-check2 text-success"></i>
+                                    </div>
+                                </a>
+                            </li>
+                            <li><hr class="dropdown-divider"></li>
+                                <li>
+                                    <a class="dropdown-item" href="#"
+                                       onclick="switchBranch(2); return false;">
+                                        <div class="d-flex align-items-center gap-2">
+                                            <i class="bi bi-building-fill" style="color: var(--brand-1); font-size:.8rem;"></i>
+                                            <div style="flex:1;">
+                                                <div class="fw-semibold" style="font-size:.845rem;">Harare Branch</div>
+                                                    <div class="text-muted" style="font-size:.75rem;">Harare</div>
+                                            </div>
+                                        </div>
+                                    </a>
+                                </li>
+                                <li>
+                                    <a class="dropdown-item" href="#"
+                                       onclick="switchBranch(3); return false;">
+                                        <div class="d-flex align-items-center gap-2">
+                                            <i class="bi bi-building-fill" style="color: var(--brand-1); font-size:.8rem;"></i>
+                                            <div style="flex:1;">
+                                                <div class="fw-semibold" style="font-size:.845rem;">Bulawayo Branch</div>
+                                                    <div class="text-muted" style="font-size:.75rem;">Bulawayo</div>
+                                            </div>
+                                        </div>
+                                    </a>
+                                </li>
+                        </ul>
+                    </div>
+
+                <div class="tb-icon-btn" title="Notifications">
+                    <i class="bi bi-bell"></i>
+                </div>
+
+                <div class="dropdown">
+                    <button class="user-pill border-0" type="button"
+                            data-bs-toggle="dropdown" aria-expanded="false">
+                        <div class="user-pill-avatar">IT</div>
+                        <span class="user-pill-name">Innocent Tauzeni</span>
+                        <i class="bi bi-chevron-down" style="font-size:.6rem; color:#94a3b8; margin-left:.1rem;"></i>
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-end" style="min-width:220px;">
+                        <li>
+                            <div class="px-3 py-2 d-flex align-items-center gap-2">
+                                <div class="user-pill-avatar" style="width:38px;height:38px;border-radius:9px;font-size:.85rem;">IT</div>
+                                <div>
+                                    <div style="font-size:.855rem;font-weight:600;color:#1e293b;">Innocent Tauzeni</div>
+                                    <div style="font-size:.775rem;color:#64748b;">systemowner@dogsection.com</div>
+                                </div>
+                            </div>
+                        </li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li><a class="dropdown-item" href="#"><i class="bi bi-person me-2 text-muted"></i>Profile</a></li>
+                        <li><a class="dropdown-item" href="#"><i class="bi bi-gear me-2 text-muted"></i>Settings</a></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li>
+                            <form method="post" class="m-0" action="/Auth/Logout">
+                                <button type="submit" class="dropdown-item text-danger">
+                                    <i class="bi bi-box-arrow-right me-2"></i>Logout
+                                </button>
+                            <input name="__RequestVerificationToken" type="hidden" value="CfDJ8MDpoeUzrddHpI4zW5o5Z1us9_jKUO_wYG9EsieWntrtYzmq9g39nE-hNVERDHoBJU1sxWCHWCdJ3yiDAD_1-1k8ymQ_JuQK33qd5PQbiotEcq-11TwfSGPbRSvFXnY9N7Ib7oACVztO6nvT8Lq3tg0" /></form>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </header>
+
+        <!-- Page content -->
+        <main class="content-area">
+            <style>
+.dog-hero{background:linear-gradient(135deg,#667eea,#764ba2);border-radius:20px;padding:2rem 2rem 4.5rem;margin-bottom:1.5rem;position:relative;overflow:hidden}
+.hero-back{display:inline-flex;align-items:center;gap:.4rem;color:rgba(255,255,255,.8);font-size:.845rem;font-weight:600;text-decoration:none;margin-bottom:1.5rem}
+.hero-back:hover{color:#fff}
+.hero-content{display:flex;align-items:flex-end;gap:1.75rem;flex-wrap:wrap}
+.hero-photo{width:120px;height:120px;border-radius:16px;object-fit:cover;border:4px solid rgba(255,255,255,.3);box-shadow:0 8px 24px rgba(0,0,0,.2);flex-shrink:0}
+.hero-photo-ph{width:120px;height:120px;border-radius:16px;background:rgba(255,255,255,.15);border:4px solid rgba(255,255,255,.2);display:flex;align-items:center;justify-content:center;font-size:3rem;color:rgba(255,255,255,.5);flex-shrink:0}
+.hero-text{flex:1;min-width:180px;padding-bottom:.5rem}
+.hero-name{font-size:1.9rem;font-weight:900;color:#fff;margin:0 0 .2rem;line-height:1.1}
+.hero-sub{font-size:.95rem;color:rgba(255,255,255,.8);margin:0 0 .875rem}
+.hero-chips{display:flex;gap:.5rem;flex-wrap:wrap}
+.hchip{display:inline-flex;align-items:center;gap:.3rem;font-size:.77rem;font-weight:700;padding:.28rem .7rem;border-radius:20px}
+.hchip-active{background:rgba(16,185,129,.25);color:#d1fae5;border:1px solid rgba(16,185,129,.35)}
+.hchip-inactive{background:rgba(239,68,68,.25);color:#fee2e2;border:1px solid rgba(239,68,68,.35)}
+.hchip-deceased{background:rgba(107,114,128,.3);color:#f3f4f6;border:1px solid rgba(107,114,128,.4)}
+.hchip-info{background:rgba(255,255,255,.15);color:#fff;border:1px solid rgba(255,255,255,.2)}
+.info-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:1.25rem;margin-bottom:1.5rem}
+.icard{background:#fff;border-radius:14px;border:1px solid #e9eef4;box-shadow:0 1px 4px rgba(0,0,0,.04);overflow:hidden}
+.icard-hdr{display:flex;align-items:center;gap:.5rem;padding:.8rem 1.2rem;border-bottom:1px solid #f1f5f9;background:#fafbfc}
+.icard-hdr i{color:#667eea;font-size:.95rem}
+.icard-hdr span{font-size:.845rem;font-weight:800;color:#0f172a}
+.icard-body{padding:1rem 1.2rem}
+.drow{display:flex;justify-content:space-between;align-items:center;padding:.45rem 0;border-bottom:1px solid #f8fafc;gap:1rem}
+.drow:last-child{border-bottom:none;padding-bottom:0}
+.dlabel{font-size:.78rem;font-weight:600;color:#64748b;white-space:nowrap}
+.dval{font-size:.845rem;color:#1e293b;font-weight:500;text-align:right;word-break:break-all}
+.dval.mono{font-family:monospace;font-size:.8rem;letter-spacing:.02em}
+.sbadge{display:inline-flex;align-items:center;gap:.3rem;font-size:.74rem;font-weight:700;padding:.22rem .6rem;border-radius:20px}
+.sb-active{background:#d1fae5;color:#065f46}
+.sb-inactive{background:#fee2e2;color:#991b1b}
+.sb-deceased{background:#f1f5f9;color:#374151}
+.photo-card{background:#fff;border-radius:14px;border:1px solid #e9eef4;overflow:hidden;margin-bottom:1.5rem;box-shadow:0 1px 4px rgba(0,0,0,.04)}
+.photo-full{width:100%;max-height:380px;object-fit:cover;display:block}
+.photo-empty{height:180px;display:flex;flex-direction:column;align-items:center;justify-content:center;color:#cbd5e1;gap:.5rem;font-size:.875rem}
+.photo-empty i{font-size:2.5rem}
+.family-section{background:#fff;border-radius:14px;border:1px solid #e9eef4;box-shadow:0 1px 4px rgba(0,0,0,.04);overflow:hidden;margin-bottom:1.5rem}
+.family-hdr{display:flex;align-items:center;gap:.5rem;padding:.8rem 1.2rem;border-bottom:1px solid #f1f5f9;background:#fafbfc}
+.family-hdr i{color:#667eea}
+.family-hdr span{font-size:.845rem;font-weight:800;color:#0f172a}
+.family-body{padding:1.25rem;display:grid;grid-template-columns:1fr 36px 1fr;gap:.75rem;align-items:center}
+.fam-card{border-radius:12px;border:1px solid #e9eef4;padding:1rem;text-align:center}
+.fam-role{font-size:.7rem;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.07em;margin-bottom:.5rem}
+.fam-icon{width:44px;height:44px;border-radius:11px;background:linear-gradient(135deg,#ede9fe,#ddd6fe);display:flex;align-items:center;justify-content:center;margin:0 auto .5rem;font-size:1.2rem;color:#7c3aed}
+.fam-name{font-size:.9rem;font-weight:700;color:#1e293b;margin:0}
+.fam-none{font-size:.82rem;color:#cbd5e1;font-style:italic;margin:0}
+.fam-subject{background:linear-gradient(135deg,#667eea,#764ba2);border-radius:12px;padding:1rem;text-align:center}
+.fam-subject .fam-role{color:rgba(255,255,255,.7)}
+.fam-subject .fam-icon{background:rgba(255,255,255,.2);color:#fff}
+.fam-subject .fam-name{color:#fff}
+.fam-arrow{display:flex;align-items:center;justify-content:center;color:#cbd5e1;font-size:1.25rem}
+.actions-bar{background:#fff;border-radius:14px;border:1px solid #e9eef4;padding:1rem 1.2rem;display:flex;align-items:center;gap:.625rem;flex-wrap:wrap;margin-bottom:1.5rem;box-shadow:0 1px 4px rgba(0,0,0,.04)}
+.abtn{display:inline-flex;align-items:center;gap:.4rem;padding:.6rem 1.2rem;border:none;border-radius:9px;font-size:.835rem;font-weight:600;cursor:pointer;text-decoration:none;transition:all .18s}
+.abtn-edit{background:linear-gradient(135deg,#667eea,#764ba2);color:#fff;box-shadow:0 2px 8px rgba(102,126,234,.25)}
+.abtn-edit:hover{opacity:.9;color:#fff}
+.abtn-danger{background:linear-gradient(135deg,#ef4444,#dc2626);color:#fff;box-shadow:0 2px 8px rgba(239,68,68,.2)}
+.abtn-danger:hover{opacity:.9;color:#fff}
+.abtn-back{background:#f1f5f9;color:#64748b;border:1.5px solid #e2e8f0}
+.abtn-back:hover{background:#e2e8f0;color:#334155}
+.modal-backdrop-custom{position:fixed;inset:0;background:rgba(15,23,42,.45);backdrop-filter:blur(3px);z-index:1050;display:none;align-items:center;justify-content:center;padding:1rem}
+.modal-backdrop-custom.open{display:flex}
+.modal-box{background:#fff;border-radius:16px;box-shadow:0 20px 60px rgba(0,0,0,.2);width:100%;max-width:520px;overflow:hidden}
+.modal-hdr{display:flex;align-items:center;justify-content:space-between;padding:1.1rem 1.375rem;border-bottom:1px solid #f1f5f9}
+.modal-hdr h5{font-size:.95rem;font-weight:800;color:#0f172a;margin:0;display:flex;align-items:center;gap:.5rem}
+.modal-close{width:28px;height:28px;border:none;background:#f1f5f9;border-radius:7px;color:#64748b;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:.85rem}
+.modal-body{padding:1.2rem 1.375rem}
+.modal-foot{padding:.875rem 1.375rem;border-top:1px solid #f1f5f9;display:flex;justify-content:flex-end;gap:.5rem}
+.finput{width:100%;padding:.6rem .875rem;border:1.5px solid #e2e8f0;border-radius:9px;font-size:.845rem;color:#1e293b;outline:none;transition:border-color .2s}
+.finput:focus{border-color:#667eea;box-shadow:0 0 0 3px rgba(102,126,234,.1)}
+.frow{margin-bottom:.875rem}
+.frow label{display:block;font-size:.78rem;font-weight:600;color:#374151;margin-bottom:.3rem}
+.btn-cancel{padding:.6rem 1.1rem;background:#f1f5f9;color:#64748b;border:1.5px solid #e2e8f0;border-radius:9px;font-size:.835rem;font-weight:600;cursor:pointer}
+.btn-danger-sm{padding:.6rem 1.25rem;background:linear-gradient(135deg,#ef4444,#dc2626);color:#fff;border:none;border-radius:9px;font-size:.835rem;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:.4rem}
+.toast-wrap{position:fixed;bottom:1.75rem;right:1.75rem;z-index:9999;display:flex;flex-direction:column;gap:.5rem;pointer-events:none}
+.toast-msg{display:flex;align-items:center;gap:.625rem;padding:.875rem 1.25rem;border-radius:12px;font-size:.855rem;font-weight:600;box-shadow:0 8px 32px rgba(0,0,0,.15);pointer-events:all;transform:translateX(120%);transition:transform .3s cubic-bezier(.4,0,.2,1);max-width:320px}
+.toast-msg.show{transform:translateX(0)}
+.toast-success{background:#065f46;color:#fff}
+.toast-error{background:#991b1b;color:#fff}
+</style>
+
+<div class="toast-wrap" id="toastWrap"></div>
+
+<!-- Hero -->
+<div class="dog-hero">
+    <a href="/Dogs" class="hero-back"><i class="bi bi-arrow-left"></i> Back to Dogs</a>
+    <div class="hero-content">
+            <div class="hero-photo-ph"><i class="bi bi-camera"></i></div>
+        <div class="hero-text">
+            <h1 class="hero-name">Sarara</h1>
+            <p class="hero-sub">English Setter &nbsp;&middot;&nbsp; Silver &nbsp;&middot;&nbsp; Female</p>
+            <div class="hero-chips">
+                    <span class="hchip hchip-active"><i class="bi bi-circle-fill" style="font-size:.45rem;"></i> Active</span>
+                <span class="hchip hchip-info"><i class="bi bi-calendar3"></i> 0 yrs old</span>
+                    <span class="hchip hchip-info"><i class="bi bi-building"></i> Black Eagle</span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Actions -->
+<div class="actions-bar">
+    <a href="/Dogs" class="abtn abtn-back"><i class="bi bi-arrow-left"></i> Dogs List</a>
+        <a href="javascript:void(0)" onclick="goEdit(9)" class="abtn abtn-edit"><i class="bi bi-pencil-fill"></i> Edit Dog</a>
+            <button class="abtn abtn-danger" onclick="openDeceasedModal()"><i class="bi bi-heartbreak-fill"></i> Mark as Deceased</button>
+    <a href="/Reports/DogCertificate/9" target="_blank" class="abtn" style="background:linear-gradient(135deg,#f59e0b,#d97706);color:#fff;box-shadow:0 2px 8px rgba(245,158,11,.25);">
+        <i class="bi bi-award-fill"></i> Print Certificate
+    </a>
+        <button class="abtn" style="background:#e0e7ff;color:#3730a3" onclick="openModal('assignmentModal')"><i class="bi bi-person-check-fill"></i> Assign Handler / Branch</button>
+        <button class="abtn" style="background:#d1fae5;color:#065f46" onclick="openCareModal()"><i class="bi bi-clipboard2-pulse-fill"></i> Record Care</button>
+</div>
+
+<!-- Assignment and care timeline -->
+<div class="info-grid">
+    <div class="icard">
+        <div class="icard-hdr"><i class="bi bi-person-workspace"></i><span>Current Assignment</span></div>
+        <div class="icard-body">
+                <div class="drow"><span class="dlabel">Handler</span><span class="dval">Vata Mushandi</span></div>
+                <div class="drow"><span class="dlabel">Branch</span><span class="dval">BINDURA</span></div>
+                <div class="drow"><span class="dlabel">Assigned</span><span class="dval">Jul 16, 2026</span></div>
+        </div>
+    </div>
+    <div class="icard">
+        <div class="icard-hdr"><i class="bi bi-heart-pulse-fill"></i><span>Care Summary</span></div>
+        <div class="icard-body">
+            <div class="drow"><span class="dlabel">Care records</span><span class="dval">1</span></div>
+            <div class="drow"><span class="dlabel">Needs attention</span><span class="dval">0</span></div>
+            <div class="drow"><span class="dlabel">Latest event</span><span class="dval">Vaccinated</span></div>
+        </div>
+    </div>
+</div>
+
+<div class="family-section">
+    <div class="family-hdr" style="justify-content:space-between">
+        <div style="display:flex;align-items:center;gap:.5rem"><i class="bi bi-journal-medical" style="color:#667eea"></i><span>Care Timeline</span></div>
+        <div style="display:flex;align-items:center;gap:.5rem">
+                <button onclick="openModal('careTimelineModal')" style="display:inline-flex;align-items:center;gap:.35rem;padding:.35rem .8rem;background:#ede9fe;color:#7c3aed;border:none;border-radius:7px;font-size:.78rem;font-weight:700;cursor:pointer">
+                    <i class="bi bi-list-ul"></i> View All (1)
+                </button>
+                <button onclick="printCareTimelinePdf()" style="display:inline-flex;align-items:center;gap:.35rem;padding:.35rem .8rem;background:#dbeafe;color:#1d4ed8;border:none;border-radius:7px;font-size:.78rem;font-weight:700;cursor:pointer">
+                    <i class="bi bi-printer-fill"></i> Print PDF
+                </button>
+        </div>
+    </div>
+    <div style="padding:1rem 1.25rem">
+                <div style="display:flex;gap:.875rem;margin-bottom:.875rem;align-items:flex-start">
+                    <div style="width:36px;height:36px;border-radius:10px;background:#dbeafe;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:.95rem;color:#0369a1">
+                        <i class="bi bi-shield-fill-check"></i>
+                    </div>
+                    <div style="flex:1;min-width:0;background:#f8fafc;border-radius:10px;padding:.65rem .9rem;border:1px solid #f1f5f9">
+                        <div style="display:flex;justify-content:space-between;align-items:center;gap:.5rem;flex-wrap:wrap">
+                            <span style="font-weight:700;font-size:.875rem;color:#1e293b">Vaccinated</span>
+                            <span style="font-size:.74rem;color:#94a3b8;white-space:nowrap">Jul 16, 2026 15:16</span>
+                        </div>
+                            <div style="font-size:.82rem;color:#475569;margin-top:.3rem;line-height:1.4">a</div>
+                            <div style="font-size:.78rem;font-weight:600;color:#667eea;margin-top:.25rem"><i class="bi bi-check2-circle" style="margin-right:.25rem"></i>a</div>
+                        <div style="display:flex;align-items:center;justify-content:space-between;margin-top:.4rem;flex-wrap:wrap;gap:.3rem">
+                            <span style="font-size:.72rem;color:#94a3b8"><i class="bi bi-person-fill" style="margin-right:.2rem"></i>Vata Mushandi</span>
+                        </div>
+                    </div>
+                </div>
+    </div>
+</div>
+
+<!-- CARE TIMELINE FULL MODAL -->
+<div class="modal-backdrop-custom" id="careTimelineModal">
+    <div class="modal-box" style="max-width:720px">
+        <div class="modal-hdr">
+            <h5><i class="bi bi-journal-medical" style="color:#667eea"></i> Full Care Timeline — Sarara</h5>
+            <div style="display:flex;align-items:center;gap:.5rem">
+                <button onclick="printCareTimelinePdf()" style="display:inline-flex;align-items:center;gap:.35rem;padding:.35rem .75rem;background:#dbeafe;color:#1d4ed8;border:none;border-radius:7px;font-size:.78rem;font-weight:700;cursor:pointer">
+                    <i class="bi bi-printer-fill"></i> Print PDF
+                </button>
+                <button class="modal-close" onclick="closeModal('careTimelineModal')"><i class="bi bi-x-lg"></i></button>
+            </div>
+        </div>
+        <div class="modal-body-p" style="padding:1.25rem 1.5rem">
+                    <div style="display:flex;gap:.875rem;margin-bottom:1rem;align-items:flex-start">
+                        <div style="display:flex;flex-direction:column;align-items:center;gap:0">
+                            <div style="width:36px;height:36px;border-radius:10px;background:#dbeafe;display:flex;align-items:center;justify-content:center;font-size:.95rem;color:#0369a1;flex-shrink:0"><i class="bi bi-shield-fill-check"></i></div>
+                        </div>
+                        <div style="flex:1;background:#f8fafc;border-radius:10px;padding:.75rem 1rem;border:1px solid #f1f5f9">
+                            <div style="display:flex;justify-content:space-between;align-items:center;gap:.5rem;flex-wrap:wrap">
+                                <span style="font-weight:700;font-size:.9rem;color:#1e293b">Vaccinated</span>
+                                <span style="font-size:.76rem;color:#94a3b8">July 16, 2026 &#xB7; 15:16</span>
+                            </div>
+                                <div style="font-size:.845rem;color:#374151;margin-top:.4rem;line-height:1.5">a</div>
+                                <div style="font-size:.8rem;font-weight:600;color:#667eea;margin-top:.3rem"><i class="bi bi-check2-circle" style="margin-right:.3rem"></i>a</div>
+                            <div style="display:flex;align-items:center;justify-content:space-between;margin-top:.5rem;flex-wrap:wrap;gap:.3rem">
+                                <span style="font-size:.74rem;color:#94a3b8"><i class="bi bi-person-fill" style="margin-right:.2rem"></i>Vata Mushandi</span>
+                            </div>
+                        </div>
+                    </div>
+        </div>
+        <div class="modal-foot"><button class="btn-cancel" onclick="closeModal('careTimelineModal')">Close</button></div>
+    </div>
+</div>
+
+<!-- Full photo -->
+
+<!-- Info cards -->
+<div class="info-grid">
+    <div class="icard">
+        <div class="icard-hdr"><i class="bi bi-info-circle-fill"></i><span>Basic Information</span></div>
+        <div class="icard-body">
+            <div class="drow"><span class="dlabel">Name</span><span class="dval">Sarara</span></div>
+            <div class="drow"><span class="dlabel">Breed</span><span class="dval">English Setter</span></div>
+            <div class="drow"><span class="dlabel">Color</span><span class="dval">Silver</span></div>
+            <div class="drow"><span class="dlabel">Gender</span><span class="dval">Female</span></div>
+            <div class="drow">
+                <span class="dlabel">Status</span>
+                <span class="dval">
+                        <span class="sbadge sb-active"><i class="bi bi-circle-fill" style="font-size:.45rem;"></i> Active</span>
+                </span>
+            </div>
+        </div>
+    </div>
+    <div class="icard">
+        <div class="icard-hdr"><i class="bi bi-calendar3"></i><span>Dates &amp; Age</span></div>
+        <div class="icard-body">
+            <div class="drow"><span class="dlabel">Date of Birth</span><span class="dval">December 23, 2026</span></div>
+            <div class="drow"><span class="dlabel">Age</span><span class="dval">0 years</span></div>
+        </div>
+    </div>
+    <div class="icard">
+        <div class="icard-hdr"><i class="bi bi-upc-scan"></i><span>Identification</span></div>
+        <div class="icard-body">
+            <div class="drow"><span class="dlabel">System ID</span><span class="dval mono">#9</span></div>
+            <div class="drow"><span class="dlabel">Microchip</span><span class="dval mono">981000123456789902</span></div>
+            <div class="drow"><span class="dlabel">Company</span><span class="dval">Black Eagle</span></div>
+        </div>
+    </div>
+</div>
+
+<!-- Family Tree -->
+<div class="family-section">
+    <div class="family-hdr"><i class="bi bi-diagram-3-fill"></i><span>Family Tree</span></div>
+    <div class="family-body">
+        <div class="fam-card">
+            <div class="fam-role">Sire (Father)</div>
+            <div class="fam-icon"><i class="bi bi-gender-male"></i></div>
+                <p class="fam-none">Unknown</p>
+        </div>
+        <div class="fam-arrow"><i class="bi bi-arrow-right"></i></div>
+        <div class="fam-subject">
+            <div class="fam-role">This Dog</div>
+            <div class="fam-icon"><i class="bi bi-star-fill"></i></div>
+            <p class="fam-name">Sarara</p>
+        </div>
+    </div>
+    <div style="padding:0 1.25rem 1.25rem;display:grid;grid-template-columns:1fr 36px 1fr;gap:.75rem;align-items:center">
+        <div></div>
+        <div class="fam-arrow" style="transform:rotate(90deg)"><i class="bi bi-arrow-down"></i></div>
+        <div></div>
+    </div>
+    <div style="padding:0 1.25rem 1.25rem;display:grid;grid-template-columns:1fr 36px 1fr;gap:.75rem;align-items:center">
+        <div class="fam-card">
+            <div class="fam-role">Dam (Mother)</div>
+            <div class="fam-icon"><i class="bi bi-gender-female"></i></div>
+                <p class="fam-none">Unknown</p>
+        </div>
+        <div></div>
+        <div></div>
+    </div>
+</div>
+
+<!-- Vaccination Records -->
+    <div class="family-section">
+        <div class="family-hdr"><i class="bi bi-shield-fill-check"></i><span>Vaccination Records</span></div>
+        <div style="padding:1.25rem;">
+                <div style="border:1px solid #e9eef4;border-radius:12px;padding:1rem;margin-bottom:1rem;background:#fafbfc;">
+                    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:.75rem;">
+                        <div>
+                            <h6 style="font-size:.9rem;font-weight:700;color:#1e293b;margin:0 0 .25rem;">Rabies</h6>
+                            <p style="font-size:.8rem;color:#64748b;margin:0;">Unknown type</p>
+                        </div>
+                        <span style="font-size:.75rem;color:#059669;background:#d1fae5;padding:.2rem .6rem;border-radius:20px;font-weight:600;">
+                            Jul 16, 2026
+                        </span>
+                    </div>
+                        <p style="font-size:.8rem;color:#374151;margin:.25rem 0;"><strong>Batch:</strong> 23333</p>
+                        <p style="font-size:.8rem;color:#dc2626;margin:.25rem 0;"><strong>Next Due:</strong> Jul 30, 2026</p>
+                        <p style="font-size:.8rem;color:#64748b;margin:.5rem 0 0;font-style:italic;">www</p>
+                </div>
+        </div>
+    </div>
+
+<!-- Mating Records & Litters -->
+
+<!-- Deceased Modal -->
+<div class="modal-backdrop-custom" id="deceasedModal">
+    <div class="modal-box">
+        <div class="modal-hdr">
+            <h5><i class="bi bi-heartbreak-fill" style="color:#dc2626;"></i> Mark as Deceased</h5>
+            <button class="modal-close" onclick="closeModal('deceasedModal')"><i class="bi bi-x-lg"></i></button>
+        </div>
+        <div class="modal-body">
+            <p style="font-size:.875rem;color:#374151;margin-bottom:1rem;">Mark <strong>Sarara</strong> as deceased? This will set the status to inactive.</p>
+            <div class="frow">
+                <label>Date of Death <span style="color:#ef4444;">*</span></label>
+                <input class="finput" id="deceasedDate" type="date" />
+            </div>
+        </div>
+        <div class="modal-foot">
+            <button class="btn-cancel" onclick="closeModal('deceasedModal')">Cancel</button>
+            <button class="btn-danger-sm" onclick="markAsDeceased(9)"><i class="bi bi-heartbreak-fill"></i> Confirm</button>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Dog Modal -->
+<div class="modal-backdrop-custom" id="editDogModal">
+    <div class="modal-box" style="max-width:720px">
+        <div class="modal-hdr">
+            <h5><i class="bi bi-pencil-fill" style="color:#667eea;"></i> Edit Dog</h5>
+            <button class="modal-close" onclick="closeModal('editDogModal')"><i class="bi bi-x-lg"></i></button>
+        </div>
+        <div class="modal-body" style="max-height:70vh;overflow-y:auto">
+            <input type="hidden" id="ed_id" value="9">
+            <input type="hidden" id="ed_existingPhoto">
+            <input type="hidden" id="ed_companyId" value="4">
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:.875rem">
+                <div class="frow"><label>Name <span style="color:#ef4444">*</span></label><input class="finput" id="ed_name" value="Sarara"></div>
+                <div class="frow"><label>Breed <span style="color:#ef4444">*</span></label><input class="finput" id="ed_breed" value="English Setter"></div>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:.875rem">
+                <div class="frow"><label>Color <span style="color:#ef4444">*</span></label><input class="finput" id="ed_color" value="Silver"></div>
+                <div class="frow"><label>Gender</label>
+                    <select class="finput" id="ed_gender">
+                        <option value="">-- Select --</option>
+ <option value="Male">Male</option>  <option value="Female" selected>Female</option>                     </select>
+                </div>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:.875rem">
+                <div class="frow"><label>Date of Birth <span style="color:#ef4444">*</span></label><input class="finput" type="date" id="ed_dateOfBirth" value="2026-12-23"></div>
+                <div class="frow"><label>Microchip Number</label><input class="finput" id="ed_microchip" value="981000123456789902"></div>
+            </div>
+            <div class="frow">
+                <label>Date of Death <span style="font-size:.72rem;color:#94a3b8;font-weight:400">(clear to mark as alive)</span></label>
+                <input class="finput" type="date" id="ed_dateOfDeath" value="">
+                <div id="ed_dod_hint" style="display:none;margin-top:.3rem;font-size:.75rem;color:#059669;font-weight:600">
+                    <i class="bi bi-arrow-counterclockwise"></i> Date of death cleared — dog will be marked as <strong>Active</strong>
+                </div>
+            </div>
+            <div class="frow"><label>New Photo (leave blank to keep current)</label>
+                <input class="finput" type="file" id="ed_photo" accept=".jpg,.jpeg,.png,.gif" style="padding:.4rem">
+            </div>
+        </div>
+        <div class="modal-foot">
+            <button class="btn-cancel" onclick="closeModal('editDogModal')">Cancel</button>
+            <button class="btn-danger-sm" id="editDogBtn" onclick="submitEditDog()" style="background:linear-gradient(135deg,#667eea,#764ba2)">
+                <i class="bi bi-check2-circle"></i> Save Changes
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Assignment modal -->
+<div class="modal-backdrop-custom" id="assignmentModal"><div class="modal-box"><div class="modal-hdr"><h5><i class="bi bi-person-check-fill"></i> Assign Dog</h5><button class="modal-close" onclick="closeModal('assignmentModal')"><i class="bi bi-x-lg"></i></button></div><div class="modal-body">
+    <div class="frow">
+        <label>Handler</label>
+        <select class="finput" id="assignmentHandler">
+            <option value="">-- No handler --</option>
+                    <option value="981efe27-154a-4c6a-9cad-b2c0e343ebce">Keryleen Tauzeni</option>
+        </select>
+    </div>
+    <div class="frow">
+        <label>Branch</label>
+        <select class="finput" id="assignmentBranch">
+            <option value="">-- No branch --</option>
+                    <option value="3">Bulawayo Branch</option>
+                    <option value="2">Harare Branch</option>
+        </select>
+    </div>
+    <div class="frow"><label>Assignment notes</label><textarea class="finput" id="assignmentNotes" rows="3"></textarea></div>
+</div><div class="modal-foot"><button class="btn-cancel" onclick="closeModal('assignmentModal')">Cancel</button><button class="btn-danger-sm" style="background:linear-gradient(135deg,#667eea,#764ba2)" onclick="saveAssignment()">Save Assignment</button></div></div></div>
+
+<!-- Care record modal -->
+<div class="modal-backdrop-custom" id="careModal"><div class="modal-box"><div class="modal-hdr"><h5><i class="bi bi-clipboard2-pulse-fill"></i> Record Dog Care</h5><button class="modal-close" onclick="closeModal('careModal')"><i class="bi bi-x-lg"></i></button></div><div class="modal-body">
+    <div class="frow"><label>Event type <span style="color:#ef4444">*</span></label>
+        <select class="finput" id="careType">
+            <option value="Feeding">Feeding</option>
+            <option value="Vaccinated">Vaccinated</option>
+            <option value="Illness">Illness / Sick</option>
+            <option value="Injured">Injured</option>
+            <option value="Bite someone">Bite someone</option>
+            <option value="Heat">On Heat</option>
+            <option value="Mating">Mating</option>
+            <option value="Birth">Gave Birth</option>
+            <option value="Other">Other</option>
+        </select>
+    </div>
+    <div class="frow"><label>Date and time <span style="color:#ef4444">*</span></label><input class="finput" type="datetime-local" id="careOccurredOn"></div>
+    <div class="frow"><label>Details</label><textarea class="finput" id="careDetails" rows="3" placeholder="Food given, symptoms, mating details, birth outcome, or observation"></textarea></div>
+    <div class="frow"><label>Quantity / outcome</label><input class="finput" id="careOutcome" placeholder="e.g. 2 cups, medication given, 6 puppies"></div>
+    <label style="font-size:.8rem;color:#374151"><input type="checkbox" id="careAttention"> Requires attention or follow-up</label>
+
+    <!-- Extra conditional fields -->
+    <div id="careExtra" style="display:none;margin-top:.75rem;">
+        <div class="frow" id="c_vaccineName"><label>Vaccine</label><input class="finput" id="careVaccineName" placeholder="Vaccine name (e.g. Rabies, DHPP)" /></div>
+        <div class="frow" id="c_vaccineBatch"><label>Batch / Lot</label><input class="finput" id="careVaccineBatch" placeholder="Batch or lot number" /></div>
+        <div class="frow" id="c_vaccineNext"><label>Next due</label><input class="finput" type="date" id="careVaccineNextDue" /></div>
+        <div class="frow" id="c_vaccineNotes"><label>Vaccine notes</label><textarea class="finput" id="careVaccineNotes" rows="2" placeholder="Notes about reaction, dosage, or route"></textarea></div>
+
+        <div class="frow" id="c_matingPartner"><label>Mating partner</label><input class="finput" id="careMatingPartner" placeholder="Name or ID of mating dog" /></div>
+        <div class="frow" id="c_matingDuration"><label>Duration</label><input class="finput" id="careMatingDuration" placeholder="Duration (e.g. 5 min)" /></div>
+
+        <div class="frow" id="c_injurySeverity"><label>Severity</label><select class="finput" id="careInjurySeverity"><option>Minor</option><option>Moderate</option><option>Severe</option></select></div>
+        <div class="frow" id="c_injuryDetails"><label>Injury details</label><textarea class="finput" id="careInjuryDetails" rows="2" placeholder="Describe injury and treatment"></textarea></div>
+        <div class="frow" id="c_injuryTreated"><label>Treated</label><input type="checkbox" id="careInjuryTreated" /> <span style="margin-left:.5rem;color:#64748b;font-size:.92rem;">Treated on-site</span></div>
+
+        <div class="frow" id="c_biteSeverity"><label>Bite severity</label><select class="finput" id="careBiteSeverity"><option>Minor</option><option>Moderate</option><option>Severe</option></select></div>
+        <div class="frow" id="c_biteDetails"><label>Victim / details</label><textarea class="finput" id="careBiteDetails" rows="2" placeholder="Who was bitten and first aid given"></textarea></div>
+        <div class="frow" id="c_biteReported"><label>Reported to</label><input class="finput" id="careBiteReportedTo" placeholder="e.g. Owner, Clinic, Police" /></div>
+    </div>
+</div><div class="modal-foot"><button class="btn-cancel" onclick="closeModal('careModal')">Cancel</button><button class="btn-danger-sm" style="background:linear-gradient(135deg,#059669,#047857)" onclick="saveCareRecord()">Save Record</button></div></div></div>
+
+<script>
+function openModal(id){document.getElementById(id).classList.add('open');document.body.style.overflow='hidden';}
+function closeModal(id){document.getElementById(id).classList.remove('open');document.body.style.overflow='';}
+document.querySelectorAll('.modal-backdrop-custom').forEach(bd=>{bd.addEventListener('click',e=>{if(e.target===bd)closeModal(bd.id);});});
+document.addEventListener('keydown',e=>{if(e.key==='Escape')document.querySelectorAll('.modal-backdrop-custom.open').forEach(m=>closeModal(m.id));});
+function openDeceasedModal(){document.getElementById('deceasedDate').value=new Date().toISOString().split('T')[0];openModal('deceasedModal');}
+function goEdit(id){openModal('editDogModal');}
+function openCareModal(){
+    document.getElementById('careOccurredOn').value=new Date().toISOString().slice(0,16);
+    document.getElementById('careDetails').value='';
+    document.getElementById('careOutcome').value='';
+    document.getElementById('careAttention').checked=false;
+    // clear conditional fields
+    try{ document.getElementById('careVaccineName').value=''; }catch(e){}
+    try{ document.getElementById('careVaccineBatch').value=''; }catch(e){}
+    try{ document.getElementById('careVaccineNextDue').value=''; }catch(e){}
+    try{ document.getElementById('careVaccineNotes').value=''; }catch(e){}
+    try{ document.getElementById('careMatingPartner').value=''; }catch(e){}
+    try{ document.getElementById('careMatingDuration').value=''; }catch(e){}
+    try{ document.getElementById('careInjuryDetails').value=''; }catch(e){}
+    try{ document.getElementById('careInjurySeverity').value='Minor'; }catch(e){}
+    try{ document.getElementById('careInjuryTreated').checked=false; }catch(e){}
+    try{ document.getElementById('careBiteDetails').value=''; }catch(e){}
+    try{ document.getElementById('careBiteSeverity').value='Minor'; }catch(e){}
+    try{ document.getElementById('careBiteReportedTo').value=''; }catch(e){}
+    updateDetailsExtraFields();
+    openModal('careModal');
+}
+
+function updateDetailsExtraFields(){
+    var tEl = document.getElementById('careType'); if(!tEl) return;
+    var t = tEl.value;
+    var extra = document.getElementById('careExtra'); if(!extra) return;
+    extra.style.display='none';
+    var ids = ['c_vaccineName','c_vaccineBatch','c_vaccineNext','c_vaccineNotes','c_matingPartner','c_matingDuration','c_injurySeverity','c_injuryDetails','c_injuryTreated','c_biteSeverity','c_biteDetails','c_biteReported'];
+    ids.forEach(function(id){var el=document.getElementById(id); if(el) el.style.display='none';});
+    if(t === 'Vaccinated'){
+        extra.style.display='block'; ['c_vaccineName','c_vaccineBatch','c_vaccineNext','c_vaccineNotes'].forEach(function(id){var el=document.getElementById(id); if(el) el.style.display='flex';});
+    } else if(t === 'Mating'){
+        extra.style.display='block'; ['c_matingPartner','c_matingDuration'].forEach(function(id){var el=document.getElementById(id); if(el) el.style.display='flex';});
+    } else if(t === 'Injured'){
+        extra.style.display='block'; ['c_injurySeverity','c_injuryDetails','c_injuryTreated'].forEach(function(id){var el=document.getElementById(id); if(el) el.style.display='flex';});
+    } else if(t === 'Bite someone'){
+        extra.style.display='block'; ['c_biteSeverity','c_biteDetails','c_biteReported'].forEach(function(id){var el=document.getElementById(id); if(el) el.style.display='flex';});
+    }
+}
+
+try{ document.getElementById('careType').addEventListener('change', updateDetailsExtraFields); }catch(e){}
+async function saveAssignment(){const handlerUserId=document.getElementById('assignmentHandler').value||null;const branchValue=document.getElementById('assignmentBranch').value;const branchId=branchValue?parseInt(branchValue,10):null;if(!handlerUserId&&!branchId){showToast('Choose a handler, a branch, or both.','error');return;}try{const r=await fetch('/Dogs/AssignDog',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({dogId:9,handlerUserId,branchId,notes:document.getElementById('assignmentNotes').value.trim()||null})});const d=await r.json();if(d.success){showToast(d.message||'Assignment saved.','success');closeModal('assignmentModal');setTimeout(()=>location.reload(),700);}else showToast(d.message||'Failed to save assignment.','error');}catch{showToast('Network error.','error');}}
+async function saveCareRecord(){
+    const occurredOn=document.getElementById('careOccurredOn').value;
+    if(!occurredOn){showToast('Date and time are required.','error');return;}
+    const eventType = document.getElementById('careType').value;
+    const payload = { dogId: 9, eventType: eventType, occurredOn: occurredOn, details: document.getElementById('careDetails').value.trim()||null, quantityOrOutcome: document.getElementById('careOutcome').value.trim()||null, requiresAttention: document.getElementById('careAttention').checked };
+
+    if(eventType === 'Vaccinated'){
+        try{ payload.vaccineName = document.getElementById('careVaccineName').value.trim() || null; }catch(e){}
+        try{ payload.vaccineBatch = document.getElementById('careVaccineBatch').value.trim() || null; }catch(e){}
+        try{ payload.vaccineNextDue = document.getElementById('careVaccineNextDue').value || null; }catch(e){}
+        try{ payload.vaccineNotes = document.getElementById('careVaccineNotes').value.trim() || null; }catch(e){}
+    }
+    if(eventType === 'Mating'){
+        try{ payload.matingPartnerName = document.getElementById('careMatingPartner').value.trim() || null; }catch(e){}
+        try{ payload.matingDuration = document.getElementById('careMatingDuration').value.trim() || null; }catch(e){}
+    }
+    if(eventType === 'Injured'){
+        try{ payload.injurySeverity = document.getElementById('careInjurySeverity').value || null; }catch(e){}
+        try{ payload.injuryDetails = document.getElementById('careInjuryDetails').value.trim() || null; }catch(e){}
+        try{ payload.injuryTreated = document.getElementById('careInjuryTreated').checked || false; }catch(e){}
+    }
+    if(eventType === 'Bite someone'){
+        try{ payload.biteSeverity = document.getElementById('careBiteSeverity').value || null; }catch(e){}
+        try{ payload.biteDetails = document.getElementById('careBiteDetails').value.trim() || null; }catch(e){}
+        try{ payload.biteReportedTo = document.getElementById('careBiteReportedTo').value.trim() || null; }catch(e){}
+    }
+
+    try{
+        const r = await fetch('/Dogs/AddCareRecord',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+        const d = await r.json();
+        if(d.success){ showToast(d.message||'Care record saved.','success'); closeModal('careModal'); setTimeout(()=>location.reload(),700); }
+        else showToast(d.message||'Failed to save care record.','error');
+    }catch{ showToast('Network error.','error'); }
+}
+
+// Show hint when date of death is cleared
+document.addEventListener('DOMContentLoaded',function(){
+    var dodInput = document.getElementById('ed_dateOfDeath');
+    var dodHint  = document.getElementById('ed_dod_hint');
+    if(dodInput && dodHint){
+        var originalVal = dodInput.value;
+        dodInput.addEventListener('change',function(){
+            // Show hint only if there WAS a date and it's now been cleared
+            if(originalVal && !dodInput.value){
+                dodHint.style.display='block';
+            } else {
+                dodHint.style.display='none';
+            }
+        });
+    }
+});
+function showToast(msg,type){const w=document.getElementById('toastWrap');const el=document.createElement('div');el.className='toast-msg toast-'+type;el.innerHTML='<i class="bi '+(type==='success'?'bi-check-circle-fill':'bi-exclamation-circle-fill')+'"></i>'+msg;w.appendChild(el);requestAnimationFrame(()=>el.classList.add('show'));setTimeout(()=>{el.classList.remove('show');setTimeout(()=>el.remove(),350);},3500);}
+function setLoading(id,on,html){const b=document.getElementById(id);b.disabled=on;if(on)b.innerHTML='<span style="display:inline-block;width:14px;height:14px;border:2px solid rgba(255,255,255,.35);border-top-color:#fff;border-radius:50%;animation:spin .65s linear infinite"></span> Saving...';else if(html)b.innerHTML=html;}
+
+async function markAsDeceased(id){
+    const d=document.getElementById('deceasedDate').value;
+    if(!d){showToast('Date of death is required','error');return;}
+    const fd=new FormData();fd.append('dateOfDeath',d);
+    try{
+        const r=await fetch('/Dogs/MarkAsDeceased/'+id,{method:'POST',body:fd});
+        const data=await r.json();
+        if(data.success){showToast(data.message||'Marked as deceased','success');closeModal('deceasedModal');setTimeout(()=>location.reload(),1000);}
+        else{showToast(data.message||'Failed','error');}
+    }catch{showToast('Network error','error');}
+}
+
+async function submitEditDog(){
+    const id = document.getElementById('ed_id').value;
+    const name = document.getElementById('ed_name').value.trim();
+    const breed = document.getElementById('ed_breed').value.trim();
+    const color = document.getElementById('ed_color').value.trim();
+    const dob = document.getElementById('ed_dateOfBirth').value;
+    const dod = document.getElementById('ed_dateOfDeath').value; // empty string = cleared
+    const gender = document.getElementById('ed_gender').value;
+    const microchip = document.getElementById('ed_microchip').value.trim();
+    const photoFile = document.getElementById('ed_photo').files[0];
+    const existingPhoto = document.getElementById('ed_existingPhoto').value;
+    const companyId = parseInt(document.getElementById('ed_companyId').value, 10) || 0;
+
+    // If date of death is cleared → restore to active, null out date of death
+    const dateOfDeath = dod ? dod : null;
+    const isActive = !dod; // cleared = alive = true, has date = deceased = false
+
+    if(!name){showToast('Name is required','error');return;}
+    if(!breed){showToast('Breed is required','error');return;}
+    if(!color){showToast('Color is required','error');return;}
+    if(!dob){showToast('Date of birth is required','error');return;}
+
+    setLoading('editDogBtn',true);
+    try{
+        let photoUrl = existingPhoto || null;
+
+        // Upload new photo if provided
+        if(photoFile){
+            const fd = new FormData();
+            fd.append('file', photoFile);
+            const upRes = await fetch('/Dogs/UploadPhoto',{method:'POST',body:fd});
+            const upData = await upRes.json();
+            if(!upData.success) throw new Error(upData.message||'Photo upload failed');
+            photoUrl = upData.url;
+        }
+
+        const res = await fetch('/Dogs/Update',{
+            method:'POST',
+            headers:{'Content-Type':'application/json'},
+            body:JSON.stringify({
+                Id: parseInt(id, 10),
+                Name: name,
+                Breed: breed,
+                Color: color,
+                DateOfBirth: dob,
+                DateOfDeath: dateOfDeath,
+                Gender: gender||null,
+                MicrochipNumber: microchip||null,
+                PhotoUrl: photoUrl,
+                CompanyId: parseInt(companyId, 10) || 0,
+                IsActive: isActive
+            })
+        });
+        const data = await res.json();
+        if(data.success){
+            const msg = dateOfDeath === null && !isActive === false
+                ? 'Dog updated and marked as Active!'
+                : 'Dog updated!';
+            showToast(data.message || msg,'success');
+            closeModal('editDogModal');
+            setTimeout(()=>location.reload(),1000);
+        } else showToast(data.message||'Failed to update','error');
+    }catch(e){showToast(e.message||'Network error','error');}
+    finally{setLoading('editDogBtn',false,'<i class="bi bi-check2-circle"></i> Save Changes');}
+}
+</script>
+
+<script id="careTimelinePdfData" type="application/json">
+{"dog":{"name":"Sarara","breed":"English Setter","color":"Silver","gender":"Female","dob":"December 23, 2026","microchip":"981000123456789902","photo":"","companyName":"Black Eagle"},"assignment":{"handlerName":"Vata Mushandi","branchName":"BINDURA","assignedOn":"Jul 16, 2026"},"records":[{"eventType":"Vaccinated","occurredOn":"July 16, 2026 \u00B7 15:16","details":"a","quantityOrOutcome":"a","requiresAttention":false,"recordedByName":"Vata Mushandi"}],"vaccinations":[{"name":"Rabies","type":"","batch":"23333","clinic":"","date":"Jul 16, 2026","nextDue":"Jul 30, 2026","notes":"www"}],"matings":[]}
+</script>
+
+<script>
+function printCareTimelinePdf() {
+    var raw = document.getElementById('careTimelinePdfData');
+    if (!raw) { alert('Print data not found.'); return; }
+    var data;
+    try { data = JSON.parse(raw.textContent); } catch(e) { alert('Failed to read print data: ' + e.message); return; }
+
+    var d = data.dog;
+    var a = data.assignment;
+    var recs = data.records || [];
+    var vaccs = data.vaccinations || [];
+    var matings = data.matings || [];
+    var esc = function(s){ return String(s == null ? '' : s).replace(/[&<>"]/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); };
+
+    var handlerName = a ? (a.handlerName || '—') : '—';
+    var branchName  = a ? (a.branchName  || 'Not assigned') : 'Not assigned';
+    var assignedOn  = a ? (a.assignedOn  || '—') : '—';
+
+    var eBg  = {Feeding:'#d1fae5',Vaccinated:'#dbeafe',Illness:'#fef3c7',Injured:'#fee2e2','Bite someone':'#fef3c7',Heat:'#ffe4e6',Mating:'#fce7f3',Birth:'#ede9fe',Other:'#f1f5f9'};
+    var eClr = {Feeding:'#059669',Vaccinated:'#0369a1',Illness:'#b45309',Injured:'#dc2626','Bite someone':'#92400e',Heat:'#e11d48',Mating:'#be185d',Birth:'#7c3aed',Other:'#475569'};
+
+    var rowsHtml = '';
+    recs.forEach(function(r, i) {
+        var bg  = eBg[r.eventType]  || '#ede9fe';
+        var clr = eClr[r.eventType] || '#667eea';
+        var attn  = r.requiresAttention ? '<span style="background:#fee2e2;color:#dc2626;font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;margin-left:8px">! Needs Attention</span>' : '';
+        var det   = r.details           ? '<div style="font-size:12px;color:#374151;margin-top:6px;line-height:1.6">'+esc(r.details)+'</div>' : '';
+        var out   = r.quantityOrOutcome  ? '<div style="font-size:11px;color:#667eea;font-weight:600;margin-top:4px">&#10003; '+esc(r.quantityOrOutcome)+'</div>' : '';
+        var line  = (i < recs.length - 1) ? '<div style="width:2px;flex:1;min-height:14px;background:#e2e8f0;margin-top:4px"></div>' : '';
+        rowsHtml +=
+            '<div style="display:flex;gap:14px;margin-bottom:18px;page-break-inside:avoid">'
+           +'<div style="display:flex;flex-direction:column;align-items:center;flex-shrink:0">'
+           +'<div style="width:36px;height:36px;border-radius:10px;background:'+bg+';display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:'+clr+'">'+(i+1)+'</div>'+line
+           +'</div>'
+           +'<div style="flex:1;background:'+(r.requiresAttention ? '#fff7f7' : '#f8fafc')+';border-radius:10px;padding:12px 14px;border:1px solid '+(r.requiresAttention ? '#fecaca' : '#e9eef4')+'">'
+           +'<div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:6px">'
+           +'<div><span style="display:inline-block;background:'+bg+';color:'+clr+';font-size:11px;font-weight:700;padding:3px 10px;border-radius:12px">'+esc(r.eventType)+'</span>'+attn+'</div>'
+           +'<span style="font-size:11px;color:#64748b">'+esc(r.occurredOn)+'</span></div>'
+           +det+out
+           +'<div style="font-size:11px;color:#94a3b8;margin-top:8px">Recorded by: <strong style="color:#475569">'+esc(r.recordedByName)+'</strong></div>'
+           +'</div></div>';
+    });
+
+    var noRecords = recs.length === 0 ? '<p style="color:#94a3b8;text-align:center;padding:30px 0">No care records found.</p>' : '';
+
+    // ── Vaccination records section ──
+    var vaccHtml = '';
+    if (vaccs.length) {
+        vaccs.forEach(function(v){
+            var meta = [];
+            if (v.type)   meta.push('Type: '+esc(v.type));
+            if (v.batch)  meta.push('Batch: '+esc(v.batch));
+            if (v.clinic) meta.push('Clinic: '+esc(v.clinic));
+            if (v.nextDue) meta.push('<span style="color:#dc2626">Next due: '+esc(v.nextDue)+'</span>');
+            vaccHtml +=
+                '<div style="display:flex;gap:14px;margin-bottom:14px;page-break-inside:avoid">'
+               +'<div style="width:36px;height:36px;border-radius:10px;background:#dbeafe;display:flex;align-items:center;justify-content:center;flex-shrink:0;color:#0369a1;font-size:15px">&#128737;</div>'
+               +'<div style="flex:1;background:#f8fafc;border:1px solid #e9eef4;border-radius:10px;padding:12px 14px">'
+               +'<div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:6px">'
+               +'<span style="font-weight:700;font-size:13px;color:#1e293b">'+esc(v.name)+'</span>'
+               +'<span style="font-size:11px;color:#64748b">'+esc(v.date)+'</span></div>'
+               +(meta.length ? '<div style="font-size:11px;color:#475569;margin-top:6px;line-height:1.7">'+meta.join(' &middot; ')+'</div>' : '')
+               +(v.notes ? '<div style="font-size:11px;color:#64748b;font-style:italic;margin-top:4px">'+esc(v.notes)+'</div>' : '')
+               +'</div></div>';
+        });
+    }
+    var vaccSection = vaccs.length
+        ? '<div class="sh" style="margin-top:28px"><h3>Vaccination Records</h3><span style="font-size:11px;color:#94a3b8;margin-left:auto">'+vaccs.length+' record'+(vaccs.length!==1?'s':'')+'</span></div>'+vaccHtml
+        : '';
+
+    // ── Mating records & litters section ──
+    var matingHtml = '';
+    if (matings.length) {
+        matings.forEach(function(m){
+            var littersHtml = '';
+            (m.litters || []).forEach(function(l){
+                var pups = '';
+                (l.puppies || []).forEach(function(p){
+                    var gender = p.gender ? ' &middot; '+esc(p.gender) : '';
+                    var death  = p.death ? '<div style="color:#dc2626;font-size:10px">&#8224; '+esc(p.death)+'</div>' : '';
+                    pups += '<div style="background:#fff;border:1px solid #e5e7eb;border-radius:6px;padding:6px 8px;font-size:11px">'
+                          +'<div style="font-weight:600;color:#1f2937">'+esc(p.name)+'</div>'
+                          +'<div style="color:#6b7280">'+esc(p.color)+gender+'</div>'+death+'</div>';
+                });
+                var pupsWrap = pups
+                    ? '<div style="margin-top:8px"><div style="font-size:11px;font-weight:600;color:#374151;margin-bottom:5px">Puppies:</div>'
+                      +'<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:6px">'+pups+'</div></div>'
+                    : '';
+                littersHtml +=
+                    '<div style="border:1px solid #ddd6fe;border-radius:8px;padding:10px 12px;margin-top:8px;background:#faf5ff;page-break-inside:avoid">'
+                   +'<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px">'
+                   +'<span style="font-size:12px;font-weight:600;color:#7c3aed">Litter &mdash; '+esc(l.birthDate)+'</span>'
+                   +'<div style="display:flex;gap:6px;font-size:10px">'
+                   +'<span style="background:#d1fae5;color:#065f46;padding:2px 6px;border-radius:10px">'+l.totalBorn+' born</span>'
+                   +'<span style="background:#dbeafe;color:#1e40af;padding:2px 6px;border-radius:10px">'+l.survived+' survived</span>'
+                   +(l.died > 0 ? '<span style="background:#fee2e2;color:#991b1b;padding:2px 6px;border-radius:10px">'+l.died+' died</span>' : '')
+                   +'</div></div>'+pupsWrap
+                   +(l.notes ? '<div style="font-size:11px;color:#64748b;font-style:italic;margin-top:6px">'+esc(l.notes)+'</div>' : '')
+                   +'</div>';
+            });
+            matingHtml +=
+                '<div style="border:1px solid #e9eef4;border-radius:12px;padding:14px 16px;margin-bottom:14px;background:#fafbfc;page-break-inside:avoid">'
+               +'<div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:6px">'
+               +'<div style="font-size:12px"><strong>Sire:</strong> '+esc(m.sireName)+' &nbsp;&middot;&nbsp; <strong>Dam:</strong> '+esc(m.damName)
+               +(m.location ? '<div style="color:#64748b;margin-top:2px">Location: '+esc(m.location)+'</div>' : '')+'</div>'
+               +'<span style="font-size:11px;color:#7c3aed;background:#ede9fe;padding:3px 10px;border-radius:12px;font-weight:600">'+esc(m.date)+'</span></div>'
+               +(m.notes ? '<div style="font-size:11px;color:#64748b;font-style:italic;margin-top:6px">'+esc(m.notes)+'</div>' : '')
+               +littersHtml
+               +'</div>';
+        });
+    }
+    var matingSection = matings.length
+        ? '<div class="sh" style="margin-top:28px"><h3>Mating Records &amp; Litters</h3><span style="font-size:11px;color:#94a3b8;margin-left:auto">'+matings.length+' record'+(matings.length!==1?'s':'')+'</span></div>'+matingHtml
+        : '';
+    var photoHtml = d.photo
+        ? '<img src="'+esc(d.photo)+'" style="width:80px;height:80px;object-fit:cover;border-radius:12px;border:3px solid #e2e8f0;flex-shrink:0;margin-right:16px" />'
+        : '<div style="width:80px;height:80px;border-radius:12px;background:#ede9fe;display:flex;align-items:center;justify-content:center;font-size:28px;flex-shrink:0;margin-right:16px">&#128021;</div>';
+    var today = new Date().toLocaleDateString('en-GB', {year:'numeric', month:'long', day:'numeric'});
+    var genderSym = d.gender === 'Male' ? '&#9794;' : '&#9792;';
+    var attentionCount = recs.filter(function(r){return r.requiresAttention;}).length;
+    var latestEvent = recs.length > 0 ? recs[0].eventType : 'None';
+
+    var parts = [];
+    parts.push('<!DOCTYPE html>');
+    parts.push('<html lang="en"><head><meta charset="UTF-8">');
+    parts.push('<title>Dog Activity Report - '+esc(d.name)+'</title>');
+    parts.push('<style>');
+    parts.push('*{box-sizing:border-box;margin:0;padding:0}');
+    parts.push('body{font-family:Arial,sans-serif;background:#fff;color:#1e293b;font-size:13px}');
+    parts.push('@media print{body{-webkit-print-color-adjust:exact;print-color-adjust:exact}.no-print{display:none!important}}');
+    parts.push('.page{max-width:860px;margin:0 auto;padding:32px 40px}');
+    parts.push('.hdr{background:linear-gradient(135deg,#667eea,#764ba2);border-radius:16px;padding:24px 28px;color:#fff;margin-bottom:24px;display:flex;align-items:center;gap:20px}');
+    parts.push('.co-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:20px}');
+    parts.push('.cbox{background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:14px 16px}');
+    parts.push('.cbox .lbl{font-size:10px;font-weight:700;text-transform:uppercase;color:#94a3b8;margin-bottom:4px}');
+    parts.push('.cbox .val{font-size:13px;font-weight:600;color:#1e293b}');
+    parts.push('.cbox .sub{font-size:11px;color:#64748b;margin-top:2px}');
+    parts.push('.dp{display:flex;align-items:flex-start;gap:16px;background:linear-gradient(135deg,#f8faff,#f1f5f9);border:1px solid #e2e8f0;border-radius:14px;padding:18px 20px;margin-bottom:24px}');
+    parts.push('.dp h2{font-size:18px;font-weight:800;color:#0f172a;margin-bottom:6px}');
+    parts.push('.dp-meta{display:flex;gap:10px;flex-wrap:wrap}');
+    parts.push('.dp-meta span{font-size:11px;color:#64748b;background:#fff;padding:3px 10px;border-radius:20px;border:1px solid #e2e8f0}');
+    parts.push('.stats{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:24px}');
+    parts.push('.stat{background:#fff;border:1px solid #e2e8f0;border-radius:10px;padding:12px 14px;text-align:center}');
+    parts.push('.stat .n{font-size:22px;font-weight:800;color:#667eea}');
+    parts.push('.stat .l{font-size:10px;color:#94a3b8;font-weight:600;text-transform:uppercase;margin-top:2px}');
+    parts.push('.sh{display:flex;align-items:center;gap:8px;margin-bottom:16px;padding-bottom:10px;border-bottom:2px solid #f1f5f9}');
+    parts.push('.sh h3{font-size:14px;font-weight:800;color:#0f172a}');
+    parts.push('.foot{margin-top:32px;padding-top:16px;border-top:1px solid #e2e8f0;display:flex;justify-content:space-between;color:#94a3b8;font-size:11px}');
+    parts.push('.pbtn{display:inline-flex;align-items:center;gap:6px;padding:10px 20px;background:linear-gradient(135deg,#667eea,#764ba2);color:#fff;border:none;border-radius:9px;font-size:13px;font-weight:700;cursor:pointer}');
+    parts.push('</style></head><body><div class="page">');
+
+    // Print button
+    parts.push('<div class="no-print" style="margin-bottom:16px">');
+    parts.push('<button class="pbtn" onclick="window.print()">Print / Save as PDF</button>');
+    parts.push('<button onclick="window.close()" style="padding:10px 16px;background:#f1f5f9;color:#64748b;border:1px solid #e2e8f0;border-radius:9px;cursor:pointer;font-size:13px;margin-left:8px">Close</button>');
+    parts.push('</div>');
+
+    // Header
+    parts.push('<div class="hdr">');
+    parts.push('<div style="width:52px;height:52px;border-radius:12px;background:rgba(255,255,255,.2);display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0">&#128062;</div>');
+    parts.push('<div><div style="font-size:20px;font-weight:800;margin-bottom:4px">Dog Activity Report</div>');
+    parts.push('<div style="font-size:12px;opacity:.8">Complete care, health &amp; breeding history &nbsp;&middot;&nbsp; Generated '+today+' &nbsp;&middot;&nbsp; Confidential</div></div></div>');
+
+    // Company strip
+    parts.push('<div class="co-grid">');
+    parts.push('<div class="cbox"><div class="lbl">Head Office / Company</div><div class="val">'+esc(d.companyName||'N/A')+'</div><div class="sub">Dog owner company</div></div>');
+    parts.push('<div class="cbox"><div class="lbl">Assigned Branch</div><div class="val">'+esc(branchName)+'</div><div class="sub">Handler: '+esc(handlerName)+' &middot; Since '+esc(assignedOn)+'</div></div>');
+    parts.push('</div>');
+
+    // Dog profile
+    parts.push('<div class="dp">'+photoHtml+'<div><h2>'+esc(d.name)+'</h2><div class="dp-meta">');
+    parts.push('<span>'+esc(d.breed)+'</span><span>'+esc(d.color)+'</span><span>'+genderSym+' '+esc(d.gender||'Unknown')+'</span><span>'+esc(d.dob)+'</span><span>'+esc(d.microchip)+'</span>');
+    parts.push('</div></div></div>');
+
+    // Stats
+    parts.push('<div class="stats">');
+    parts.push('<div class="stat"><div class="n">'+recs.length+'</div><div class="l">Care Records</div></div>');
+    parts.push('<div class="stat"><div class="n" style="color:#dc2626">'+attentionCount+'</div><div class="l">Needs Attention</div></div>');
+    parts.push('<div class="stat"><div class="n" style="color:#0369a1">'+vaccs.length+'</div><div class="l">Vaccinations</div></div>');
+    parts.push('<div class="stat"><div class="n" style="color:#be185d">'+matings.length+'</div><div class="l">Mating Records</div></div>');
+    parts.push('<div class="stat"><div class="n" style="font-size:13px;color:#059669">'+esc(latestEvent)+'</div><div class="l">Latest Event</div></div>');
+    parts.push('</div>');
+
+    // Timeline heading
+    parts.push('<div class="sh"><h3>Care Activity Timeline</h3><span style="font-size:11px;color:#94a3b8;margin-left:auto">'+recs.length+' record'+(recs.length!==1?'s':'')+'</span></div>');
+    parts.push(rowsHtml);
+    parts.push(noRecords);
+
+    // Vaccination & mating sections
+    parts.push(vaccSection);
+    parts.push(matingSection);
+
+    // Footer
+    parts.push('<div class="foot"><span>'+esc(d.companyName||'Dog Section')+' &mdash; Dog Care Management</span><span>Printed '+today+'</span></div>');
+    parts.push('</div></body></html>');
+
+    var html = parts.join('');
+    var win = window.open('', '_blank', 'width=980,height=820,scrollbars=yes');
+    if (!win) { showToast('Pop-up blocked. Please allow pop-ups for this site.', 'error'); return; }
+    win.document.open();
+    win.document.write(html);
+    win.document.close();
+    win.focus();
+}
+</script>
+
+        </main>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        const sidebar   = document.getElementById('sidebar');
+        const mainWrap  = document.getElementById('mainWrap');
+        const overlay   = document.getElementById('mobileOverlay');
+        const collapseBtn = document.getElementById('sbCollapseBtn');
+        const mobileBtn = document.getElementById('mobileMenuBtn');
+
+        // ── Desktop collapse ──────────────────────────────────
+        collapseBtn?.addEventListener('click', () => {
+            const collapsed = sidebar.classList.toggle('collapsed');
+            mainWrap.classList.toggle('sb-collapsed', collapsed);
+            localStorage.setItem('sb_collapsed', collapsed ? '1' : '0');
+        });
+
+        if (localStorage.getItem('sb_collapsed') === '1') {
+            sidebar.classList.add('collapsed');
+            mainWrap.classList.add('sb-collapsed');
+        }
+
+        // ── Mobile toggle ─────────────────────────────────────
+        mobileBtn?.addEventListener('click', () => {
+            const open = sidebar.classList.toggle('mobile-open');
+            overlay.classList.toggle('show', open);
+        });
+
+        overlay?.addEventListener('click', () => {
+            sidebar.classList.remove('mobile-open');
+            overlay.classList.remove('show');
+        });
+
+        // ── Collapsible menu groups ───────────────────────────
+        function toggleGroup(btn) {
+            const group   = btn.closest('.sb-group');
+            const wrap    = group.querySelector('.sb-sub-wrap');
+            const arrow   = btn.querySelector('.sb-arrow');
+            const isOpen  = wrap.classList.contains('open');
+
+            // Close all other groups
+            document.querySelectorAll('.sb-sub-wrap.open').forEach(w => {
+                w.classList.remove('open');
+                w.closest('.sb-group')?.querySelector('.sb-arrow')?.classList.remove('open');
+            });
+
+            if (!isOpen) {
+                wrap.classList.add('open');
+                arrow?.classList.add('open');
+            }
+        }
+
+        // ── Branch switcher ───────────────────────────────────
+        async function switchBranch(branchId) {
+            try {
+                const res = await fetch('/Auth/SwitchBranch', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ branchId })
+                });
+                if (!res.ok) throw new Error('Network error');
+                const data = await res.json();
+                if (data.success) {
+                    location.reload();
+                } else {
+                    alert(data.message ?? 'Could not switch branch.');
+                }
+            } catch {
+                alert('Failed to switch branch. Please try again.');
+            }
+        }
+    </script>
+    
+</body>
+</html>

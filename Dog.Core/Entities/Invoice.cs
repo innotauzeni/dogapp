@@ -24,9 +24,33 @@ namespace Dog.Core.Entities
         public string? Notes { get; set; }
         public string? Terms { get; set; }
 
+        // Billed company (a snapshot, so the invoice never changes if the company record is edited later)
+        public int? CustomerCompanyId { get; set; }
+        public string? BillToName { get; set; }
+        public string? BillToAddress { get; set; }
+        public string? BillToTaxNumber { get; set; }
+        public string? BillToVatNumber { get; set; }
+        public string? BillToEmail { get; set; }
+        public string? BillToPhone { get; set; }
+        public string? ContactPerson { get; set; }
+        public string? PurchaseOrderNumber { get; set; }
+        public string CurrencyCode { get; set; } = "USD";
+
+        // Fiscal invoice details (recorded from the fiscal device; real-time fiscal device integration is not built in)
+        public bool IsFiscal { get; set; }
+        public string? FiscalInvoiceNumber { get; set; }
+        public string? FiscalDeviceSerial { get; set; }
+        public string? FiscalVerificationCode { get; set; }
+        public DateTime? FiscalDate { get; set; }
+
+        public DateTime? EmailedAt { get; set; }
+        public string? EmailedTo { get; set; }
+
         // Navigation
         //public Company Company { get; set; } = null!;
         public ICollection<InvoiceItem> Items { get; set; } = new List<InvoiceItem>();
         public ICollection<Payment> Payments { get; set; } = new List<Payment>();
+        /// <summary>The payment ledger (how each payment was made, by whom, and where the money came from).</summary>
+        public ICollection<InvoicePayment> Ledger { get; set; } = new List<InvoicePayment>();
     }
 }

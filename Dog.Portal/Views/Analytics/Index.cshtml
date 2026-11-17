@@ -1,0 +1,126 @@
+@using System.Text.Json
+@model Dog.Application.Features.Analytics.DTOs.AnalyticsSummaryDto
+@{
+    Layout = "_AdminLayout";
+    ViewData["Title"] = "Analytics";
+    var months = (int)ViewBag.Months;
+    var jsonOpts = new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase };
+}
+<style>
+.page-hdr h4{font-size:1.15rem;font-weight:800;color:#0f172a;margin:0 0 .25rem}
+.page-hdr p{font-size:.845rem;color:#64748b;margin:0}
+.page-hdr-row{display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;flex-wrap:wrap;margin-bottom:1.5rem}
+.filter-sel{padding:.6rem .875rem;border:1.5px solid #e2e8f0;border-radius:9px;font-size:.845rem;color:#374151;background:#fff;outline:none;cursor:pointer}
+.kpi-row{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:.875rem;margin-bottom:1.5rem}
+.kpi-card{background:#fff;border-radius:12px;border:1px solid #e9eef4;box-shadow:0 1px 4px rgba(0,0,0,.04);padding:1.1rem 1.25rem}
+.kpi-lbl{font-size:.75rem;color:#94a3b8;font-weight:600;margin-bottom:.4rem;display:flex;align-items:center;gap:.35rem}
+.kpi-val{font-size:1.5rem;font-weight:800;color:#0f172a;line-height:1}
+.kpi-val.pos{color:#065f46}
+.kpi-val.neg{color:#b91c1c}
+.chart-grid{display:grid;grid-template-columns:2fr 1fr;gap:1.25rem;margin-bottom:1.25rem}
+@@media (max-width:900px){.chart-grid{grid-template-columns:1fr}}
+.chart-card{background:#fff;border-radius:14px;border:1px solid #e9eef4;box-shadow:0 1px 4px rgba(0,0,0,.04);padding:1.25rem}
+.chart-card h6{font-size:.9rem;font-weight:700;color:#0f172a;margin:0 0 1rem}
+.chart-wrap{position:relative;height:280px}
+.handler-row{display:flex;align-items:center;gap:.75rem;padding:.5rem 0;border-bottom:1px solid #f8fafc}
+.handler-row:last-child{border-bottom:none}
+.handler-name{flex:1;font-size:.83rem;color:#374151;font-weight:600}
+.handler-bar-wrap{flex:2;background:#f1f5f9;border-radius:6px;height:8px;overflow:hidden}
+.handler-bar{height:100%;background:linear-gradient(90deg,#667eea,#764ba2);border-radius:6px}
+.handler-count{font-size:.8rem;font-weight:700;color:#667eea;width:28px;text-align:right}
+.empty-mini{text-align:center;color:#94a3b8;font-size:.85rem;padding:2rem 0}
+</style>
+<div class="page-hdr-row">
+  <div class="page-hdr"><h4>Analytics</h4><p>Revenue, expenses, dog utilization, and handler performance at a glance</p></div>
+  <form method="get">
+    <select name="months" class="filter-sel" onchange="this.form.submit()">
+      <option value="3" selected="@(months==3)">Last 3 months</option>
+      <option value="6" selected="@(months==6)">Last 6 months</option>
+      <option value="12" selected="@(months==12)">Last 12 months</option>
+    </select>
+  </form>
+</div>
+
+<div class="kpi-row">
+  <div class="kpi-card"><div class="kpi-lbl"><i class="bi bi-cash-coin"></i> Total Revenue</div><div class="kpi-val pos">@Model.TotalRevenue.ToString("0.00")</div></div>
+  <div class="kpi-card"><div class="kpi-lbl"><i class="bi bi-hourglass-split"></i> Outstanding</div><div class="kpi-val">@Model.TotalOutstanding.ToString("0.00")</div></div>
+  <div class="kpi-card"><div class="kpi-lbl"><i class="bi bi-receipt"></i> Total Expenses</div><div class="kpi-val neg">@Model.TotalExpenses.ToString("0.00")</div></div>
+  <div class="kpi-card"><div class="kpi-lbl"><i class="bi bi-graph-up-arrow"></i> Net Profit</div><div class="kpi-val @(Model.NetProfit >= 0 ? "pos" : "neg")">@Model.NetProfit.ToString("0.00")</div></div>
+  <div class="kpi-card"><div class="kpi-lbl"><i class="bi bi-pets"></i> Total Dogs</div><div class="kpi-val">@Model.TotalDogs</div></div>
+  <div class="kpi-card"><div class="kpi-lbl"><i class="bi bi-geo-alt"></i> Deployed</div><div class="kpi-val">@Model.DeployedDogs</div></div>
+  <div class="kpi-card"><div class="kpi-lbl"><i class="bi bi-shield-check"></i> Vaccinated</div><div class="kpi-val">@Model.VaccinatedDogs</div></div>
+  <div class="kpi-card"><div class="kpi-lbl"><i class="bi bi-check-circle"></i> Active Dogs</div><div class="kpi-val">@Model.ActiveDogs</div></div>
+</div>
+
+<div class="chart-grid">
+  <div class="chart-card">
+    <h6><i class="bi bi-bar-chart-fill" style="color:#667eea"></i> Revenue vs Expenses</h6>
+    <div class="chart-wrap"><canvas id="revExpChart"></canvas></div>
+  </div>
+  <div class="chart-card">
+    <h6><i class="bi bi-pie-chart-fill" style="color:#f59e0b"></i> Expenses by Category</h6>
+    <div class="chart-wrap">
+      @if (Model.ExpensesByCategory.Any()) {
+        <canvas id="expCatChart"></canvas>
+      } else {
+        <div class="empty-mini">No expenses recorded yet.</div>
+      }
+    </div>
+  </div>
+</div>
+
+<div class="chart-card">
+  <h6><i class="bi bi-person-check-fill" style="color:#10b981"></i> Handler Activity (last 30 days)</h6>
+  @if (Model.HandlerActivity.Any()) {
+    var maxCount = Model.HandlerActivity.Max(h => h.ActivityCount);
+    foreach (var h in Model.HandlerActivity) {
+      var pct = maxCount > 0 ? (h.ActivityCount * 100.0 / maxCount) : 0;
+      <div class="handler-row">
+        <div class="handler-name">@h.HandlerName</div>
+        <div class="handler-bar-wrap"><div class="handler-bar" style="width:@(pct.ToString("0"))%"></div></div>
+        <div class="handler-count">@h.ActivityCount</div>
+      </div>
+    }
+  } else {
+    <div class="empty-mini">No care activity recorded in the last 30 days.</div>
+  }
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+<script>
+var revLabels = @Html.Raw(JsonSerializer.Serialize(Model.RevenueByMonth.Select(p => p.Label), jsonOpts));
+var revData = @Html.Raw(JsonSerializer.Serialize(Model.RevenueByMonth.Select(p => p.Amount), jsonOpts));
+var expData = @Html.Raw(JsonSerializer.Serialize(Model.ExpensesByMonth.Select(p => p.Amount), jsonOpts));
+var catLabels = @Html.Raw(JsonSerializer.Serialize(Model.ExpensesByCategory.Select(c => c.Category), jsonOpts));
+var catData = @Html.Raw(JsonSerializer.Serialize(Model.ExpensesByCategory.Select(c => c.Amount), jsonOpts));
+
+new Chart(document.getElementById('revExpChart'), {
+    type: 'bar',
+    data: {
+        labels: revLabels,
+        datasets: [
+            { label: 'Revenue', data: revData, backgroundColor: '#667eea', borderRadius: 6 },
+            { label: 'Expenses', data: expData, backgroundColor: '#f87171', borderRadius: 6 }
+        ]
+    },
+    options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { position: 'bottom', labels: { boxWidth: 10, font: { size: 11 } } } },
+        scales: { y: { beginAtZero: true } }
+    }
+});
+
+if (catLabels.length > 0) {
+    var catCanvas = document.getElementById('expCatChart');
+    if (catCanvas) {
+        new Chart(catCanvas, {
+            type: 'doughnut',
+            data: {
+                labels: catLabels,
+                datasets: [{ data: catData, backgroundColor: ['#667eea','#f59e0b','#10b981','#f87171','#8b5cf6','#06b6d4','#ec4899'] }]
+            },
+            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { boxWidth: 10, font: { size: 10 } } } } }
+        });
+    }
+}
+</script>

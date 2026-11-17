@@ -1,7 +1,8 @@
-﻿using Dog.Portal.Models;
+using Dog.Portal.Models;
 using Dog.Portal.Services;
 using Microsoft.AspNetCore.Mvc;
 using System.Text.Json;
+using Dog.Application.Features.Customers.DTOs;
 using Dog.Application.Features.Deployments.DTOs;
 
 namespace Dog.Portal.Controllers
@@ -32,7 +33,7 @@ namespace Dog.Portal.Controllers
 
             try
             {
-                var companyId = await _currentUserService.GetUserCompanyId();
+                var companyId = await _currentUserService.GetActiveCompanyId();
                 var resp = await _apiClient.GetAsync<ApiResponse<object>>($"api/Deployment?CompanyId={companyId}");
 
                 if (resp?.Success == true && resp.Data != null)
@@ -76,6 +77,15 @@ namespace Dog.Portal.Controllers
                     vm.Dogs = dogsPage?.Data ?? new List<DogDropdownItem>();
                 }
 
+                // Load customers for dropdown
+                var custResp = await _apiClient.GetAsync<ApiResponse<object>>($"api/Customer?CompanyId={companyId}");
+                if (custResp?.Success == true && custResp.Data != null)
+                {
+                    var custJson = JsonSerializer.Serialize(custResp.Data);
+                    vm.Customers = JsonSerializer.Deserialize<List<CustomerDto>>(custJson,
+                        new JsonSerializerOptions { PropertyNameCaseInsensitive = true }) ?? new List<CustomerDto>();
+                }
+
                 ViewBag.StatusFilter = status;
             }
             catch (Exception ex)
@@ -94,7 +104,7 @@ namespace Dog.Portal.Controllers
                 return Json(new { success = false, message = "Not authenticated" });
             try
             {
-                var companyId = await _currentUserService.GetUserCompanyId();
+                var companyId = await _currentUserService.GetActiveCompanyId();
                 var dto = new CreateDeploymentDto
                 {
                     CompanyId = companyId,
@@ -105,7 +115,9 @@ namespace Dog.Portal.Controllers
                     StartDate = req.StartDate,
                     EndDate = req.EndDate,
                     Notes = req.Notes,
-                    IsActive = req.IsActive
+                    IsActive = req.IsActive,
+                    CustomerId = req.CustomerId,
+                    CustomerSiteId = req.CustomerSiteId
                 };
                 var resp = await _apiClient.PostAsync<ApiResponse<object>>("api/Deployment/CreateDeployment", dto);
                 if (resp?.Success == true)
@@ -125,7 +137,7 @@ namespace Dog.Portal.Controllers
                 return Json(new { success = false, message = "Not authenticated" });
             try
             {
-                var companyId = await _currentUserService.GetUserCompanyId();
+                var companyId = await _currentUserService.GetActiveCompanyId();
                 var dto = new CreateDeploymentDto
                 {
                     CompanyId = companyId,
@@ -136,7 +148,9 @@ namespace Dog.Portal.Controllers
                     StartDate = req.StartDate,
                     EndDate = req.EndDate,
                     Notes = req.Notes,
-                    IsActive = req.IsActive
+                    IsActive = req.IsActive,
+                    CustomerId = req.CustomerId,
+                    CustomerSiteId = req.CustomerSiteId
                 };
                 var resp = await _apiClient.PutAsync<ApiResponse<object>>($"api/Deployment/Deployment/{req.Id}", dto);
                 if (resp?.Success == true)
@@ -160,6 +174,31 @@ namespace Dog.Portal.Controllers
                 if (resp?.Success == true)
                     return Json(new { success = true, message = "Deployment deleted successfully!" });
                 return Json(new { success = false, message = resp?.Message ?? "Failed to delete deployment" });
+            }
+            catch (Exception ex)
+            {
+                return Json(new { success = false, message = $"Error: {ex.Message}" });
+            }
+        }
+
+        // POST /Deployments/Return/{id} — recalls the dog back to its branch/head office.
+        [HttpPost]
+        public async Task<IActionResult> Return(int id)
+        {
+            if (!await IsAuthenticated())
+                return Json(new { success = false, message = "Not authenticated" });
+            try
+            {
+                var raw = await _apiClient.PostRawAsync($"api/Deployment/Deployment/{id}/return", new { });
+                ApiResponse<bool>? parsed = null;
+                try { parsed = JsonSerializer.Deserialize<ApiResponse<bool>>(raw.Body, new JsonSerializerOptions { PropertyNameCaseInsensitive = true }); }
+                catch { /* body wasn't the expected envelope shape — fall through */ }
+
+                if (raw.IsSuccessStatusCode && parsed?.Success == true)
+                    return Json(new { success = true, message = parsed.Message ?? "Dog returned to branch." });
+                if (raw.StatusCode == 401 || raw.StatusCode == 403)
+                    return Json(new { success = false, message = "You don't have permission to do this." });
+                return Json(new { success = false, message = parsed?.Message ?? $"Request failed ({raw.StatusCode})." });
             }
             catch (Exception ex)
             {

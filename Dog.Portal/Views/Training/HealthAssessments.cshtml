@@ -1,0 +1,194 @@
+@{
+    Layout = "_AdminLayout";
+    ViewData["Title"] = "Health Assessments";
+}
+<partial name="_TrainingShared" />
+<div class="tr">
+    <div class="tr-head">
+        <div><h4><i class="bi bi-heart-pulse-fill me-2" style="color:#667eea"></i>Health Assessments</h4><p>Every dog must pass a health check before it can be invoiced and start training</p></div>
+    </div>
+
+    <div class="tr-card" id="waitingCard" style="display:none">
+        <h5><i class="bi bi-hourglass-split" style="color:#d97706"></i> Dogs waiting for a health assessment <span class="tr-badge b-amber" id="waitingCount"></span></h5>
+        <div class="tr-tablewrap"><table class="tr-table"><tbody id="waiting"></tbody></table></div>
+    </div>
+
+    <div class="tr-filters">
+        <div class="tr-field"><label>Result</label><select class="tr-in" id="fResult"><option value="">All results</option><option>Pending</option><option>Passed</option><option>Failed</option><option value="RequiresFurtherExamination">Requires further examination</option></select></div>
+    </div>
+    <div class="tr-tablewrap"><table class="tr-table">
+        <thead><tr><th>Date</th><th>Dog</th><th>Customer</th><th>Enrolment</th><th>Examiner</th><th>Weight</th><th>Result</th><th>Files</th></tr></thead>
+        <tbody id="rows"><tr><td colspan="8"><div class="tr-empty">Loading…</div></td></tr></tbody>
+    </table></div>
+</div>
+
+<div class="tr-modal" id="mForm">
+    <div class="tr-box wide">
+        <div class="tr-box-h"><h5 id="fTitle">Health check form – Dog</h5><button class="tr-x" onclick="T.close('mForm')"><i class="bi bi-x-lg"></i></button></div>
+        <div class="tr-box-b" id="formBody"></div>
+        <div class="tr-box-f" id="formFoot"></div>
+    </div>
+</div>
+
+<script>
+(function () {
+    var cur = null;          // assessment being edited (dto) or null for new
+    var ctx = null;          // enrolment context for a new assessment
+    var template = null;
+    var canCreate = T.can('training.health.create'), canApprove = T.can('training.health.approve');
+
+    async function loadList() {
+        var r = await T.api('GET', 'health-assessments' + (fResult.value ? '?result=' + fResult.value : ''));
+        if (!r.success) { rows.innerHTML = '<tr><td colspan="8"><div class="tr-empty"><i class="bi bi-exclamation-circle"></i>' + T.esc(r.message || 'Could not load.') + '</div></td></tr>'; return; }
+        rows.innerHTML = r.data.length === 0 ? '<tr><td colspan="8"><div class="tr-empty"><i class="bi bi-inbox"></i>No health assessments yet.</div></td></tr>' : r.data.map(function (a) {
+            return '<tr class="click" data-id="' + a.id + '"><td>' + T.date(a.assessmentDate) + '</td><td><b>' + T.esc(a.dogName) + '</b></td><td>' + T.esc(a.customerName || '—') + '</td><td>' + T.esc(a.enrollmentNumber || '') + '</td><td>' + T.esc(a.examinerName || '—') + '</td><td>' + (a.weightKg ? a.weightKg + ' kg' : '—') + '</td><td>' + T.resultBadge(a.result) + '</td><td>' + a.documentCount + '</td></tr>';
+        }).join('');
+        rows.querySelectorAll('tr.click').forEach(function (tr) { tr.onclick = function () { openExisting(+tr.dataset.id); }; });
+    }
+
+    async function loadWaiting() {
+        if (!T.can('training.enrolment.view')) return;
+        var r = await T.api('GET', 'enrollments?status=AwaitingHealthAssessment,HealthFailed');
+        if (!r.success || r.data.length === 0) { waitingCard.style.display = 'none'; return; }
+        waitingCard.style.display = ''; waitingCount.textContent = r.data.length;
+        waiting.innerHTML = r.data.map(function (e) {
+            return '<tr><td>' + T.dog(e.dogName, e.dogBreed, e.dogPhotoUrl) + '</td><td>' + T.esc(e.customerName || '—') + '</td><td>' + T.esc(e.programmeName) + '</td><td>' + T.badge(e.status) + '</td><td style="text-align:right">' +
+                (canCreate ? '<button class="tr-btn btn-primary-t btn-sm-t" data-assess="' + e.id + '"><i class="bi bi-clipboard2-pulse"></i> ' + (e.status === 'HealthFailed' ? 'Re-assess' : 'Assess') + '</button>' : '') + '</td></tr>';
+        }).join('');
+        waiting.querySelectorAll('[data-assess]').forEach(function (b) { b.onclick = function () { openNew(+b.dataset.assess); }; });
+    }
+
+    async function getTemplate() {
+        if (!template) { var t = await T.api('GET', 'health-form-template'); template = t.success ? t.data : { exam: [], treatments: [] }; }
+        return template;
+    }
+
+    async function openNew(enrollmentId) {
+        var r = await T.api('GET', 'enrollments/' + enrollmentId);
+        if (!r.success) { T.toast(r.message || 'Could not open the enrolment.', 'error'); return; }
+        ctx = r.data; cur = null; await getTemplate(); renderForm(null);
+    }
+
+    async function openExisting(id) {
+        var r = await T.api('GET', 'health-assessments/' + id);
+        if (!r.success) { T.toast(r.message || 'Could not open the assessment.', 'error'); return; }
+        cur = r.data; ctx = null; await getTemplate(); renderForm(cur);
+    }
+
+    function esc(v) { return T.esc(v == null ? '' : v); }
+    function dt(v) { return v ? String(v).slice(0, 10) : ''; }
+
+    function renderForm(a) {
+        var decided = a && (a.result === 'Passed' || a.result === 'Failed');
+        var ro = !canCreate || decided ? ' disabled' : '';
+        var dogName = a ? a.dogName : ctx.dogName, cust = a ? a.customerName : ctx.customerName;
+        var items = a ? a.items : [];
+        var examMap = {}, treatMap = {};
+        items.forEach(function (i) { (i.category === 'Treatment' ? treatMap : examMap)[i.name] = i; });
+        var examNames = template.exam.slice(); items.filter(function (i) { return i.category === 'Exam' && examNames.indexOf(i.name) < 0; }).forEach(function (i) { examNames.push(i.name); });
+        var treatNames = template.treatments.slice(); items.filter(function (i) { return i.category === 'Treatment' && treatNames.indexOf(i.name) < 0; }).forEach(function (i) { treatNames.push(i.name); });
+        var v = a || { assessmentDate: new Date().toISOString(), examinerName: T.me.name, species: 'Dog', recommendation: 'None', dogHandlerName: ctx ? ctx.handlerName : '' };
+
+        fTitle.textContent = 'Health check form – ' + dogName;
+        var h = '';
+        if (a) h += '<div class="tr-alert ' + (a.result === 'Passed' ? 'al-ok' : a.result === 'Failed' ? 'al-bad' : 'al-info') + '"><i class="bi bi-info-circle-fill"></i><span>Result: <b>' + esc(String(a.result).replace(/([a-z])([A-Z])/g, '$1 $2')) + '</b>' + (a.resultDate ? ' on ' + T.date(a.resultDate) : '') + (decided ? ' — this assessment is final. Start a re-assessment if needed.' : ' — record the result below once the examination is complete.') + '</span></div>';
+        if (a && a.recommendation === 'Withdrawal') h += '<div class="tr-alert al-bad"><i class="bi bi-exclamation-triangle-fill"></i><span>This form recommends withdrawal of the dog, so it cannot be passed.</span></div>';
+
+        h += '<h5 style="margin-top:.2rem">Pet information</h5><div class="tr-kv" style="margin-bottom:1rem">' +
+            '<div><div class="k">Customer</div><div class="v">' + esc(cust || '—') + '</div></div><div><div class="k">Dog</div><div class="v">' + esc(dogName) + '</div></div>' +
+            '<div><div class="k">Enrolment</div><div class="v">' + esc(a ? a.enrollmentNumber : ctx.enrollmentNumber) + '</div></div></div>';
+
+        h += '<h5>Examination details</h5><div class="tr-row">' +
+            '<div class="tr-field"><label>Date of exam *</label><input type="date" class="tr-in" id="hDate" value="' + dt(v.assessmentDate) + '"' + ro + '></div>' +
+            '<div class="tr-field"><label>Name of inspector</label><input class="tr-in" id="hExaminer" value="' + esc(v.examinerName) + '"' + ro + '></div>' +
+            '<div class="tr-field"><label>Force number #</label><input class="tr-in" id="hForce" value="' + esc(v.forceNumber) + '"' + ro + '></div>' +
+            '<div class="tr-field"><label>Phone #</label><input class="tr-in" id="hPhone" value="' + esc(v.examinerPhone) + '"' + ro + '></div>' +
+            '<div class="tr-field"><label>Dog handler</label><input class="tr-in" id="hHandler" value="' + esc(v.dogHandlerName) + '"' + ro + '></div>' +
+            '<div class="tr-field"><label>Species</label><input class="tr-in" id="hSpecies" value="' + esc(v.species || 'Dog') + '"' + ro + '></div>' +
+            '<div class="tr-field"><label>Weight (kg)</label><input type="number" step="0.1" min="0" class="tr-in" id="hWeight" value="' + (v.weightKg != null ? v.weightKg : '') + '"' + ro + '></div>' +
+            '<div class="tr-field"><label>Vaccination status</label><select class="tr-in" id="hVacc"' + ro + '>' + ['', 'Up to date', 'Overdue', 'Unknown'].map(function (o) { return '<option' + (o === (v.vaccinationStatus || '') ? ' selected' : '') + '>' + o + '</option>'; }).join('') + '</select></div>' +
+            '<div class="tr-field"><label>Deworming status</label><select class="tr-in" id="hDeworm"' + ro + '>' + ['', 'Up to date', 'Overdue', 'Unknown'].map(function (o) { return '<option' + (o === (v.dewormingStatus || '') ? ' selected' : '') + '>' + o + '</option>'; }).join('') + '</select></div></div>' +
+            '<div class="tr-field"><label>Physical condition</label><textarea class="tr-in" id="hPhys"' + ro + '>' + esc(v.physicalCondition) + '</textarea></div>' +
+            '<div class="tr-field"><label>Medical conditions</label><textarea class="tr-in" id="hMed"' + ro + '>' + esc(v.medicalConditions) + '</textarea></div>';
+
+        h += '<h5>Examination <span class="tr-note" style="font-weight:400">(eyes, ears, teeth, skin and coat, general fitness, behaviour…)</span></h5><div class="tr-tablewrap" style="margin-bottom:1rem"><table class="tr-table"><thead><tr><th>Item</th><th style="text-align:center">Normal</th><th style="text-align:center">Abnormal</th><th>Notes</th></tr></thead><tbody>' +
+            examNames.map(function (n, i) {
+                var it = examMap[n] || {};
+                return '<tr data-exam="' + esc(n) + '"><td><b>' + esc(n) + '</b></td><td style="text-align:center"><input type="radio" name="ex' + i + '" value="Normal"' + (it.status === 'Normal' ? ' checked' : '') + ro + '></td><td style="text-align:center"><input type="radio" name="ex' + i + '" value="Abnormal"' + (it.status === 'Abnormal' ? ' checked' : '') + ro + '></td><td><input class="tr-in" data-f="notes" value="' + esc(it.notes) + '"' + ro + '></td></tr>';
+            }).join('') + '</tbody></table></div>';
+
+        h += '<h5>Treatment &amp; care record</h5><div class="tr-tablewrap" style="margin-bottom:.6rem"><table class="tr-table"><thead><tr><th>Treatment</th><th style="text-align:center">Administered</th><th>Date</th><th>Reason</th><th style="text-align:center">BES notified</th></tr></thead><tbody>' +
+            treatNames.map(function (n) {
+                var it = treatMap[n] || {};
+                return '<tr data-treat="' + esc(n) + '"><td><b>' + esc(n) + '</b></td><td style="text-align:center"><input type="checkbox" data-f="adm"' + (it.administered ? ' checked' : '') + ro + '></td><td><input type="date" class="tr-in" data-f="date" value="' + dt(it.treatmentDate) + '"' + ro + '></td><td><input class="tr-in" data-f="reason" value="' + esc(it.reason) + '"' + ro + '></td><td style="text-align:center"><input type="checkbox" data-f="notified"' + (it.besNotified ? ' checked' : '') + ro + '></td></tr>';
+            }).join('') + '</tbody></table></div>' +
+            '<div class="tr-field" style="max-width:260px"><label>Flea / tick prevention administered on</label><input type="date" class="tr-in" id="hFlea" value="' + dt(v.fleaTickTreatmentDate) + '"' + ro + '></div>';
+
+        h += '<h5>Certification</h5>' +
+            chk('cGood', v.certGoodHealth, 'I completed a health examination on the animal and certify it was in good health.', ro) +
+            chk('cVacc', v.certVaccinationsCurrent, 'The animal is current on the recommended vaccinations.', ro) +
+            chk('cPar', v.certNoParasites, 'No evidence of endoparasites (roundworms, hookworms, whipworms) or ectoparasites (fleas, mites, ticks, lice).', ro) +
+            chk('cBite', v.certNoBiteHistory, 'I am not aware of any bite history or any physical or behavioural condition that makes the animal unsuitable for public socialisation.', ro) +
+            '<div class="tr-field" style="margin-top:.6rem"><label>Recommendation</label>' + [['None', 'No recommendation'], ['Warning', 'A warning about dog affairs to the customer (last warning)'], ['PositiveChange', 'Positive change in the status of the dog from the previous visit'], ['Withdrawal', 'Withdrawal of our dog from the client']].map(function (o) {
+                return '<label style="display:flex;gap:.5rem;font-size:.85rem;text-transform:none;font-weight:500;color:#1e293b;margin:.15rem 0"><input type="radio" name="rec" value="' + o[0] + '"' + ((v.recommendation || 'None') === o[0] ? ' checked' : '') + ro + '> ' + o[1] + '</label>';
+            }).join('') + '</div>' +
+            '<div class="tr-field"><label>Any comments</label><textarea class="tr-in" id="hComments"' + ro + '>' + esc(v.comments) + '</textarea></div>' +
+            '<div class="tr-row"><div class="tr-field"><label>Inspector\'s signature (typed name)</label><input class="tr-in" id="hSign" value="' + esc(v.inspectorSignatureName) + '"' + ro + '></div><div class="tr-field"><label>Date signed</label><input type="date" class="tr-in" id="hSigned" value="' + dt(v.signedOn) + '"' + ro + '></div></div>';
+
+        h += '<h5>Veterinary documents &amp; photos</h5>' + (a ? '<div id="hFiles"></div>' : '<div class="tr-note">Save the form first, then attach supporting veterinary documents here.</div>');
+        formBody.innerHTML = h;
+
+        // footer
+        var f = '<button class="tr-btn btn-ghost-t" onclick="T.close(\'mForm\')">Close</button>';
+        if (a) f = '<a class="tr-btn btn-ghost-t" target="_blank" href="/Training/HealthFormPdf/' + a.id + '"><i class="bi bi-printer"></i> Print form (PDF)</a>' + f;
+        if (canCreate && !decided) f += '<button class="tr-btn btn-primary-t" id="hSave"><i class="bi bi-save"></i> Save form</button>';
+        if (a && canApprove && (a.result === 'Pending' || a.result === 'RequiresFurtherExamination')) {
+            f += '<button class="tr-btn btn-warn-t" data-res="RequiresFurtherExamination">Needs further exam</button><button class="tr-btn btn-danger-t" data-res="Failed"><i class="bi bi-x-circle"></i> Failed</button><button class="tr-btn btn-success-t" data-res="Passed"><i class="bi bi-check-circle"></i> Passed</button>';
+        }
+        formFoot.innerHTML = f;
+        if (document.getElementById('hSave')) document.getElementById('hSave').onclick = save;
+        formFoot.querySelectorAll('[data-res]').forEach(function (b) { b.onclick = function () { decide(b.dataset.res); }; });
+        if (a) T.attachments('hFiles', 'TrainingHealth', a.id, canCreate && !decided);
+        T.open('mForm');
+    }
+
+    function chk(id, on, text, ro) { return '<label style="display:flex;gap:.5rem;align-items:flex-start;font-size:.85rem;margin:.3rem 0"><input type="checkbox" id="' + id + '"' + (on ? ' checked' : '') + ro + ' style="margin-top:.2rem"> <span>' + text + '</span></label>'; }
+
+    function collect() {
+        var items = [], n = 0;
+        formBody.querySelectorAll('tr[data-exam]').forEach(function (tr) {
+            var sel = tr.querySelector('input[type=radio]:checked');
+            items.push({ category: 'Exam', name: tr.dataset.exam, status: sel ? sel.value : null, notes: tr.querySelector('[data-f=notes]').value, sortOrder: ++n });
+        });
+        n = 0;
+        formBody.querySelectorAll('tr[data-treat]').forEach(function (tr) {
+            items.push({ category: 'Treatment', name: tr.dataset.treat, administered: tr.querySelector('[data-f=adm]').checked, treatmentDate: tr.querySelector('[data-f=date]').value || null, reason: tr.querySelector('[data-f=reason]').value, besNotified: tr.querySelector('[data-f=notified]').checked, sortOrder: ++n });
+        });
+        var rec = formBody.querySelector('input[name=rec]:checked');
+        return {
+            id: cur ? cur.id : null, enrollmentId: cur ? cur.enrollmentId : ctx.id, assessmentDate: hDate.value || new Date().toISOString(), examinerName: hExaminer.value, forceNumber: hForce.value, examinerPhone: hPhone.value,
+            dogHandlerName: hHandler.value, species: hSpecies.value, weightKg: hWeight.value === '' ? null : +hWeight.value, physicalCondition: hPhys.value, vaccinationStatus: hVacc.value, dewormingStatus: hDeworm.value,
+            medicalConditions: hMed.value, fleaTickTreatmentDate: hFlea.value || null, certGoodHealth: cGood.checked, certVaccinationsCurrent: cVacc.checked, certNoParasites: cPar.checked, certNoBiteHistory: cBite.checked,
+            recommendation: rec ? rec.value : 'None', comments: hComments.value, inspectorSignatureName: hSign.value, signedOn: hSigned.value || null, items: items
+        };
+    }
+
+    async function save() {
+        var btn = document.getElementById('hSave'); T.busy(btn, true, 'Saving…');
+        var r = await T.api('POST', 'health-assessments', collect()); T.busy(btn, false);
+        if (r.success) { T.toast(r.message); cur = r.data; renderForm(cur); loadList(); loadWaiting(); } else T.toast(r.message || 'Could not save the form.', 'error');
+    }
+
+    async function decide(result) {
+        var label = result === 'Passed' ? 'PASS' : result === 'Failed' ? 'FAIL' : 'mark as needing further examination';
+        if (!confirm('Record this assessment as ' + label + '? ' + (result === 'Passed' ? 'The dog can then be invoiced for training.' : ''))) return;
+        var r = await T.api('POST', 'health-assessments/' + cur.id + '/decide', { result: result, comments: '' });
+        if (r.success) { T.toast(r.message); cur = r.data; renderForm(cur); loadList(); loadWaiting(); } else T.toast(r.message || 'Could not record the result.', 'error');
+    }
+
+    fResult.onchange = loadList;
+    loadList(); loadWaiting();
+    if (T.qs('enrollment') && T.qs('new') === '1' && canCreate) openNew(+T.qs('enrollment'));
+    else if (T.qs('open')) openExisting(+T.qs('open'));
+})();
+</script>

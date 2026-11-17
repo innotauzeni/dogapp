@@ -1,0 +1,110 @@
+@{
+    Layout = "_AdminLayout";
+    ViewData["Title"] = "Training Dogs";
+}
+<partial name="_TrainingShared" />
+<div class="tr">
+    <div class="tr-head">
+        <div><h4><i class="bi bi-piggy-bank-fill me-2" style="color:#667eea"></i>Training Dogs</h4><p>Dogs brought in by customers for training &ndash; not the company's own dogs</p></div>
+        <div class="tr-actions"><button class="tr-btn btn-primary-t" id="btnNew" data-perm="training.dog.manage"><i class="bi bi-plus-lg"></i> Add dog</button></div>
+    </div>
+
+    <div class="tr-filters">
+        <div class="tr-field" style="flex:1;min-width:200px"><label>Search</label><input class="tr-in" id="fSearch" placeholder="Name, breed or microchip"></div>
+        <div class="tr-field"><label>Customer</label><select class="tr-in" id="fCust"><option value="">All customers</option></select></div>
+        <button class="tr-btn btn-primary-t" id="fGo"><i class="bi bi-search"></i> Search</button>
+    </div>
+
+    <div class="tr-tablewrap"><table class="tr-table">
+        <thead><tr><th>Dog</th><th>Owner</th><th>Gender</th><th>Born</th><th>Microchip</th><th>Enrolments</th><th></th></tr></thead>
+        <tbody id="rows"><tr><td colspan="7"><div class="tr-empty">Loading…</div></td></tr></tbody>
+    </table></div>
+</div>
+
+<div class="tr-modal" id="mDog"><div class="tr-box">
+    <div class="tr-box-h"><h5 id="dTitle">Dog</h5><button class="tr-x" onclick="T.close('mDog')"><i class="bi bi-x-lg"></i></button></div>
+    <div class="tr-box-b">
+        <div class="tr-field"><label>Owner (customer) *</label><select class="tr-in" id="dCust"></select><div class="tr-note">Not listed? <a href="/Training/Customers">Add the customer first</a>.</div></div>
+        <div class="tr-row">
+            <div class="tr-field"><label>Dog's name *</label><input class="tr-in" id="dName"></div>
+            <div class="tr-field"><label>Breed</label><input class="tr-in" id="dBreed"></div>
+            <div class="tr-field"><label>Colour</label><input class="tr-in" id="dColor"></div>
+            <div class="tr-field"><label>Gender</label><select class="tr-in" id="dGender"><option value="">—</option><option>Male</option><option>Female</option></select></div>
+            <div class="tr-field"><label>Date of birth</label><input type="date" class="tr-in" id="dDob"></div>
+            <div class="tr-field"><label>Microchip no.</label><input class="tr-in" id="dChip"></div>
+        </div>
+        <div class="tr-field"><label>Photo</label>
+            <div style="display:flex;align-items:center;gap:.8rem;flex-wrap:wrap"><div id="dPhotoPrev" class="tr-dog"></div><label class="tr-btn btn-ghost-t btn-sm-t" style="cursor:pointer"><i class="bi bi-camera-fill"></i> Choose photo<input type="file" accept="image/*" id="dPhotoIn" style="display:none"></label></div></div>
+        <div class="tr-field"><label>Notes</label><textarea class="tr-in" id="dNotes"></textarea></div>
+    </div>
+    <div class="tr-box-f"><button class="tr-btn btn-ghost-t" onclick="T.close('mDog')">Cancel</button><button class="tr-btn btn-primary-t" id="dSave">Save dog</button></div>
+</div></div>
+
+<script>
+(function () {
+    var list = [], customers = [], editing = null, photoUrl = null, canManage = T.can('training.dog.manage');
+    if (!canManage) btnNew.style.display = 'none';
+
+    async function loadCustomers() {
+        var r = await T.api('GET', 'customers'); customers = r.success ? r.data : [];
+        fCust.innerHTML = '<option value="">All customers</option>' + T.opts(customers, 'id', function (c) { return c.fullName; }, T.qs('customer') || '');
+    }
+
+    async function load() {
+        var p = []; if (fSearch.value.trim()) p.push('search=' + encodeURIComponent(fSearch.value.trim())); if (fCust.value) p.push('customerId=' + fCust.value);
+        var r = await T.api('GET', 'dogs' + (p.length ? '?' + p.join('&') : ''));
+        if (!r.success) { rows.innerHTML = '<tr><td colspan="7"><div class="tr-empty"><i class="bi bi-exclamation-circle"></i>' + T.esc(r.message || 'Could not load.') + '</div></td></tr>'; return; }
+        list = r.data;
+        rows.innerHTML = list.length === 0 ? '<tr><td colspan="7"><div class="tr-empty"><i class="bi bi-inbox"></i>No dogs found.</div></td></tr>' : list.map(function (d) {
+            return '<tr><td>' + T.dog(d.name, [d.breed, d.color].filter(Boolean).join(' · '), d.photoUrl) + '</td><td>' + T.esc(d.customerName || '—') + '</td><td>' + T.esc(d.gender || '—') + '</td><td>' + (d.dateOfBirth ? T.date(d.dateOfBirth) : '—') + '</td><td>' + T.esc(d.microchipNumber || '—') + '</td><td>' + d.enrolmentCount + '</td><td style="text-align:right;white-space:nowrap">' +
+                (T.can('training.enrolment.create') ? '<a class="tr-btn btn-ghost-t btn-sm-t" href="/Training/Enrolments?new=1&dog=' + d.id + '"><i class="bi bi-clipboard2-plus"></i> Enrol</a> ' : '') +
+                (canManage ? '<button class="tr-btn btn-ghost-t btn-sm-t" data-edit="' + d.id + '"><i class="bi bi-pencil"></i></button> <button class="tr-btn btn-ghost-t btn-sm-t" style="color:#dc2626" data-del="' + d.id + '"><i class="bi bi-trash3"></i></button>' : '') + '</td></tr>';
+        }).join('');
+        rows.querySelectorAll('[data-edit]').forEach(function (b) { b.onclick = function () { open(+b.dataset.edit); }; });
+        rows.querySelectorAll('[data-del]').forEach(function (b) { b.onclick = function () { del(+b.dataset.del); }; });
+    }
+
+    function preview() { dPhotoPrev.innerHTML = T.dog(dName.value || 'Dog', '', photoUrl); }
+    function open(id, preCustomer) {
+        editing = id ? list.filter(function (d) { return d.id === id; })[0] : null;
+        var d = editing || {}; photoUrl = d.photoUrl || null;
+        dTitle.textContent = editing ? 'Edit dog' : 'Add dog';
+        dCust.innerHTML = T.opts(customers, 'id', function (c) { return c.fullName; }, d.customerId || preCustomer || '', 'Select the owner');
+        dName.value = d.name || ''; dBreed.value = d.breed || ''; dColor.value = d.color || ''; dGender.value = d.gender || ''; dDob.value = d.dateOfBirth ? String(d.dateOfBirth).slice(0, 10) : '';
+        dChip.value = d.microchipNumber || ''; dNotes.value = d.notes || ''; preview(); T.open('mDog');
+    }
+    btnNew.onclick = function () { open(0, fCust.value); };
+    dName.oninput = preview;
+    dPhotoIn.onchange = async function () {
+        var f = dPhotoIn.files[0]; if (!f) return;
+        var small = await (async function () { var fd = new FormData(); fd.append('file', await shrinkPhoto(f)); try { return await (await fetch('/Training/UploadDogPhoto', { method: 'POST', body: fd })).json(); } catch (e) { return { success: false, message: 'Upload failed.' }; } })();
+        if (small.success) { photoUrl = small.url; preview(); } else T.toast(small.message || 'Upload failed.', 'error');
+        dPhotoIn.value = '';
+    };
+    function shrinkPhoto(file) {
+        return new Promise(function (resolve) {
+            var img = new Image(), url = URL.createObjectURL(file);
+            img.onload = function () { var s = Math.min(1, 1200 / Math.max(img.naturalWidth, img.naturalHeight)), c = document.createElement('canvas'); c.width = Math.round(img.naturalWidth * s); c.height = Math.round(img.naturalHeight * s); var g = c.getContext('2d'); g.fillStyle = '#fff'; g.fillRect(0, 0, c.width, c.height); g.drawImage(img, 0, 0, c.width, c.height); URL.revokeObjectURL(url); c.toBlob(function (b) { resolve(b ? new File([b], 'dog.jpg', { type: 'image/jpeg' }) : file); }, 'image/jpeg', 0.85); };
+            img.onerror = function () { URL.revokeObjectURL(url); resolve(file); }; img.src = url;
+        });
+    }
+
+    dSave.onclick = async function () {
+        if (!dCust.value) { T.toast('Choose the dog\'s owner.', 'error'); return; }
+        T.busy(dSave, true, 'Saving…');
+        var r = await T.api('POST', 'dogs', { id: editing ? editing.id : null, customerId: +dCust.value, name: dName.value, breed: dBreed.value, color: dColor.value, gender: dGender.value, dateOfBirth: dDob.value || null, microchipNumber: dChip.value, photoUrl: photoUrl, notes: dNotes.value });
+        T.busy(dSave, false);
+        if (r.success) { T.close('mDog'); T.toast(r.message); load(); } else T.toast(r.message || 'Could not save.', 'error');
+    };
+    async function del(id) {
+        if (!confirm('Delete this dog?')) return;
+        var r = await T.api('DELETE', 'dogs/' + id);
+        if (r.success) { T.toast(r.message); load(); } else T.toast(r.message || 'Could not delete.', 'error');
+    }
+    fGo.onclick = load; fSearch.onkeydown = function (e) { if (e.key === 'Enter') load(); };
+    (async function () {
+        await loadCustomers(); await load();
+        if (T.qs('new') === '1' && canManage) open(0, T.qs('customer'));
+    })();
+})();
+</script>

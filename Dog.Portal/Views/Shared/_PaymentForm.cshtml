@@ -1,0 +1,203 @@
+@* Shared "Record payment" dialog: company invoices AND dog-training invoices use the same structure.
+   Usage:  @await Html.PartialAsync("_PaymentForm")
+           PayForm.open({ invoiceId, number, party, balance, currency, url, canVerify, onDone })        *@
+@using Dog.Application.Common.Payments
+@{
+    var methodsJson = System.Text.Json.JsonSerializer.Serialize(
+        PaymentRules.Methods.Select(m => new { code = m.Code, label = m.Label, icon = m.Icon, auto = m.AutoConfirm, required = m.Required, hint = m.Hint }),
+        new System.Text.Json.JsonSerializerOptions { PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase });
+}
+<style>
+.pf-bd{position:fixed;inset:0;background:rgba(15,23,42,.5);backdrop-filter:blur(3px);z-index:1070;display:none;align-items:center;justify-content:center;padding:1rem}
+.pf-bd.open{display:flex}
+.pf-box{background:#fff;border-radius:16px;box-shadow:0 24px 70px rgba(0,0,0,.25);width:100%;max-width:640px;max-height:94vh;display:flex;flex-direction:column;overflow:hidden}
+.pf-hd{padding:1.05rem 1.3rem;border-bottom:1px solid #f1f5f9;display:flex;align-items:center;justify-content:space-between;gap:.8rem}
+.pf-hd h5{margin:0;font-size:1rem;font-weight:800;color:#0f172a}
+.pf-hd small{display:block;color:#64748b;font-size:.78rem;font-weight:500;margin-top:.1rem}
+.pf-x{width:30px;height:30px;border:none;background:#f1f5f9;border-radius:7px;color:#64748b;cursor:pointer;flex-shrink:0}
+.pf-bal{background:#eef2ff;color:#4338ca;border-radius:10px;padding:.35rem .8rem;font-size:.8rem;font-weight:700;white-space:nowrap}
+.pf-bd2{padding:1.1rem 1.3rem;overflow-y:auto;flex:1}
+.pf-ft{padding:.85rem 1.3rem;border-top:1px solid #f1f5f9;display:flex;justify-content:flex-end;gap:.6rem;background:#fafbfc}
+.pf-btn{padding:.6rem 1.3rem;border:none;border-radius:9px;font-size:.85rem;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:.4rem}
+.pf-btn.pri{background:linear-gradient(135deg,#667eea,#764ba2);color:#fff}
+.pf-btn.ok{background:linear-gradient(135deg,#10b981,#059669);color:#fff}
+.pf-btn.sec{background:#f1f5f9;color:#475569;border:1.5px solid #e2e8f0}
+.pf-btn:disabled{opacity:.6;cursor:not-allowed}
+.pf-methods{display:grid;grid-template-columns:repeat(4,1fr);gap:.5rem;margin-bottom:.7rem}
+@@media(max-width:560px){.pf-methods{grid-template-columns:repeat(2,1fr)}}
+.pf-m{border:1.5px solid #e2e8f0;border-radius:11px;padding:.6rem .3rem;text-align:center;cursor:pointer;background:#fff;font-size:.74rem;font-weight:700;color:#475569;transition:all .15s}
+.pf-m i{display:block;font-size:1.25rem;margin-bottom:.15rem;color:#94a3b8}
+.pf-m:hover{border-color:#a5b4fc}
+.pf-m.on{border-color:#6366f1;background:#eef2ff;color:#4338ca}.pf-m.on i{color:#6366f1}
+.pf-hint{background:#f8fafc;border-left:3px solid #6366f1;border-radius:6px;padding:.55rem .8rem;font-size:.8rem;color:#475569;margin-bottom:.9rem}
+.pf-g{display:grid;grid-template-columns:1fr 1fr;gap:.7rem}
+@@media(max-width:560px){.pf-g{grid-template-columns:1fr}}
+.pf-f{margin-bottom:.7rem}.pf-f.full{grid-column:1/-1}
+.pf-f label{display:block;font-size:.76rem;font-weight:700;color:#374151;margin-bottom:.25rem}
+.pf-f .rq{color:#ef4444}.pf-f .op{color:#94a3b8;font-weight:500}
+.pf-i{width:100%;padding:.58rem .75rem;border:1.5px solid #e2e8f0;border-radius:9px;font-size:.85rem;outline:none;background:#fff}
+.pf-i:focus{border-color:#6366f1;box-shadow:0 0 0 3px rgba(99,102,241,.12)}
+.pf-i.bad{border-color:#ef4444;background:#fff7f7}
+.pf-full{font-size:.74rem;color:#4f46e5;cursor:pointer;font-weight:700;margin-left:.4rem}
+.pf-ver{background:#ecfdf5;border:1px solid #a7f3d0;border-radius:10px;padding:.65rem .8rem;margin-top:.3rem;font-size:.82rem}
+.pf-sum{border:1.5px solid #e2e8f0;border-radius:12px;overflow:hidden}
+.pf-sum .row{display:grid;grid-template-columns:150px 1fr;gap:.6rem;padding:.55rem .9rem;border-bottom:1px solid #f1f5f9;font-size:.85rem}
+.pf-sum .row:last-child{border:none}.pf-sum .row span:first-child{color:#94a3b8;font-weight:600}
+.pf-sum .ref{font-family:Consolas,monospace;font-weight:800;color:#1e293b;font-size:.95rem;word-break:break-all}
+.pf-sum .amt{font-size:1.15rem;font-weight:800;color:#0f172a}
+.pf-note{margin-top:.8rem;padding:.65rem .85rem;border-radius:10px;font-size:.82rem;font-weight:600}
+.pf-note.pend{background:#fffbeb;color:#92400e;border:1px solid #fde68a}.pf-note.conf{background:#ecfdf5;color:#065f46;border:1px solid #a7f3d0}
+.pf-err{background:#fef2f2;border:1px solid #fecaca;color:#b91c1c;border-radius:9px;padding:.55rem .8rem;font-size:.82rem;font-weight:600;margin-bottom:.8rem;display:none}
+</style>
+
+<div class="pf-bd" id="pfModal"><div class="pf-box">
+  <div class="pf-hd">
+    <div><h5><i class="bi bi-cash-coin" style="color:#10b981"></i> Record payment</h5><small id="pfSub"></small></div>
+    <div style="display:flex;align-items:center;gap:.6rem"><span class="pf-bal" id="pfBal"></span><button class="pf-x" onclick="PayForm.close()"><i class="bi bi-x-lg"></i></button></div>
+  </div>
+  <div class="pf-bd2">
+    <div class="pf-err" id="pfErr"></div>
+    <div id="pfStep1">
+      <div class="pf-methods" id="pfMethods"></div>
+      <div class="pf-hint" id="pfHint"></div>
+      <div class="pf-g">
+        <div class="pf-f"><label>Amount received <span class="rq">*</span><span class="pf-full" onclick="PayForm.full()">pay full balance</span></label><input class="pf-i" id="pf_amount" type="number" min="0" step="0.01"></div>
+        <div class="pf-f" data-k="valueDate"><label id="pfl_valueDate">Payment date</label><input class="pf-i" id="pf_valueDate" type="date"></div>
+        <div class="pf-f" data-k="payerName"><label id="pfl_payerName">Paid by (name)</label><input class="pf-i" id="pf_payerName" placeholder="Person or company that paid"></div>
+        <div class="pf-f" data-k="payerContact"><label id="pfl_payerContact">Payer's mobile number</label><input class="pf-i" id="pf_payerContact" placeholder="e.g. 0771 234 567"></div>
+        <div class="pf-f" data-k="payerBank"><label id="pfl_payerBank">Payer's bank</label><input class="pf-i" id="pf_payerBank" placeholder="e.g. CBZ, Stanbic, FBC"></div>
+        <div class="pf-f" data-k="payerAccount"><label id="pfl_payerAccount">Payer's account / card last 4</label><input class="pf-i" id="pf_payerAccount"></div>
+        <div class="pf-f" data-k="reference"><label id="pfl_reference">Reference</label><input class="pf-i" id="pf_reference" placeholder="Bank reference / transaction code / slip no."></div>
+        <div class="pf-f" data-k="cheque"><label id="pfl_cheque">Cheque number</label><input class="pf-i" id="pf_cheque"></div>
+        <div class="pf-f full" data-k="destinationAccount"><label id="pfl_destinationAccount">Received into (our account)</label><select class="pf-i" id="pf_dest"><option value="">— choose the account the money went into —</option></select></div>
+        <div class="pf-f full" data-k="proof"><label>Proof of payment <span class="op">(screenshot, slip or PDF — recommended)</span></label><input class="pf-i" id="pf_proof" type="file" accept=".jpg,.jpeg,.png,.webp,.pdf" onchange="PayForm.upload(this)"><div id="pf_proofInfo" style="font-size:.76rem;color:#64748b;margin-top:.25rem"></div></div>
+        <div class="pf-f full" data-k="notes"><label id="pfl_notes">Notes <span class="op">(optional)</span></label><input class="pf-i" id="pf_notes"></div>
+      </div>
+      <div class="pf-ver" id="pfVerBox" style="display:none">
+        <label style="display:flex;gap:.5rem;align-items:center;font-weight:700;color:#065f46;margin:0;cursor:pointer"><input type="checkbox" id="pf_ver" onchange="PayForm.verToggle()"> I have already matched this on the bank statement — confirm it now</label>
+        <input class="pf-i" id="pf_stmt" style="margin-top:.5rem;display:none" placeholder="Bank-statement line / reference it matched">
+      </div>
+    </div>
+    <div id="pfStep2" style="display:none">
+      <p style="font-size:.84rem;color:#475569;margin:0 0 .7rem">Check the details below. This is the trace that lets the money be followed back to where it came from.</p>
+      <div class="pf-sum" id="pfSum"></div>
+      <div class="pf-note" id="pfOutcome"></div>
+    </div>
+  </div>
+  <div class="pf-ft" id="pfFt1"><button class="pf-btn sec" onclick="PayForm.close()">Cancel</button><button class="pf-btn pri" onclick="PayForm.review()">Review payment <i class="bi bi-arrow-right"></i></button></div>
+  <div class="pf-ft" id="pfFt2" style="display:none"><button class="pf-btn sec" onclick="PayForm.back()"><i class="bi bi-arrow-left"></i> Back</button><button class="pf-btn ok" id="pfGo" onclick="PayForm.submit()"><i class="bi bi-check2-circle"></i> Confirm &amp; record payment</button></div>
+</div></div>
+
+<script>
+var PayForm = (function(){
+  var METHODS = @Html.Raw(methodsJson);
+  var LABELS = { payerName:'Paid by (name)', payerContact:"Payer's mobile number", payerBank:"Payer's bank", payerAccount:"Payer's account / card last 4", reference:'Reference', cheque:'Cheque number', valueDate:'Payment date', destinationAccount:'Received into (our account)', notes:'Notes' };
+  // Fields shown per method (required ones are marked *, the rest are optional extras that help tracing).
+  var SHOW = {
+    CASH:['payerName','reference','notes'], ECOCASH:['payerName','payerContact','reference','valueDate','proof','notes'],
+    ONEMONEY:['payerName','payerContact','reference','valueDate','proof','notes'], INNBUCKS:['payerName','payerContact','reference','valueDate','proof','notes'],
+    BANK:['payerName','payerBank','payerAccount','reference','valueDate','destinationAccount','proof','notes'], CARD:['reference','payerAccount','notes'],
+    CHEQUE:['payerName','payerBank','cheque','valueDate','destinationAccount','proof','notes'], OTHER:['reference','notes','proof']
+  };
+  var cfg = null, cur = null, proofUrl = '', banks = null, banksPromise = null;
+  function $(id){return document.getElementById(id);}
+  function esc(s){return (s==null?'':String(s)).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
+  function money(v){return (Number(v)||0).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2});}
+  function err(m){var e=$('pfErr');if(m){e.textContent=m;e.style.display='block';}else e.style.display='none';}
+  function loadBanks(){
+    if(banksPromise) return banksPromise;
+    banksPromise = fetch('/BillingApi/BillingSetup/pdf-info').then(function(r){return r.json();}).then(function(j){
+      banks = (j && j.data && j.data.bankAccounts) || [];
+      var sel=$('pf_dest'); banks.forEach(function(b){var o=document.createElement('option');o.value=b.id;o.textContent=b.label;sel.appendChild(o);});
+    }).catch(function(){banks=[];});
+    return banksPromise;
+  }
+  function pick(code){
+    cur = METHODS.find(function(m){return m.code===code;});
+    Array.prototype.forEach.call($('pfMethods').children,function(el){el.classList.toggle('on',el.dataset.code===code);});
+    $('pfHint').textContent = cur.hint;
+    var show = SHOW[code]||[];
+    Array.prototype.forEach.call(document.querySelectorAll('#pfModal [data-k]'),function(el){
+      var k=el.dataset.k, vis=show.indexOf(k)>-1; el.style.display=vis?'':'none';
+      var req = cur.required.indexOf(k)>-1, lab=$('pfl_'+k);
+      if(lab){ var base=LABELS[k]||lab.textContent; if(code==='CARD'&&k==='reference') base='POS slip / approval no.'; if(code==='BANK'&&k==='reference') base='Bank reference';
+        if((code==='ECOCASH'||code==='ONEMONEY'||code==='INNBUCKS')&&k==='reference') base='Transaction code (from the SMS)';
+        if(code==='CASH'&&k==='reference') base='Receipt-book no.'; if(code==='CHEQUE'&&k==='valueDate') base='Cheque date'; if(code==='BANK'&&k==='valueDate') base='Date on the transfer';
+        lab.innerHTML = esc(base) + (req ? ' <span class="rq">*</span>' : ' <span class="op">(optional)</span>'); }
+    });
+    var needVerify = !cur.auto && cfg && cfg.canVerify;
+    $('pfVerBox').style.display = needVerify ? '' : 'none';
+    if(!needVerify){ $('pf_ver').checked=false; $('pf_stmt').style.display='none'; }
+    err('');
+  }
+  function val(id){return ($(id).value||'').trim();}
+  function collect(){
+    return { invoiceId: cfg.invoiceId, method: cur.code, amount: parseFloat($('pf_amount').value)||0, currencyCode: cfg.currency||'USD',
+      valueDate: val('pf_valueDate')||null, payerName: val('pf_payerName')||null, payerContact: val('pf_payerContact')||null, payerBank: val('pf_payerBank')||null,
+      payerAccount: val('pf_payerAccount')||null, referenceNumber: val('pf_reference')||null, chequeNumber: val('pf_cheque')||null,
+      destinationBankAccountId: parseInt($('pf_dest').value)||null, proofUrl: proofUrl||null, notes: val('pf_notes')||null,
+      verifiedOnStatement: !!$('pf_ver').checked, statementReference: val('pf_stmt')||null };
+  }
+  function validate(d){
+    var map={payerName:['pf_payerName',"the payer's name"],payerContact:['pf_payerContact',"the payer's mobile number"],payerBank:['pf_payerBank',"the payer's bank"],
+      reference:['pf_reference','the reference'],cheque:['pf_cheque','the cheque number'],valueDate:['pf_valueDate','the payment date'],destinationAccount:['pf_dest','the account that received the money'],notes:['pf_notes','a note']};
+    document.querySelectorAll('#pfModal .pf-i.bad').forEach(function(e){e.classList.remove('bad');});
+    if(!(d.amount>0)){ $('pf_amount').classList.add('bad'); return 'Enter the amount received.'; }
+    if(d.amount > cfg.open + 0.0001){ $('pf_amount').classList.add('bad'); return 'The amount is more than what is still open ('+money(cfg.open)+').'; }
+    for(var i=0;i<cur.required.length;i++){ var k=cur.required[i], m=map[k]; if(!m) continue; if(!val(m[0])){ $(m[0]).classList.add('bad'); return 'Enter '+m[1]+' for '+cur.label+' payments.'; } }
+    if(d.verifiedOnStatement && !d.statementReference){ $('pf_stmt').classList.add('bad'); return 'Enter the bank-statement line you matched this to.'; }
+    return null;
+  }
+  return {
+    open: function(c){
+      cfg = c; cfg.open = (c.balance||0) - (c.pending||0);
+      $('pfSub').textContent = (c.number||'') + (c.party ? ' · '+c.party : '');
+      $('pfBal').textContent = 'Open: ' + (c.currency||'USD') + ' ' + money(cfg.open);
+      var box=$('pfMethods'); box.innerHTML = METHODS.map(function(m){return '<div class="pf-m" data-code="'+m.code+'" onclick="PayForm.pick(\''+m.code+'\')"><i class="bi '+m.icon+'"></i>'+esc(m.label)+'</div>';}).join('');
+      ['pf_amount','pf_payerName','pf_payerContact','pf_payerBank','pf_payerAccount','pf_reference','pf_cheque','pf_notes','pf_stmt','pf_dest','pf_proof'].forEach(function(id){$(id).value='';});
+      $('pf_valueDate').value = new Date().toISOString().split('T')[0]; $('pf_amount').value = cfg.open>0 ? cfg.open.toFixed(2) : '';
+      $('pf_ver').checked=false; proofUrl=''; $('pf_proofInfo').textContent='';
+      $('pfStep1').style.display=''; $('pfStep2').style.display='none'; $('pfFt1').style.display=''; $('pfFt2').style.display='none';
+      loadBanks(); pick('CASH'); $('pfModal').classList.add('open');
+    },
+    close: function(){ $('pfModal').classList.remove('open'); },
+    pick: pick,
+    full: function(){ $('pf_amount').value = cfg.open.toFixed(2); },
+    verToggle: function(){ $('pf_stmt').style.display = $('pf_ver').checked ? '' : 'none'; },
+    upload: async function(inp){
+      var f=inp.files[0]; if(!f) return; $('pf_proofInfo').textContent='Uploading…';
+      var fd=new FormData(); fd.append('file',f);
+      try{ var r=await fetch('/Invoices/UploadProof',{method:'POST',body:fd}); var j=await r.json();
+        if(j.success){ proofUrl=j.url; $('pf_proofInfo').innerHTML='<i class="bi bi-check-circle-fill" style="color:#059669"></i> '+esc(f.name)+' attached'; }
+        else { proofUrl=''; inp.value=''; $('pf_proofInfo').textContent=''; err(j.message||'Upload failed.'); }
+      }catch(e){ proofUrl=''; $('pf_proofInfo').textContent=''; err('Upload failed. Please try again.'); }
+    },
+    review: function(){
+      var d=collect(), m=validate(d); if(m){ err(m); return; } err('');
+      var bank = d.destinationBankAccountId && banks ? (banks.find(function(b){return b.id===d.destinationBankAccountId;})||{}).label : null;
+      var rows=[['Method',cur.label],['Amount','<span class="amt">'+esc(cfg.currency||'USD')+' '+money(d.amount)+'</span>'],
+        ['Paid by',[d.payerName,d.payerBank,d.payerAccount].filter(Boolean).map(esc).join(' · ')],['Payer mobile',esc(d.payerContact)],
+        [cur.code==='BANK'?'Bank reference':'Reference','<span class="ref">'+esc(d.referenceNumber)+'</span>'],['Cheque no.',esc(d.chequeNumber)],
+        ['Payment date',d.valueDate?new Date(d.valueDate).toLocaleDateString(undefined,{day:'2-digit',month:'short',year:'numeric'}):''],
+        ['Received into',esc(bank)],['Proof',proofUrl?'<a href="'+esc(proofUrl)+'" target="_blank">View attachment</a>':''],['Notes',esc(d.notes)]];
+      $('pfSum').innerHTML = rows.filter(function(r){return r[1];}).map(function(r){return '<div class="row"><span>'+r[0]+'</span><span>'+r[1]+'</span></div>';}).join('');
+      var auto = cur.auto || (d.verifiedOnStatement && cfg.canVerify);
+      var o=$('pfOutcome'); o.className='pf-note '+(auto?'conf':'pend');
+      o.innerHTML = auto ? '<i class="bi bi-check-circle-fill"></i> This payment is confirmed straight away and reduces the invoice balance.'
+        : '<i class="bi bi-hourglass-split"></i> This payment is recorded as <b>PENDING</b>. The invoice balance only drops once someone confirms it on the bank statement (or the cheque clears).';
+      $('pfStep1').style.display='none'; $('pfStep2').style.display=''; $('pfFt1').style.display='none'; $('pfFt2').style.display='';
+    },
+    back: function(){ $('pfStep1').style.display=''; $('pfStep2').style.display='none'; $('pfFt1').style.display=''; $('pfFt2').style.display='none'; },
+    submit: async function(){
+      var b=$('pfGo'); b.disabled=true; var html=b.innerHTML; b.innerHTML='Recording…';
+      try{
+        var r=await fetch(cfg.url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(collect())});
+        var j=await r.json();
+        if(j.success){ PayForm.close(); if(cfg.onDone) cfg.onDone(j); }
+        else { PayForm.back(); err(j.message||'Could not record the payment.'); }
+      }catch(e){ PayForm.back(); err('Network error. Please try again.'); }
+      finally{ b.disabled=false; b.innerHTML=html; }
+    }
+  };
+})();
+</script>

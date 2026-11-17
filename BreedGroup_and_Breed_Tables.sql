@@ -128,7 +128,8 @@ INSERT INTO ka_breeds (BreedGroupId, Name, CompanyId, IsActive, CreatedAt) VALUE
 (@HerdingId, 'Australian Cattle Dog', 1, 1, GETUTCDATE()),
 (@HerdingId, 'Collie', 1, 1, GETUTCDATE()),
 (@HerdingId, 'Shetland Sheepdog', 1, 1, GETUTCDATE()),
-(@HerdingId, 'Belgian Malinois', 1, 1, GETUTCDATE());
+(@HerdingId, 'Belgian Malinois', 1, 1, GETUTCDATE()),
+(@HerdingId, 'White Swiss Shepherd Dog', 1, 1, GETUTCDATE());
 
 -- Miscellaneous breeds
 INSERT INTO ka_breeds (BreedGroupId, Name, CompanyId, IsActive, CreatedAt) VALUES

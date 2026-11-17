@@ -1,3 +1,4 @@
+using Dog.Application.Contracts;
 using Dog.Portal.Models;
 using Dog.Portal.Services;
 using Microsoft.AspNetCore.Mvc;
@@ -10,40 +11,97 @@ namespace Dog.Portal.Controllers
     public class DogsController : Controller
     {
         private readonly IApiClient _apiClient;
+        private readonly IFileStorageService _storage;
 
-        public DogsController(IApiClient apiClient)
+        public DogsController(IApiClient apiClient, IFileStorageService storage)
         {
             _apiClient = apiClient;
+            _storage = storage;
         }
 
         private bool IsAuthenticated() =>
             !string.IsNullOrEmpty(HttpContext.Session.GetString("UserSession"));
-        public async Task<IActionResult> Index(string? search, string? status, string? gender, int page = 1, int pageSize = 15)
+
+        /// Turns a raw (never-swallowed) API response into an honest success/message pair
+        /// instead of the generic fallback text that used to mask real failure reasons.
+        private static object BuildResult(ApiRawResult raw, string successFallback)
         {
-            // ✅ Get session
+            ApiResponse<object>? parsed = null;
+            try { parsed = JsonSerializer.Deserialize<ApiResponse<object>>(raw.Body, new JsonSerializerOptions { PropertyNameCaseInsensitive = true }); }
+            catch { /* body wasn't the expected envelope shape — fall through */ }
+
+            if (raw.IsSuccessStatusCode && parsed?.Success == true)
+                return new { success = true, message = parsed.Message ?? successFallback };
+
+            if (raw.StatusCode == 401 || raw.StatusCode == 403)
+                return new { success = false, message = "You don't have permission to do this." };
+
+            if (parsed?.Message != null)
+                return new { success = false, message = parsed.Message };
+
+            var bodySnippet = raw.Body.Length > 200 ? raw.Body[..200] + "…" : raw.Body;
+            return new { success = false, message = $"Request failed ({raw.StatusCode}): {bodySnippet}" };
+        }
+
+        /// <summary>
+        /// Returns the active company ID for data scoping:
+        /// head-office with branch selected → branch ID, otherwise own company ID.
+        /// </summary>
+        private int GetActiveCompanyId(UserSessionModel session)
+        {
+            if (session.IsHeadOffice && session.CurrentBranchId.HasValue && session.CurrentBranchId.Value > 0)
+                return session.CurrentBranchId.Value;
+            return Convert.ToInt32(session.CompanyId);
+        }
+
+        private UserSessionModel? GetSession()
+        {
+            var json = HttpContext.Session.GetString("UserSession");
+            if (string.IsNullOrEmpty(json)) return null;
+            return JsonSerializer.Deserialize<UserSessionModel>(json);
+        }
+        public async Task<IActionResult> Index(string? search, string? status, string? gender, int page = 1, int pageSize = 15, bool assignedOnly = false)
+        {
+            if (!IsAuthenticated()) return RedirectToAction("Login", "Auth");
+            var vm = await BuildDogsListViewModel(search, status, gender, page, pageSize, assignedOnly);
+            return View("Index", vm);
+        }
+
+        public IActionResult Assigned(string? search, string? status, string? gender, int page = 1, int pageSize = 15)
+            => RedirectToAction("Handlers", new { search, status, gender, page, pageSize });
+
+        public async Task<IActionResult> Handlers(string? search, string? status, string? gender, int page = 1, int pageSize = 15)
+        {
+            if (!IsAuthenticated()) return RedirectToAction("Login", "Auth");
+            var vm = await BuildDogsListViewModel(search, status, gender, page, pageSize, true);
+            return View("Handlers", vm);
+        }
+
+        private async Task<DogsListViewModel> BuildDogsListViewModel(string? search, string? status, string? gender, int page, int pageSize, bool assignedOnly)
+        {
             var userSessionJson = HttpContext.Session.GetString("UserSession");
             var userSession = string.IsNullOrEmpty(userSessionJson)
                 ? null
                 : JsonSerializer.Deserialize<UserSessionModel>(userSessionJson);
 
-
-            if (!IsAuthenticated()) return RedirectToAction("Login", "Auth");
             var vm = new DogsListViewModel { SearchTerm = search, Page = page, PageSize = pageSize };
-
-            // Pass filter values to ViewBag for form state
             ViewBag.StatusFilter = status;
             ViewBag.GenderFilter = gender;
 
             try
             {
-                // 🔥 ROLE-BASED FILTERING
-                List<AnimalListDto> filteredDogs;
+                // Use active context (branch user → own company; head-office → selected branch or own)
+                var activeCompanyId = userSession!.IsHeadOffice && userSession.CurrentBranchId.HasValue
+                    ? userSession.CurrentBranchId.Value
+                    : Convert.ToInt32(userSession.CompanyId);
 
-                var resp = await _apiClient.GetAsync<ApiResponse<List<AnimalListDto>>>($"api/animal/GetPets?CompanyId={Convert.ToInt32(userSession.CompanyId)}");
-                var all = resp?.Data ?? [];
+                var route = assignedOnly
+                    ? $"api/animal/GetAssignedDogs?handlerUserId={Uri.EscapeDataString(userSession.Id)}"
+                    : $"api/animal/GetPets?CompanyId={activeCompanyId}";
+                var resp = await _apiClient.GetAsync<ApiResponse<List<AnimalListDto>>>(route);
+                var all = resp?.Data ?? new List<AnimalListDto>();
 
-                // Apply filters
-                filteredDogs = all;
+                var filteredDogs = all;
 
                 if (!string.IsNullOrWhiteSpace(search))
                 {
@@ -65,7 +123,7 @@ namespace Dog.Portal.Controllers
 
                 if (!string.IsNullOrWhiteSpace(gender))
                 {
-                    filteredDogs = filteredDogs.Where(c => 
+                    filteredDogs = filteredDogs.Where(c =>
                         string.Equals(c.Gender, gender, StringComparison.OrdinalIgnoreCase)).ToList();
                 }
 
@@ -80,7 +138,7 @@ namespace Dog.Portal.Controllers
                 ViewBag.FetchError = "Unable to load dogs. Please try again.";
             }
 
-            return View(vm);
+            return vm;
         }
 
         // POST /Dogs/Create
@@ -95,32 +153,28 @@ namespace Dog.Portal.Controllers
             if (req == null) return Json(new { success = false, message = "Invalid request data." });
             try
             {
-                // Decode base64 photo and save to disk
+                // Decode base64 photo and store it (R2 if configured, else disk)
                 if (!string.IsNullOrEmpty(req.PhotoBase64))
                 {
                     var base64Data = req.PhotoBase64;
                     string extension = ".jpg";
+                    string contentType = "image/jpeg";
 
                     // Strip the data URI prefix: data:image/png;base64,....
                     if (base64Data.Contains(','))
                     {
                         var header = base64Data[..base64Data.IndexOf(',')];
                         base64Data = base64Data[(base64Data.IndexOf(',') + 1)..];
-                        if (header.Contains("png")) extension = ".png";
-                        else if (header.Contains("gif")) extension = ".gif";
-                        else if (header.Contains("webp")) extension = ".webp";
+                        if (header.Contains("png")) { extension = ".png"; contentType = "image/png"; }
+                        else if (header.Contains("gif")) { extension = ".gif"; contentType = "image/gif"; }
+                        else if (header.Contains("webp")) { extension = ".webp"; contentType = "image/webp"; }
                     }
 
-                    var uploadsDir = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "uploads", "dogs");
-                    if (!Directory.Exists(uploadsDir)) Directory.CreateDirectory(uploadsDir);
-
-                    var fileName = $"{Guid.NewGuid()}{extension}";
-                    var filePath = Path.Combine(uploadsDir, fileName);
-                    await System.IO.File.WriteAllBytesAsync(filePath, Convert.FromBase64String(base64Data));
-                    req.PhotoUrl = $"/uploads/dogs/{fileName}";
+                    var bytes = Convert.FromBase64String(base64Data);
+                    req.PhotoUrl = await SavePhotoAsync(bytes, extension, contentType);
                 }
 
-                req.CompanyId = Convert.ToInt32(userSession!.CompanyId);
+                req.CompanyId = GetActiveCompanyId(userSession!);
                 var resp = await _apiClient.PostAsync<ApiResponse<AnimalDto>>("api/animal/CreatePet", req);
                 return Json(new { success = resp?.Success ?? false, message = resp?.Message ?? "Created." });
             }
@@ -181,16 +235,12 @@ namespace Dog.Portal.Controllers
                 var companyIdInt = companyIdVal == null ? 0 : Convert.ToInt32(companyIdVal);
                 if (companyIdInt == 0)
                 {
-                    var userSessionJson = HttpContext.Session.GetString("UserSession");
-                    var userSession = string.IsNullOrEmpty(userSessionJson)
-                        ? null
-                        : System.Text.Json.JsonSerializer.Deserialize<UserSessionModel>(userSessionJson);
-                    dict["CompanyId"] = Convert.ToInt32(userSession?.CompanyId);
+                    var s = GetSession();
+                    dict["CompanyId"] = s != null ? GetActiveCompanyId(s) : 0;
                 }
 
-                var resp = await _apiClient.PutAsync<ApiResponse<AnimalDto>>(
-                    $"api/animal/UpdatePet/{id}", dict);
-                return Json(new { success = resp?.Success ?? false, message = resp?.Message ?? "Updated." });
+                var raw = await _apiClient.PutRawAsync($"api/animal/UpdatePet/{id}", dict);
+                return Json(BuildResult(raw, "Updated."));
             }
             catch (Exception ex) { return Json(new { success = false, message = ex.Message }); }
         }
@@ -233,28 +283,51 @@ namespace Dog.Portal.Controllers
                     return Json(new { success = false, message = "File size must be less than 5MB." });
                 }
 
-                // Save file to wwwroot/uploads/dogs directory
-                var uploadsDir = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "uploads", "dogs");
-                if (!Directory.Exists(uploadsDir))
-                {
-                    Directory.CreateDirectory(uploadsDir);
-                }
+                using var ms = new MemoryStream();
+                await file.CopyToAsync(ms);
+                var contentType = string.IsNullOrEmpty(file.ContentType) ? "image/jpeg" : file.ContentType;
+                var fileUrl = await SavePhotoAsync(ms.ToArray(), fileExtension, contentType);
 
-                var fileName = $"{Guid.NewGuid()}{fileExtension}";
-                var filePath = Path.Combine(uploadsDir, fileName);
-
-                using (var stream = new FileStream(filePath, FileMode.Create))
-                {
-                    await file.CopyToAsync(stream);
-                }
-
-                var fileUrl = $"/uploads/dogs/{fileName}";
                 return Json(new { success = true, url = fileUrl, message = "File uploaded successfully." });
             }
             catch (Exception ex)
             {
                 return Json(new { success = false, message = $"Upload failed: {ex.Message}" });
             }
+        }
+
+        /// <summary>
+        /// Stores a dog photo and returns its URL. Uses Cloudflare R2 when
+        /// configured; otherwise falls back to the local wwwroot/uploads/dogs
+        /// folder so the portal keeps working without R2 set up.
+        /// </summary>
+        private async Task<string> SavePhotoAsync(byte[] bytes, string extension, string contentType)
+        {
+            if (_storage.IsEnabled)
+            {
+                return await _storage.UploadBytesAsync(bytes, $"dog{extension}", contentType, "dogs");
+            }
+
+            var uploadsDir = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "uploads", "dogs");
+            if (!Directory.Exists(uploadsDir)) Directory.CreateDirectory(uploadsDir);
+            var fileName = $"{Guid.NewGuid()}{extension}";
+            await System.IO.File.WriteAllBytesAsync(Path.Combine(uploadsDir, fileName), bytes);
+            return $"/uploads/dogs/{fileName}";
+        }
+
+        // GET /Dogs/VaccineDue — dogs with vaccinations due/overdue (for the alerts bell).
+        [HttpGet]
+        public async Task<IActionResult> VaccineDue(int days = 30)
+        {
+            if (!IsAuthenticated()) return Json(new { success = false, items = Array.Empty<object>() });
+            try
+            {
+                var session = JsonSerializer.Deserialize<UserSessionModel>(HttpContext.Session.GetString("UserSession")!);
+                var companyId = GetActiveCompanyId(session!);
+                var resp = await _apiClient.GetAsync<ApiResponse<List<VaccineDueDto>>>($"api/animal/vaccine-due?companyId={companyId}&days={days}");
+                return Json(new { success = resp?.Success ?? false, items = resp?.Data ?? new List<VaccineDueDto>() });
+            }
+            catch (Exception ex) { return Json(new { success = false, message = ex.Message, items = Array.Empty<object>() }); }
         }
 
         // POST /Dogs/ToggleStatus/{id}
@@ -270,6 +343,146 @@ namespace Dog.Portal.Controllers
             catch (Exception ex) { return Json(new { success = false, message = ex.Message }); }
         }
 
+        // GET /Dogs/ActivityReportPdf/{id} — downloadable PDF activity report (company logo + details,
+        // dog details, care, vaccinations, breeding). Replaces the old HTML print page.
+        [HttpGet]
+        public async Task<IActionResult> ActivityReportPdf(int id)
+        {
+            if (!IsAuthenticated()) return RedirectToAction("Login", "Auth");
+
+            try
+            {
+                var resp = await _apiClient.GetAsync<ApiResponse<DogProfileDto>>($"api/animal/GetDogProfile/{id}");
+                var profile = resp?.Data;
+                if (resp?.Success != true || profile?.Dog == null)
+                    return BadRequest("Dog not found.");
+
+                CompanyDto? company = null;
+                try
+                {
+                    var compResp = await _apiClient.GetAsync<ApiResponse<CompanyDto>>($"api/companies/{profile.Dog.CompanyId}");
+                    company = compResp?.Data;
+                }
+                catch { /* branding is optional */ }
+
+                var baseUrl = $"{Request.Scheme}://{Request.Host}";
+                var logo = await PdfImageLoader.LoadAsync(company?.Logo, baseUrl);
+                var photo = await PdfImageLoader.LoadAsync(profile.Dog.PhotoUrl, baseUrl);
+
+                var pdf = DogActivityReportPdfService.Build(profile, company, logo, photo);
+                return File(pdf, "application/pdf", $"Dog_Activity_Report_{profile.Dog.Name}_{DateTime.Now:yyyyMMdd}.pdf");
+            }
+            catch (Exception ex)
+            {
+                return BadRequest($"Report generation failed: {ex.Message}");
+            }
+        }
+
+        // GET /Dogs/GalleryList?dogId= — gallery images for a dog.
+        [HttpGet]
+        public async Task<IActionResult> GalleryList(int dogId)
+        {
+            if (!IsAuthenticated()) return Json(new { success = false, message = "Session expired." });
+            try
+            {
+                var resp = await _apiClient.GetAsync<ApiResponse<List<GalleryImageDto>>>($"api/animal/Gallery/{dogId}");
+                return Json(new { success = resp?.Success ?? false, data = resp?.Data ?? new List<GalleryImageDto>(), message = resp?.Message });
+            }
+            catch (Exception ex) { return Json(new { success = false, message = ex.Message, data = Array.Empty<object>() }); }
+        }
+
+        // POST /Dogs/GalleryUpload — stores one (already browser-resized) image and attaches it to the dog.
+        [HttpPost]
+        public async Task<IActionResult> GalleryUpload(IFormFile file, int dogId)
+        {
+            if (!IsAuthenticated()) return Json(new { success = false, message = "Session expired." });
+            if (file == null || file.Length == 0) return Json(new { success = false, message = "No file uploaded." });
+
+            var ext = Path.GetExtension(file.FileName).ToLowerInvariant();
+            if (!new[] { ".jpg", ".jpeg", ".png", ".gif", ".webp" }.Contains(ext))
+                return Json(new { success = false, message = "Only JPG, PNG, GIF and WebP images are allowed." });
+            if (file.Length > 10 * 1024 * 1024)
+                return Json(new { success = false, message = "Image must be 10 MB or smaller." });
+
+            try
+            {
+                using var ms = new MemoryStream();
+                await file.CopyToAsync(ms);
+                var contentType = string.IsNullOrEmpty(file.ContentType) ? "image/jpeg" : file.ContentType;
+                var url = await SavePhotoAsync(ms.ToArray(), ext, contentType);
+
+                var session = JsonSerializer.Deserialize<UserSessionModel>(HttpContext.Session.GetString("UserSession")!);
+                var body = new
+                {
+                    companyId = GetActiveCompanyId(session!),
+                    entityId = dogId,
+                    fileName = file.FileName,
+                    fileUrl = url,
+                    contentType
+                };
+                var resp = await _apiClient.PostAsync<ApiResponse<object>>("api/animal/GalleryAdd", body);
+                if (resp == null)
+                    return Json(new { success = false, message = "The server refused the upload. You may not have permission to edit this dog." });
+                return Json(new { success = resp.Success, message = resp.Message ?? (resp.Success ? "Photo added." : "Failed to add photo.") });
+            }
+            catch (Exception ex) { return Json(new { success = false, message = $"Upload failed: {ex.Message}" }); }
+        }
+
+        // POST /Dogs/GalleryDelete — removes one gallery image.
+        [HttpPost]
+        public async Task<IActionResult> GalleryDelete(int dogId, int id)
+        {
+            if (!IsAuthenticated()) return Json(new { success = false, message = "Session expired." });
+            try
+            {
+                var resp = await _apiClient.DeleteAsync<ApiResponse<bool>>($"api/animal/GalleryDelete/{dogId}/{id}");
+                return Json(new { success = resp?.Success ?? false, message = resp?.Message ?? "Failed to delete photo." });
+            }
+            catch (Exception ex) { return Json(new { success = false, message = ex.Message }); }
+        }
+
+        // POST /Dogs/SetProfilePhoto/{id} — makes a gallery image the dog's profile picture.
+        [HttpPost]
+        public async Task<IActionResult> SetProfilePhoto(int id, [FromForm] string photoUrl)
+        {
+            if (!IsAuthenticated()) return Json(new { success = false, message = "Session expired." });
+            if (string.IsNullOrWhiteSpace(photoUrl)) return Json(new { success = false, message = "No image selected." });
+
+            try
+            {
+                var profileResp = await _apiClient.GetAsync<ApiResponse<DogProfileDto>>($"api/animal/GetDogProfile/{id}");
+                var current = profileResp?.Data?.Dog;
+                if (profileResp?.Success != true || current == null)
+                    return Json(new { success = false, message = "Dog not found." });
+
+                // UpdatePet overwrites every field, so round-trip the current values — only the photo changes.
+                var updateRequest = new UpdateAnimalRequest
+                {
+                    Id = id,
+                    Name = current.Name,
+                    Breed = current.Breed,
+                    Color = current.Color,
+                    DateOfBirth = current.DateOfBirth,
+                    DateOfDeath = current.DateOfDeath,
+                    Gender = current.Gender,
+                    MicrochipNumber = current.MicrochipNumber,
+                    PhotoUrl = photoUrl,
+                    SireId = current.SireId,
+                    DamId = current.DamId,
+                    CompanyId = current.CompanyId,
+                    CustomerId = current.CustomerId,
+                    IsActive = current.IsActive
+                };
+
+                var resp = await _apiClient.PutAsync<ApiResponse<AnimalDto>>($"api/animal/UpdatePet/{id}", updateRequest);
+                return Json(new { success = resp?.Success ?? false, message = resp?.Message ?? "Profile picture updated." });
+            }
+            catch (Exception ex)
+            {
+                return Json(new { success = false, message = ex.Message });
+            }
+        }
+
         // GET /Dogs/Details/{id}
         public async Task<IActionResult> Details(int id)
         {
@@ -279,14 +492,77 @@ namespace Dog.Portal.Controllers
             {
                 // Get full dog profile with all related data
                 var resp = await _apiClient.GetAsync<ApiResponse<DogProfileDto>>($"api/animal/GetDogProfile/{id}");
-                
-                //if (resp?.Success != true || resp.Data == null)
-                //{
-                //    TempData["Error"] = resp?.Message ?? "Dog not found.";
-                //    return RedirectToAction("Index");
-                //}
 
-                // Map DogProfileDto to the view model that Details.cshtml expects
+                if (resp == null)
+                {
+                    TempData["Error"] = "Unable to connect to API. Please try again.";
+                    return RedirectToAction("Index");
+                }
+
+                if (!resp.Success)
+                {
+                    TempData["Error"] = resp.Message ?? "Failed to load dog details.";
+                    return RedirectToAction("Index");
+                }
+
+                if (resp.Data == null)
+                {
+                    TempData["Error"] = "Dog not found.";
+                    return RedirectToAction("Index");
+                }
+
+                var session = JsonSerializer.Deserialize<UserSessionModel>(HttpContext.Session.GetString("UserSession")!);
+                if (session != null)
+                {
+                    // Fetch all users and branches, then filter according to the current user's scope.
+                    var usersRespTask = _apiClient.GetAsync<ApiResponse<List<UserDto>>>("api/users");
+                    var branchesRespTask = _apiClient.GetAsync<ApiResponse<List<DogBranchOption>>>($"api/companies/{session.CompanyId}/branches");
+                    await Task.WhenAll(usersRespTask, branchesRespTask);
+
+                    var allUsers = (await usersRespTask)?.Data ?? new List<UserDto>();
+                    var allBranches = (await branchesRespTask)?.Data ?? new List<DogBranchOption>();
+
+                    // Determine which branches the current user can see/assign.
+                    List<int> allowedBranchIds = new();
+                    if (session.IsHeadOffice)
+                    {
+                        // Head office can see all branches AND its own head-office handlers.
+                        // The branches endpoint only returns child branches, so add the head
+                        // office company id explicitly — otherwise handlers registered directly
+                        // under head office never appear and dogs can't be assigned to them.
+                        allowedBranchIds = allBranches.Select(b => b.Id).ToList();
+                        allowedBranchIds.Add(Convert.ToInt32(session.CompanyId));
+                    }
+                    else
+                    {
+                        // Non-head users are limited to their current branch (fallback to CompanyId)
+                        var myBranchId = session.CurrentBranchId ?? Convert.ToInt32(session.CompanyId);
+                        allowedBranchIds.Add(myBranchId);
+                    }
+
+                    // Filter branches for the UI
+                    var visibleBranches = allBranches.Where(b => allowedBranchIds.Contains(b.Id)).ToList();
+
+                    // Filter users to those belonging to the allowed branches and exclude current user (cannot assign to self)
+                    var visibleUsers = allUsers.Where(u => allowedBranchIds.Contains(u.CompanyId) && u.Id != session.Id).ToList();
+
+                    ViewBag.Handlers = visibleUsers;
+                    ViewBag.Branches = visibleBranches;
+                    ViewBag.DefaultBranchId = session.CurrentBranchId ?? Convert.ToInt32(session.CompanyId);
+                }
+
+                // Company branding for the printable care timeline (optional).
+                try
+                {
+                    var dogCompanyId = resp?.Data?.Dog?.CompanyId ?? 0;
+                    if (dogCompanyId > 0)
+                    {
+                        var compResp = await _apiClient.GetAsync<ApiResponse<CompanyDto>>($"api/companies/{dogCompanyId}");
+                        ViewBag.Company = compResp?.Data;
+                    }
+                }
+                catch { /* branding is optional */ }
+
                 return View(resp.Data);
             }
             catch (Exception ex)
@@ -296,9 +572,35 @@ namespace Dog.Portal.Controllers
             }
         }
 
+        [HttpPost]
+        public async Task<IActionResult> AssignDog([FromBody] AssignDogRequest request)
+        {
+            if (!IsAuthenticated()) return Json(new { success = false, message = "Session expired." });
+            try
+            {
+                var response = await _apiClient.PostAsync<ApiResponse<bool>>("api/animal/AssignDog", request);
+                return Json(new { success = response?.Success ?? false, message = response?.Message ?? "Assignment saved." });
+            }
+            catch (Exception ex) { return Json(new { success = false, message = ex.Message }); }
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> AddCareRecord([FromBody] AddDogCareRecordRequest request)
+        {
+            if (!IsAuthenticated()) return Json(new { success = false, message = "Session expired." });
+            try
+            {
+                var session = JsonSerializer.Deserialize<UserSessionModel>(HttpContext.Session.GetString("UserSession")!);
+                request.CompanyId = Convert.ToInt32(session!.CompanyId);
+                var response = await _apiClient.PostAsync<ApiResponse<bool>>("api/animal/AddCareRecord", request);
+                return Json(new { success = response?.Success ?? false, message = response?.Message ?? "Care record saved." });
+            }
+            catch (Exception ex) { return Json(new { success = false, message = ex.Message }); }
+        }
+
         // POST /Dogs/MarkAsDeceased/{id}
         [HttpPost]
-        public async Task<IActionResult> MarkAsDeceased(int id, [FromForm] DateTime? dateOfDeath)
+        public async Task<IActionResult> MarkAsDeceased(int id, [FromForm] DateTime? dateOfDeath, [FromForm] string? photoUrl)
         {
             if (!IsAuthenticated()) return Json(new { success = false, message = "Session expired." });
 
@@ -312,6 +614,7 @@ namespace Dog.Portal.Controllers
                 var current = profileResp.Data.Dog;
 
                 // Build update request preserving ALL existing fields — only change status + date of death
+                // (and the photo, if a picture of the deceased dog was uploaded).
                 var updateRequest = new UpdateAnimalRequest
                 {
                     Id = id,
@@ -322,10 +625,11 @@ namespace Dog.Portal.Controllers
                     DateOfDeath = dateOfDeath ?? current.DateOfDeath,
                     Gender = current.Gender,
                     MicrochipNumber = current.MicrochipNumber,
-                    PhotoUrl = current.PhotoUrl,
+                    PhotoUrl = string.IsNullOrWhiteSpace(photoUrl) ? current.PhotoUrl : photoUrl,
                     SireId = current.SireId,
                     DamId = current.DamId,
                     CompanyId = current.CompanyId,
+                    CustomerId = current.CustomerId,
                     IsActive = false
                 };
 
@@ -365,7 +669,7 @@ namespace Dog.Portal.Controllers
                     : JsonSerializer.Deserialize<UserSessionModel>(userSessionJson);
 
                 var resp = await _apiClient.GetAsync<ApiResponse<List<AnimalListDto>>>(
-                    $"api/animal/GetPets?CompanyId={Convert.ToInt32(userSession!.CompanyId)}");
+                    $"api/animal/GetPets?CompanyId={GetActiveCompanyId(userSession!)}");
 
                 var animals = resp?.Data ?? new List<AnimalListDto>();
                 return Json(animals.Select(a => new { id = a.Id, name = a.Name }));
@@ -389,7 +693,7 @@ namespace Dog.Portal.Controllers
             
             try
             {
-                req.CompanyId = Convert.ToInt32(userSession!.CompanyId);
+                req.CompanyId = GetActiveCompanyId(userSession!);
                 var resp = await _apiClient.PostAsync<ApiResponse<bool>>("api/animal/AddVaccination", req);
                 return Json(new { success = resp?.Success ?? false, message = resp?.Message ?? "Vaccination added." });
             }
@@ -409,7 +713,7 @@ namespace Dog.Portal.Controllers
             
             try
             {
-                req.CompanyId = Convert.ToInt32(userSession!.CompanyId);
+                req.CompanyId = GetActiveCompanyId(userSession!);
                 var resp = await _apiClient.PostAsync<ApiResponse<bool>>("api/animal/AddMatingRecord", req);
                 return Json(new { success = resp?.Success ?? false, message = resp?.Message ?? "Mating record added." });
             }
@@ -429,7 +733,7 @@ namespace Dog.Portal.Controllers
             
             try
             {
-                req.CompanyId = Convert.ToInt32(userSession!.CompanyId);
+                req.CompanyId = GetActiveCompanyId(userSession!);
                 var resp = await _apiClient.PostAsync<ApiResponse<bool>>("api/animal/AddLitter", req);
                 return Json(new { success = resp?.Success ?? false, message = resp?.Message ?? "Litter added." });
             }
@@ -449,7 +753,7 @@ namespace Dog.Portal.Controllers
                     : JsonSerializer.Deserialize<UserSessionModel>(userSessionJson);
 
                 var resp = await _apiClient.GetAsync<ApiResponse<List<MatingRecordDto>>>(
-                    $"api/animal/GetMatingRecords?CompanyId={Convert.ToInt32(userSession!.CompanyId)}");
+                    $"api/animal/GetMatingRecords?CompanyId={GetActiveCompanyId(userSession!)}");
 
                 var records = resp?.Data ?? new List<MatingRecordDto>();
                 return Json(records.Select(r => new { 
@@ -478,7 +782,7 @@ namespace Dog.Portal.Controllers
             
             try
             {
-                req.CompanyId = Convert.ToInt32(userSession!.CompanyId);
+                req.CompanyId = GetActiveCompanyId(userSession!);
                 var resp = await _apiClient.PostAsync<ApiResponse<bool>>("api/animal/AddPuppy", req);
                 return Json(new { success = resp?.Success ?? false, message = resp?.Message ?? "Puppy added." });
             }
@@ -498,7 +802,7 @@ namespace Dog.Portal.Controllers
                     : JsonSerializer.Deserialize<UserSessionModel>(userSessionJson);
 
                 var resp = await _apiClient.GetAsync<ApiResponse<List<LitterDto>>>(
-                    $"api/animal/GetLitters?CompanyId={Convert.ToInt32(userSession!.CompanyId)}");
+                    $"api/animal/GetLitters?CompanyId={GetActiveCompanyId(userSession!)}");
 
                 var litters = resp?.Data ?? new List<LitterDto>();
                 return Json(litters.Select(l => new { 

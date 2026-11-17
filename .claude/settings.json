@@ -1,0 +1,7 @@
+{
+  "permissions": {
+    "allow": [
+      "PowerShell(dotnet build \"c:\\\\Users\\\\Admin\\\\Documents\\\\Visual Studio 18\\\\l\\\\csharpdata\\\\Dog\\\\Dog.Application\\\\Dog.Application.csproj\" -v q --nologo)"
+    ]
+  }
+}

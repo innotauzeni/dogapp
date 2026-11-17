@@ -6,6 +6,7 @@
     var activeCount = Model.ExchangeRateList.Count(u => bool.Equals(u.IsActive, true));
     var inactiveCount = Model.ExchangeRateList.Count(u => bool.Equals(u.IsActive, false));
     var currencies = ViewBag.Currencies as List<Dog.Application.Features.Currencies.DTOs.CurrencyDto> ?? new List<Dog.Application.Features.Currencies.DTOs.CurrencyDto>();
+    var P = PermHelper.For(Context);
 }
 
 <style>
@@ -120,10 +121,13 @@
             <i class="fas fa-exchange-alt"></i>
             <span>@totalAll Total</span>
         </div>
-        <button type="button" class="btn-add" onclick="openCreateModal()">
-            <i class="fas fa-plus"></i>
-            Add Exchange Rate
-        </button>
+        @if (P.Can("exchangerate.create"))
+        {
+            <button type="button" class="btn-add" onclick="openCreateModal()">
+                <i class="fas fa-plus"></i>
+                Add Exchange Rate
+            </button>
+        }
     </div>
 </div>
 
@@ -233,15 +237,21 @@
                                                   <i class="bi bi-three-dots-vertical"></i>
                                     </button>
                                     <div class="act-menu">
-                                        <button type="button" class="act-item" onclick="openEditModal(@item.value.Id, @item.value.PrimaryCurrencyId, @item.value.SecondaryCurrencyId, @item.value.Rate, @item.value.IsActive.ToString().ToLower())">
-                                            <i class="fas fa-edit"></i>
-                                            Edit
-                                        </button>
-                                        <div class="act-divider"></div>
-                                        <button type="button" class="act-item danger" onclick="deleteExchangeRate(@item.value.Id, '@item.value.PrimaryCurrencyCode/@item.value.SecondaryCurrencyCode')">
-                                            <i class="fas fa-trash"></i>
-                                            Delete
-                                        </button>
+                                        @if (P.Can("exchangerate.edit"))
+                                        {
+                                            <button type="button" class="act-item" onclick="openEditModal(@item.value.Id, @item.value.PrimaryCurrencyId, @item.value.SecondaryCurrencyId, @item.value.Rate, @item.value.IsActive.ToString().ToLower())">
+                                                <i class="fas fa-edit"></i>
+                                                Edit
+                                            </button>
+                                        }
+                                        @if (P.Can("exchangerate.delete"))
+                                        {
+                                            @if (P.Can("exchangerate.edit")) { <div class="act-divider"></div> }
+                                            <button type="button" class="act-item danger" onclick="deleteExchangeRate(@item.value.Id, '@item.value.PrimaryCurrencyCode/@item.value.SecondaryCurrencyCode')">
+                                                <i class="fas fa-trash"></i>
+                                                Delete
+                                            </button>
+                                        }
                                     </div>
                                 </div>
                             </td>

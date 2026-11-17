@@ -1,0 +1,97 @@
+@{
+    Layout = "_AdminLayout";
+    ViewData["Title"] = "Final Assessments";
+}
+<partial name="_TrainingShared" />
+<div class="tr">
+    <div class="tr-head">
+        <div><h4><i class="bi bi-award me-2" style="color:#667eea"></i>Final Assessments</h4><p>Assess dogs at the end of training, then approve completion before a certificate is issued</p></div>
+    </div>
+
+    <div class="tr-card" id="dueCard" style="display:none">
+        <h5><i class="bi bi-clipboard2-pulse-fill" style="color:#7c3aed"></i> Due for final assessment <span class="tr-badge b-purple" id="dueCount"></span></h5>
+        <div class="tr-tablewrap"><table class="tr-table"><tbody id="due"></tbody></table></div>
+    </div>
+
+    <div class="tr-card" id="apprCard" style="display:none">
+        <h5><i class="bi bi-hourglass-split" style="color:#d97706"></i> Awaiting management approval <span class="tr-badge b-amber" id="apprCount"></span></h5>
+        <div class="tr-tablewrap"><table class="tr-table"><tbody id="appr"></tbody></table></div>
+    </div>
+
+    <h5 style="font-size:1rem;font-weight:800;margin:1rem 0 .6rem">All assessments</h5>
+    <div class="tr-filters"><div class="tr-field"><label>Result</label><select class="tr-in" id="fResult"><option value="">All</option><option>Passed</option><option>Failed</option><option value="RequiresAdditionalTraining">Requires additional training</option></select></div></div>
+    <div class="tr-tablewrap"><table class="tr-table">
+        <thead><tr><th>Date</th><th>Dog</th><th>Customer</th><th>Attempt</th><th>Score</th><th>Result</th><th>Approval</th><th>Certificate</th><th></th></tr></thead>
+        <tbody id="rows"><tr><td colspan="9"><div class="tr-empty">Loading…</div></td></tr></tbody>
+    </table></div>
+</div>
+
+<div class="tr-modal" id="mView"><div class="tr-box wide"><div class="tr-box-h"><h5 id="vTitle">Assessment</h5><button class="tr-x" onclick="T.close('mView')"><i class="bi bi-x-lg"></i></button></div>
+<div class="tr-box-b" id="vBody"></div><div class="tr-box-f" id="vFoot"></div></div></div>
+
+<script>
+(function () {
+    var all = [], current = null, canApprove = T.can('training.assessment.approve'), canConduct = T.can('training.assessment.conduct');
+
+    async function loadDue() {
+        if (!T.can('training.enrolment.view')) return;
+        var r = await T.api('GET', 'enrollments?status=AwaitingFinalAssessment');
+        if (!r.success || r.data.length === 0) { dueCard.style.display = 'none'; return; }
+        dueCard.style.display = ''; dueCount.textContent = r.data.length;
+        due.innerHTML = r.data.map(function (e) {
+            return '<tr><td>' + T.dog(e.dogName, e.dogBreed, e.dogPhotoUrl) + '</td><td>' + T.esc(e.customerName || '—') + '</td><td>' + T.esc(e.handlerName || '—') + '</td><td>Ended ' + T.date(e.plannedEndDate) + '</td><td style="text-align:right"><a class="tr-btn btn-ghost-t btn-sm-t" href="/Training/Enrolment/' + e.id + '">Open</a> ' + (canConduct ? '<a class="tr-btn btn-primary-t btn-sm-t" href="/Training/FinalAssessment?enrollmentId=' + e.id + '"><i class="bi bi-clipboard2-pulse"></i> Assess</a>' : '') + '</td></tr>';
+        }).join('');
+    }
+
+    async function load() {
+        var r = await T.api('GET', 'final-assessments' + (fResult.value ? '?result=' + fResult.value : ''));
+        if (!r.success) { rows.innerHTML = '<tr><td colspan="9"><div class="tr-empty"><i class="bi bi-exclamation-circle"></i>' + T.esc(r.message || 'Could not load.') + '</div></td></tr>'; return; }
+        all = r.data;
+        rows.innerHTML = all.length === 0 ? '<tr><td colspan="9"><div class="tr-empty"><i class="bi bi-inbox"></i>No assessments yet.</div></td></tr>' : all.map(function (a) {
+            return '<tr class="click" data-id="' + a.id + '"><td>' + T.date(a.assessmentDate) + '</td><td><b>' + T.esc(a.dogName) + '</b></td><td>' + T.esc(a.customerName || '—') + '</td><td>#' + a.attemptNumber + '</td><td>' + (a.overallScore != null ? a.overallScore + '/10' : '—') + '</td><td>' + T.resultBadge(a.result) + '</td><td>' + T.resultBadge(a.approvalStatus) + '</td><td>' + T.esc(a.certificateNumber || '—') + '</td><td><i class="bi bi-chevron-right"></i></td></tr>';
+        }).join('');
+        rows.querySelectorAll('tr.click').forEach(function (tr) { tr.onclick = function () { show(+tr.dataset.id); }; });
+
+        var pend = all.filter(function (a) { return a.result === 'Passed' && a.approvalStatus === 'Pending'; });
+        apprCard.style.display = pend.length ? '' : 'none'; apprCount.textContent = pend.length;
+        appr.innerHTML = pend.map(function (a) {
+            return '<tr><td><b>' + T.esc(a.dogName) + '</b></td><td>' + T.esc(a.customerName || '—') + '</td><td>Score ' + a.overallScore + '/10</td><td>' + T.date(a.assessmentDate) + '</td><td style="text-align:right"><button class="tr-btn btn-ghost-t btn-sm-t" data-view="' + a.id + '">Review</button></td></tr>';
+        }).join('');
+        appr.querySelectorAll('[data-view]').forEach(function (b) { b.onclick = function () { show(+b.dataset.view); }; });
+        var pre = T.qs('status'); if (pre === 'Pending' && pend.length && !load.once) { load.once = 1; show(pend[0].id); }
+    }
+
+    function show(id) {
+        current = all.filter(function (a) { return a.id === id; })[0]; if (!current) return;
+        var a = current;
+        vTitle.textContent = a.dogName + ' – attempt #' + a.attemptNumber;
+        vBody.innerHTML = '<div class="tr-kv" style="margin-bottom:1rem"><div><div class="k">Date</div><div class="v">' + T.date(a.assessmentDate) + '</div></div><div><div class="k">Assessor</div><div class="v">' + T.esc(a.assessorName || '—') + '</div></div><div><div class="k">Overall score</div><div class="v">' + (a.overallScore != null ? a.overallScore + ' / 10' : '—') + '</div></div><div><div class="k">Result</div><div class="v">' + T.resultBadge(a.result) + '</div></div><div><div class="k">Approval</div><div class="v">' + T.resultBadge(a.approvalStatus) + '</div></div></div>' +
+            '<div class="tr-tablewrap"><table class="tr-table"><thead><tr><th>Area</th><th style="width:90px">Score</th><th>Comments</th></tr></thead><tbody>' + a.items.map(function (i) { return '<tr><td><b>' + T.esc(i.area) + '</b></td><td>' + i.score + ' / 10</td><td>' + T.esc(i.comments || '') + '</td></tr>'; }).join('') + '</tbody></table></div>' +
+            (a.comments ? '<div class="tr-note" style="margin-top:.7rem"><b>Comments:</b> ' + T.esc(a.comments) + '</div>' : '') +
+            (a.extensionDays ? '<div class="tr-alert al-warn" style="margin-top:.7rem"><i class="bi bi-arrow-repeat"></i><span>Training extended by ' + a.extensionDays + ' day(s)' + (a.additionalActivities ? ': ' + T.esc(a.additionalActivities) : '') + '</span></div>' : '') +
+            (a.approvalStatus === 'Pending' && canApprove ? '<div class="tr-field" style="margin-top:.9rem"><label>Approval comments (required to reject)</label><textarea class="tr-in" id="apComment"></textarea></div>' : '') +
+            (a.approvedByName ? '<div class="tr-note" style="margin-top:.6rem">Decision by ' + T.esc(a.approvedByName) + ' on ' + T.date(a.approvedOn) + (a.approvalComments ? ' – ' + T.esc(a.approvalComments) : '') + '</div>' : '');
+        var f = '<a class="tr-btn btn-ghost-t" href="/Training/Enrolment/' + a.enrollmentId + '">Open enrolment</a><button class="tr-btn btn-ghost-t" onclick="T.close(\'mView\')">Close</button>';
+        if (a.result === 'Passed' && a.approvalStatus === 'Pending' && canApprove) f += '<button class="tr-btn btn-danger-t" id="bRej">Reject</button><button class="tr-btn btn-success-t" id="bAppr"><i class="bi bi-check-circle"></i> Approve completion</button>';
+        if (a.result === 'Passed' && a.approvalStatus === 'Approved' && !a.certificateNumber && T.can('training.certificate.issue')) f += '<button class="tr-btn btn-success-t" id="bCert"><i class="bi bi-award-fill"></i> Issue certificate</button>';
+        vFoot.innerHTML = f;
+        var b;
+        if ((b = document.getElementById('bAppr'))) b.onclick = function () { decide(true); };
+        if ((b = document.getElementById('bRej'))) b.onclick = function () { decide(false); };
+        if ((b = document.getElementById('bCert'))) b.onclick = issue;
+        T.open('mView');
+    }
+
+    async function decide(approve) {
+        var c = document.getElementById('apComment'); var comments = c ? c.value : '';
+        if (!approve && !comments.trim()) { T.toast('Give a reason for rejecting.', 'error'); return; }
+        var r = await T.api('POST', 'final-assessments/' + current.id + '/approve', { approve: approve, comments: comments });
+        if (r.success) { T.close('mView'); T.toast(r.message); load(); loadDue(); } else T.toast(r.message || 'Could not record the decision.', 'error');
+    }
+    async function issue() {
+        var r = await T.api('POST', 'certificates/issue/' + current.id, {});
+        if (r.success) { T.close('mView'); T.toast(r.message); load(); } else T.toast(r.message || 'Could not issue the certificate.', 'error');
+    }
+    fResult.onchange = load; load(); loadDue();
+})();
+</script>

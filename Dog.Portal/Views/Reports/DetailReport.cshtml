@@ -1,0 +1,117 @@
+@model List<Dog.Portal.Models.AnimalDto>
+@{
+    Layout = "_AdminLayout";
+    ViewData["Title"] = "Report - " + ViewBag.EventType;
+}
+
+<style>
+    .report-header { padding: 2rem; background: linear-gradient(135deg, #667eea, #764ba2); color: white; border-radius: 12px; margin-bottom: 2rem; display: flex; justify-content: space-between; align-items: center; }
+    .report-header-info h2 { margin: 0; font-size: 1.8rem; font-weight: 800; }
+    .report-header-info p { margin: 0.5rem 0 0 0; opacity: 0.9; }
+    .report-stats { display: flex; gap: 2rem; }
+    .stat-item { text-align: center; }
+    .stat-number { font-size: 2.5rem; font-weight: 800; }
+    .stat-label { font-size: 0.9rem; opacity: 0.9; }
+
+    .table-container { background: white; border-radius: 12px; border: 1px solid #e2e8f0; overflow: hidden; }
+    table { width: 100%; border-collapse: collapse; }
+    thead { background: #f8fafc; border-bottom: 2px solid #e2e8f0; }
+    th { padding: 1rem; text-align: left; font-weight: 700; font-size: 0.9rem; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em; }
+    td { padding: 1rem; border-bottom: 1px solid #f1f5f9; }
+    tbody tr:hover { background: #f8fafc; }
+    tbody tr:last-child td { border-bottom: none; }
+
+    .dog-name { font-weight: 700; color: #1e293b; }
+    .dog-breed { color: #64748b; font-size: 0.9rem; }
+    .badge { display: inline-block; padding: 0.25rem 0.75rem; border-radius: 6px; font-size: 0.85rem; font-weight: 600; }
+    .badge-primary { background: #ede9fe; color: #6d28d9; }
+    .badge-success { background: #d1fae5; color: #065f46; }
+    .badge-warning { background: #fef3c7; color: #92400e; }
+
+    .empty-state { text-align: center; padding: 4rem 2rem; }
+    .empty-state-icon { font-size: 3rem; margin-bottom: 1rem; opacity: 0.3; }
+    .empty-state h3 { color: #64748b; margin-bottom: 0.5rem; }
+    .empty-state p { color: #94a3b8; }
+
+    .btn-back { display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.6rem 1.25rem; background: #f1f5f9; color: #374151; border: 1.5px solid #e2e8f0; border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 0.9rem; cursor: pointer; transition: all 0.2s; }
+    .btn-back:hover { background: #e2e8f0; color: #1e293b; border-color: #cbd5e1; }
+</style>
+
+<div class="report-header">
+    <div class="report-header-info">
+        <h2>📊 @ViewBag.EventType Report</h2>
+        <p>Detailed list of dogs with recorded @ViewBag.EventType events</p>
+    </div>
+    <div class="report-stats">
+        <div class="stat-item">
+            <div class="stat-number">@ViewBag.Count</div>
+            <div class="stat-label">Dogs</div>
+        </div>
+    </div>
+</div>
+
+<a href="@Url.Action("Index")" class="btn-back"><i class="bi bi-arrow-left"></i> Back to Reports</a>
+<br><br>
+
+@if (Model.Count == 0)
+{
+    <div class="empty-state">
+        <div class="empty-state-icon">🔍</div>
+        <h3>No dogs found</h3>
+        <p>No dogs with @ViewBag.EventType events yet.</p>
+    </div>
+}
+else
+{
+    <div class="table-container">
+        <table>
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Breed</th>
+                    <th>Color</th>
+                    <th>Status</th>
+                    <th>Recent Activity</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var dog in Model)
+                {
+                    var lastEvent = dog.CareRecords?
+                        .Where(c => c.EventType == ViewBag.EventType)
+                        .OrderByDescending(c => c.OccurredOn)
+                        .FirstOrDefault();
+
+                    <tr>
+                        <td>
+                            <div class="dog-name">@dog.Name</div>
+                            <div class="dog-breed">ID: @dog.Id</div>
+                        </td>
+                        <td>@(string.IsNullOrEmpty(dog.Breed) ? "—" : dog.Breed)</td>
+                        <td>@(string.IsNullOrEmpty(dog.Color) ? "—" : dog.Color)</td>
+                        <td>
+                            @if (dog.IsDeceased)
+                            {
+                                <span class="badge" style="background: #fee2e2; color: #991b1b;">Deceased</span>
+                            }
+                            else
+                            {
+                                <span class="badge badge-success">Active</span>
+                            }
+                        </td>
+                        <td>
+                            @if (lastEvent != null)
+                            {
+                                <span>@DateDisplay.EventWhen(lastEvent.OccurredOn, "dd MMM yyyy")</span>
+                            }
+                            else
+                            {
+                                <span style="color: #94a3b8;">—</span>
+                            }
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}

@@ -50,5 +50,11 @@ namespace Dog.Core.Entities
         public DateTime? ResolvedAt { get; set; }
 
         public Guid? ResolvedBy { get; set; }
+
+        /// Whether a WhatsApp alert was already sent for this log (Critical severity
+        /// only) — prevents the alert background job from re-notifying on every poll.
+        public bool IsAlerted { get; set; } = false;
+
+        public DateTime? AlertedAt { get; set; }
     }
 }

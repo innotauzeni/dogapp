@@ -1,0 +1,49 @@
+@{
+    Layout = "_AdminLayout";
+    ViewData["Title"] = "Training Reports";
+}
+<partial name="_TrainingShared" />
+<div class="tr">
+    <div class="tr-head">
+        <div><h4><i class="bi bi-bar-chart-line-fill me-2" style="color:#667eea"></i>Training Reports</h4><p>Enrolments, results and revenue across programmes, handlers and months</p></div>
+        <div class="tr-actions"><button class="tr-btn btn-ghost-t" id="btnCsv"><i class="bi bi-filetype-csv"></i> Export CSV</button><button class="tr-btn btn-ghost-t" onclick="window.print()"><i class="bi bi-printer"></i> Print</button></div>
+    </div>
+
+    <div class="tr-card"><div class="tr-filters" style="margin:0">
+        <div class="tr-field"><label>From</label><input type="date" class="tr-in" id="fFrom"></div>
+        <div class="tr-field"><label>To</label><input type="date" class="tr-in" id="fTo"></div>
+        <button class="tr-btn btn-primary-t" id="fGo"><i class="bi bi-search"></i> Show</button>
+    </div></div>
+
+    <div class="tr-grid" id="kpis"></div>
+    <div id="tables"></div>
+</div>
+
+<script>
+(function () {
+    var data = null;
+    function table(title, rows) {
+        return '<div class="tr-card"><h5>' + title + '</h5>' + (rows.length === 0 ? '<div class="tr-note">No data for this period.</div>' :
+            '<div class="tr-tablewrap"><table class="tr-table"><thead><tr><th>' + title.replace('By ', '') + '</th><th>Enrolments</th><th>In training</th><th>Completed</th><th>Avg assessment score</th><th>Revenue collected</th></tr></thead><tbody>' + rows.map(function (r) {
+                return '<tr><td><b>' + T.esc(r.label) + '</b></td><td>' + r.enrolments + '</td><td>' + r.inTraining + '</td><td>' + r.completed + '</td><td>' + (r.averageScore != null ? r.averageScore + '/10' : '—') + '</td><td>' + T.money(r.revenue) + '</td></tr>';
+            }).join('') + '</tbody></table></div>') + '</div>';
+    }
+    async function load() {
+        var p = []; if (fFrom.value) p.push('from=' + fFrom.value); if (fTo.value) p.push('to=' + fTo.value);
+        var r = await T.api('GET', 'reports/summary' + (p.length ? '?' + p.join('&') : ''));
+        if (!r.success) { tables.innerHTML = '<div class="tr-card"><div class="tr-empty"><i class="bi bi-exclamation-circle"></i>' + T.esc(r.message || 'Could not load.') + '</div></div>'; return; }
+        data = r.data;
+        kpis.innerHTML = [['Total enrolments', data.totalEnrolments, 'bi-clipboard2-check', '#2563eb'], ['Completed', data.totalCompleted, 'bi-trophy-fill', '#059669'], ['Assessment pass rate', data.passRatePercent + '%', 'bi-percent', '#7c3aed'], ['Failed / extended assessments', data.totalFailedAssessments, 'bi-arrow-repeat', '#d97706'], ['Revenue collected', T.money(data.totalRevenue), 'bi-cash-coin', '#059669']]
+            .map(function (k) { return '<div class="tr-stat"><i class="bi ' + k[2] + ' i" style="color:' + k[3] + '"></i><div class="n">' + k[1] + '</div><div class="l">' + k[0] + '</div></div>'; }).join('');
+        tables.innerHTML = table('By programme', data.byProgramme) + table('By handler', data.byHandler) + table('By month', data.byMonth);
+    }
+    btnCsv.onclick = function () {
+        if (!data) return;
+        var lines = [['Section', 'Name', 'Enrolments', 'In training', 'Completed', 'Avg score', 'Revenue']];
+        [['Programme', data.byProgramme], ['Handler', data.byHandler], ['Month', data.byMonth]].forEach(function (s) { s[1].forEach(function (r) { lines.push([s[0], r.label, r.enrolments, r.inTraining, r.completed, r.averageScore == null ? '' : r.averageScore, r.revenue]); }); });
+        var csv = lines.map(function (l) { return l.map(function (c) { return '"' + String(c).replace(/"/g, '""') + '"'; }).join(','); }).join('\r\n');
+        var a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv' })); a.download = 'Training_Report_' + T.isoDate() + '.csv'; a.click();
+    };
+    fGo.onclick = load; load();
+})();
+</script>

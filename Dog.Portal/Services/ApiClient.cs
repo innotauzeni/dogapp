@@ -57,6 +57,63 @@ namespace Dog.Portal.Services
             return await ReadAsync<T>(response);
         }
 
+        public async Task<T?> PostMultipartAsync<T>(string endpoint, MultipartFormDataContent content, CancellationToken ct = default)
+        {
+            await AttachTokenAsync();
+            var response = await _http.PostAsync(endpoint, content, ct);
+            return await ReadAsync<T>(response);
+        }
+
+        public async Task<ApiRawResult> GetRawAsync(string endpoint, CancellationToken ct = default)
+        {
+            await AttachTokenAsync();
+            var response = await _http.GetAsync(endpoint, ct);
+            return new ApiRawResult
+            {
+                IsSuccessStatusCode = response.IsSuccessStatusCode,
+                StatusCode = (int)response.StatusCode,
+                Body = await response.Content.ReadAsStringAsync(ct),
+            };
+        }
+
+        public async Task<ApiRawResult> PostRawAsync(string endpoint, object body, CancellationToken ct = default)
+        {
+            await AttachTokenAsync();
+            var content = new StringContent(JsonSerializer.Serialize(body), Encoding.UTF8, "application/json");
+            var response = await _http.PostAsync(endpoint, content, ct);
+            return new ApiRawResult
+            {
+                IsSuccessStatusCode = response.IsSuccessStatusCode,
+                StatusCode = (int)response.StatusCode,
+                Body = await response.Content.ReadAsStringAsync(ct),
+            };
+        }
+
+        public async Task<ApiRawResult> PutRawAsync(string endpoint, object body, CancellationToken ct = default)
+        {
+            await AttachTokenAsync();
+            var content = new StringContent(JsonSerializer.Serialize(body), Encoding.UTF8, "application/json");
+            var response = await _http.PutAsync(endpoint, content, ct);
+            return new ApiRawResult
+            {
+                IsSuccessStatusCode = response.IsSuccessStatusCode,
+                StatusCode = (int)response.StatusCode,
+                Body = await response.Content.ReadAsStringAsync(ct),
+            };
+        }
+
+        public async Task<ApiRawResult> DeleteRawAsync(string endpoint, CancellationToken ct = default)
+        {
+            await AttachTokenAsync();
+            var response = await _http.DeleteAsync(endpoint, ct);
+            return new ApiRawResult
+            {
+                IsSuccessStatusCode = response.IsSuccessStatusCode,
+                StatusCode = (int)response.StatusCode,
+                Body = await response.Content.ReadAsStringAsync(ct),
+            };
+        }
+
         private static async Task<T?> ReadAsync<T>(HttpResponseMessage response)
         {
             var json = await response.Content.ReadAsStringAsync();

@@ -42,6 +42,12 @@ namespace Dog.Infrastructure.Services
                 QueryString = ctx?.Request?.QueryString.ToString(),
             };
 
+            await FileLogWriter.AppendAsync(
+                $"ERROR | {log.ExceptionType} | {log.Message}{Environment.NewLine}" +
+                $"Path: {log.Method} {log.Path}{log.QueryString}{Environment.NewLine}" +
+                $"Inner: {log.InnerException}{Environment.NewLine}" +
+                $"StackTrace:{Environment.NewLine}{log.StackTrace}");
+
             await PersistLogAsync(log);
         }
 
@@ -58,6 +64,8 @@ namespace Dog.Infrastructure.Services
                 Environment = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT"),
             };
 
+            await FileLogWriter.AppendAsync($"{severity.ToUpperInvariant()} | {source} | {message}");
+
             await PersistLogAsync(log);
         }
 
@@ -73,6 +81,8 @@ namespace Dog.Infrastructure.Services
                 MachineName = Environment.MachineName,
                 Environment = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT"),
             };
+
+            await FileLogWriter.AppendAsync($"WARNING | {source} | {message}");
 
             await PersistLogAsync(log);
         }

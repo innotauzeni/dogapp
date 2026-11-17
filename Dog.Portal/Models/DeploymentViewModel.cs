@@ -1,3 +1,4 @@
+using Dog.Application.Features.Customers.DTOs;
 using Dog.Application.Features.Deployments.DTOs;
 
 namespace Dog.Portal.Models
@@ -6,6 +7,7 @@ namespace Dog.Portal.Models
     {
         public List<DeploymentDto> DeploymentList { get; set; } = new();
         public List<DogDropdownItem> Dogs { get; set; } = new();
+        public List<CustomerDto> Customers { get; set; } = new();
         public string? SearchTerm { get; set; }
         public int Page { get; set; } = 1;
         public int PageSize { get; set; } = 15;
@@ -38,6 +40,8 @@ namespace Dog.Portal.Models
         public DateTime? EndDate { get; set; }
         public string? Notes { get; set; }
         public bool IsActive { get; set; } = true;
+        public int? CustomerId { get; set; }
+        public int? CustomerSiteId { get; set; }
     }
 
     public class UpdateDeploymentRequest : CreateDeploymentRequest

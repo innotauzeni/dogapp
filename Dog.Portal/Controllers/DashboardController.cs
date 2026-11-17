@@ -27,50 +27,45 @@ namespace Dog.Portal.Controllers
 
             try
             {
-                var companyId = await _currentUserService.GetUserCompanyId();
+                var companyId = await _currentUserService.GetActiveCompanyId();
 
                 // ── Dogs ──────────────────────────────────────────────
                 try
                 {
-                    var dogsResp = await _apiClient.GetAsync<ApiResponse<object>>($"api/Animal?pageSize=1000");
+                    var dogsResp = await _apiClient.GetAsync<ApiResponse<object>>($"api/Animal/GetPets?CompanyId={companyId}");
                     if (dogsResp?.Success == true && dogsResp.Data != null)
                     {
                         var json = JsonSerializer.Serialize(dogsResp.Data);
-                        var page = JsonSerializer.Deserialize<DashboardAnimalPage>(json, opts);
-                        if (page?.Data != null)
-                        {
-                            vm.TotalDogs = page.Total > 0 ? page.Total : page.Data.Count;
-                            vm.ActiveDogs = page.Data.Count(d => d.IsActive);
-                            vm.MaleDogs = page.Data.Count(d => d.Gender?.ToLower() == "male");
-                            vm.FemaleDogs = page.Data.Count(d => d.Gender?.ToLower() == "female");
+                        var dogs = JsonSerializer.Deserialize<List<DashboardAnimalItem>>(json, opts) ?? new();
+                        vm.TotalDogs = dogs.Count;
+                        vm.ActiveDogs = dogs.Count(d => d.IsActive);
+                        vm.MaleDogs = dogs.Count(d => string.Equals(d.Gender, "male", StringComparison.OrdinalIgnoreCase));
+                        vm.FemaleDogs = dogs.Count(d => string.Equals(d.Gender, "female", StringComparison.OrdinalIgnoreCase));
 
-                            // Top breeds
-                            vm.TopBreeds = page.Data
-                                .Where(d => !string.IsNullOrEmpty(d.Breed))
-                                .GroupBy(d => d.Breed)
-                                .OrderByDescending(g => g.Count())
-                                .Take(5)
-                                .Select(g => new BreedCount
-                                {
-                                    Breed = g.Key,
-                                    Count = g.Count(),
-                                    Percentage = vm.TotalDogs > 0 ? (int)Math.Round(g.Count() * 100.0 / vm.TotalDogs) : 0
-                                }).ToList();
+                        vm.TopBreeds = dogs
+                            .Where(d => !string.IsNullOrEmpty(d.Breed))
+                            .GroupBy(d => d.Breed)
+                            .OrderByDescending(g => g.Count())
+                            .Take(5)
+                            .Select(g => new BreedCount
+                            {
+                                Breed = g.Key,
+                                Count = g.Count(),
+                                Percentage = dogs.Count > 0 ? (int)Math.Round(g.Count() * 100.0 / dogs.Count) : 0
+                            }).ToList();
 
-                            // Recent dogs (last 5)
-                            vm.RecentDogs = page.Data
-                                .OrderByDescending(d => d.Id)
-                                .Take(5)
-                                .Select(d => new DashboardDogItem
-                                {
-                                    Id = d.Id,
-                                    Name = d.Name,
-                                    Breed = d.Breed,
-                                    Gender = d.Gender,
-                                    IsActive = d.IsActive,
-                                    DateOfBirth = d.BirthDate
-                                }).ToList();
-                        }
+                        vm.RecentDogs = dogs
+                            .OrderByDescending(d => d.Id)
+                            .Take(5)
+                            .Select(d => new DashboardDogItem
+                            {
+                                Id = d.Id,
+                                Name = d.Name,
+                                Breed = d.Breed,
+                                Gender = d.Gender,
+                                IsActive = d.IsActive,
+                                DateOfBirth = d.BirthDate
+                            }).ToList();
                     }
                 }
                 catch (Exception ex) { Console.WriteLine($"Dashboard dogs error: {ex.Message}"); }

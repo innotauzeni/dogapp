@@ -1,0 +1,110 @@
+@{
+    Layout = "_AdminLayout";
+    ViewData["Title"] = "Handler Allocation";
+}
+<partial name="_TrainingShared" />
+<div class="tr">
+    <div class="tr-head">
+        <div><h4><i class="bi bi-person-check-fill me-2" style="color:#667eea"></i>Handler Allocation</h4><p>Allocate paid dogs to a handler, then start their training</p></div>
+    </div>
+
+    <div class="tr-card">
+        <h5><i class="bi bi-person-plus-fill" style="color:#7c3aed"></i> Paid &ndash; waiting for a handler <span class="tr-badge b-purple" id="cWait"></span></h5>
+        <div class="tr-tablewrap"><table class="tr-table"><tbody id="waitRows"><tr><td><div class="tr-empty">Loading…</div></td></tr></tbody></table></div>
+    </div>
+
+    <div class="tr-card">
+        <h5><i class="bi bi-play-circle-fill" style="color:#2563eb"></i> Ready to start training <span class="tr-badge b-blue" id="cReady"></span></h5>
+        <div class="tr-tablewrap"><table class="tr-table"><tbody id="readyRows"><tr><td><div class="tr-empty">Loading…</div></td></tr></tbody></table></div>
+    </div>
+
+    <h5 style="font-size:1rem;font-weight:800;margin:1.2rem 0 .7rem">Handlers &amp; workload</h5>
+    <div id="handlers" class="tr-grid" style="grid-template-columns:repeat(auto-fill,minmax(300px,1fr))"><div class="tr-empty" style="grid-column:1/-1">Loading…</div></div>
+</div>
+
+<div class="tr-modal" id="mAssign"><div class="tr-box"><div class="tr-box-h"><h5 id="aTitle">Allocate handler</h5><button class="tr-x" onclick="T.close('mAssign')"><i class="bi bi-x-lg"></i></button></div>
+<div class="tr-box-b"><div id="aList"></div><div class="tr-field" style="margin-top:.8rem"><label>Allocation notes</label><textarea class="tr-in" id="aNotes"></textarea></div></div>
+<div class="tr-box-f"><button class="tr-btn btn-ghost-t" onclick="T.close('mAssign')">Cancel</button><button class="tr-btn btn-primary-t" id="aGo">Allocate</button></div></div></div>
+
+<div class="tr-modal" id="mStart"><div class="tr-box"><div class="tr-box-h"><h5 id="sTitle">Start training</h5><button class="tr-x" onclick="T.close('mStart')"><i class="bi bi-x-lg"></i></button></div>
+<div class="tr-box-b"><div class="tr-field"><label>Start date</label><input type="date" class="tr-in" id="sDate"></div></div>
+<div class="tr-box-f"><button class="tr-btn btn-ghost-t" onclick="T.close('mStart')">Cancel</button><button class="tr-btn btn-success-t" id="sGo"><i class="bi bi-play-fill"></i> Start training</button></div></div></div>
+
+<div class="tr-modal" id="mProf"><div class="tr-box"><div class="tr-box-h"><h5 id="pTitle">Handler details</h5><button class="tr-x" onclick="T.close('mProf')"><i class="bi bi-x-lg"></i></button></div>
+<div class="tr-box-b">
+    <div class="tr-row"><div class="tr-field"><label>Maximum dogs at once</label><input type="number" min="1" max="50" class="tr-in" id="pMax"></div><div class="tr-field"><label>Availability</label><select class="tr-in" id="pAvail"><option value="1">Available for new dogs</option><option value="0">Unavailable</option></select></div></div>
+    <div class="tr-field"><label>Specialisation</label><input class="tr-in" id="pSpec" placeholder="e.g. Obedience, Detection, Guard"></div>
+    <div class="tr-field"><label>Notes</label><textarea class="tr-in" id="pNotes"></textarea></div>
+</div>
+<div class="tr-box-f"><button class="tr-btn btn-ghost-t" onclick="T.close('mProf')">Cancel</button><button class="tr-btn btn-primary-t" id="pGo">Save</button></div></div></div>
+
+<script>
+(function () {
+    var handlers = [], assignFor = null, pick = null, startFor = null, profFor = null;
+    var canAssign = T.can('training.handler.assign');
+
+    async function loadQueues() {
+        var w = await T.api('GET', 'enrollments?status=AwaitingHandler');
+        var rd = await T.api('GET', 'enrollments?status=Ready');
+        function table(el, list, btn, empty) {
+            el.innerHTML = list.length === 0 ? '<tr><td><div class="tr-empty"><i class="bi bi-check2-circle"></i>' + empty + '</div></td></tr>' : list.map(function (e) {
+                return '<tr><td>' + T.dog(e.dogName, e.dogBreed, e.dogPhotoUrl) + '</td><td>' + T.esc(e.customerName || '—') + '</td><td>' + T.esc(e.programmeName) + ' <span class="tr-note">(' + e.durationDays + ' days)</span></td><td>' + T.esc(e.handlerName || '') + '</td><td style="text-align:right"><a class="tr-btn btn-ghost-t btn-sm-t" href="/Training/Enrolment/' + e.id + '">Open</a> ' + (canAssign ? btn(e) : '') + '</td></tr>';
+            }).join('');
+        }
+        var wl = w.success ? w.data : [], rl = rd.success ? rd.data : [];
+        cWait.textContent = wl.length; cReady.textContent = rl.length;
+        table(waitRows, wl, function (e) { return '<button class="tr-btn btn-primary-t btn-sm-t" data-assign="' + e.id + '" data-dog="' + T.esc(e.dogName) + '">Allocate handler</button>'; }, 'No dogs waiting for a handler.');
+        table(readyRows, rl, function (e) { return '<button class="tr-btn btn-success-t btn-sm-t" data-start="' + e.id + '" data-dog="' + T.esc(e.dogName) + '"><i class="bi bi-play-fill"></i> Start</button>'; }, 'No dogs are waiting to start.');
+        document.querySelectorAll('[data-assign]').forEach(function (b) { b.onclick = function () { openAssign(+b.dataset.assign, b.dataset.dog); }; });
+        document.querySelectorAll('[data-start]').forEach(function (b) { b.onclick = function () { startFor = +b.dataset.start; sTitle.textContent = 'Start training – ' + b.dataset.dog; sDate.value = T.isoDate(); T.open('mStart'); }; });
+    }
+
+    async function loadHandlers() {
+        var r = await T.api('GET', 'handlers');
+        if (!r.success) { handlersEl().innerHTML = '<div class="tr-empty" style="grid-column:1/-1">' + T.esc(r.message || 'Could not load.') + '</div>'; return; }
+        handlers = r.data;
+        handlersEl().innerHTML = handlers.length === 0 ? '<div class="tr-empty" style="grid-column:1/-1"><i class="bi bi-person-x"></i>No users with the "Dog Handler" role were found.</div>' : handlers.map(function (h) {
+            var pct = Math.min(100, Math.round(h.currentDogs * 100 / Math.max(1, h.maxDogs)));
+            return '<div class="tr-card" style="margin:0"><div style="display:flex;justify-content:space-between;gap:.5rem"><div><b>' + T.esc(h.name) + '</b><div class="tr-note" style="margin:0">' + T.esc(h.specialisation || 'No specialisation set') + '</div></div>' + (h.isAvailable ? '<span class="tr-badge b-green">Available</span>' : '<span class="tr-badge b-gray">Unavailable</span>') + '</div>' +
+                '<div style="margin:.7rem 0 .25rem;font-size:.78rem;display:flex;justify-content:space-between"><span>Workload</span><b>' + h.currentDogs + ' / ' + h.maxDogs + '</b></div><div class="tr-bar"><div style="width:' + pct + '%;' + (pct >= 100 ? 'background:#dc2626' : '') + '"></div></div>' +
+                '<div style="margin-top:.6rem;display:flex;flex-wrap:wrap;gap:.3rem">' + (h.dogs.length ? h.dogs.map(function (d) { return '<a class="tr-badge b-blue" style="text-decoration:none" href="/Training/Enrolment/' + d.enrollmentId + '">' + T.esc(d.dogName) + (d.currentWeek ? ' · W' + d.currentWeek : '') + '</a>'; }).join('') : '<span class="tr-note">No dogs assigned</span>') + '</div>' +
+                '<div class="tr-note">' + T.esc(h.email || '') + (h.phone ? ' · ' + T.esc(h.phone) : '') + '</div>' +
+                (canAssign ? '<div style="margin-top:.6rem"><button class="tr-btn btn-ghost-t btn-sm-t" data-prof="' + T.esc(h.userId) + '"><i class="bi bi-sliders"></i> Capacity &amp; availability</button></div>' : '') + '</div>';
+        }).join('');
+        document.querySelectorAll('[data-prof]').forEach(function (b) { b.onclick = function () { openProfile(b.dataset.prof); }; });
+    }
+    function handlersEl() { return document.getElementById('handlers'); }
+
+    function openAssign(id, dog) {
+        assignFor = id; pick = null; aTitle.textContent = 'Allocate a handler – ' + dog;
+        aList.innerHTML = handlers.map(function (h) {
+            var pct = Math.min(100, Math.round(h.currentDogs * 100 / Math.max(1, h.maxDogs))), dis = !h.canAccept;
+            return '<label class="tr-card" style="display:block;margin-bottom:.6rem;cursor:' + (dis ? 'not-allowed' : 'pointer') + ';opacity:' + (dis ? .55 : 1) + '"><div style="display:flex;gap:.7rem"><input type="radio" name="hp" value="' + T.esc(h.userId) + '"' + (dis ? ' disabled' : '') + '><div style="flex:1"><div style="display:flex;justify-content:space-between"><b>' + T.esc(h.name) + '</b><span class="tr-note" style="margin:0">' + h.currentDogs + ' / ' + h.maxDogs + '</span></div><div class="tr-note" style="margin:.1rem 0 .4rem">' + T.esc(h.specialisation || 'No specialisation set') + '</div><div class="tr-bar"><div style="width:' + pct + '%"></div></div>' + (dis ? '<div class="tr-note" style="color:#b45309">' + (h.isAvailable ? 'At full capacity' : 'Marked unavailable') + '</div>' : '') + '</div></div></label>';
+        }).join('') || '<div class="tr-empty">No handlers found.</div>';
+        aList.querySelectorAll('input[name=hp]').forEach(function (i) { i.onchange = function () { pick = i.value; }; });
+        aNotes.value = ''; T.open('mAssign');
+    }
+    aGo.onclick = async function () {
+        if (!pick) { T.toast('Choose a handler.', 'error'); return; }
+        T.busy(aGo, true, 'Allocating…'); var r = await T.api('POST', 'enrollments/' + assignFor + '/assign-handler', { handlerUserId: pick, notes: aNotes.value }); T.busy(aGo, false);
+        if (r.success) { T.close('mAssign'); T.toast(r.message); loadQueues(); loadHandlers(); } else T.toast(r.message || 'Could not allocate.', 'error');
+    };
+    sGo.onclick = async function () {
+        T.busy(sGo, true, 'Starting…'); var r = await T.api('POST', 'enrollments/' + startFor + '/activate', { startDate: sDate.value || null }); T.busy(sGo, false);
+        if (r.success) { T.close('mStart'); T.toast(r.message); loadQueues(); loadHandlers(); } else T.toast(r.message || 'Could not start training.', 'error');
+    };
+
+    function openProfile(userId) {
+        profFor = handlers.filter(function (h) { return h.userId === userId; })[0]; if (!profFor) return;
+        pTitle.textContent = profFor.name; pMax.value = profFor.maxDogs; pAvail.value = profFor.isAvailable ? '1' : '0'; pSpec.value = profFor.specialisation || ''; pNotes.value = profFor.notes || ''; T.open('mProf');
+    }
+    pGo.onclick = async function () {
+        T.busy(pGo, true, 'Saving…');
+        var r = await T.api('POST', 'handlers/profile', { userId: profFor.userId, maxDogs: +pMax.value || 5, isAvailable: pAvail.value === '1', specialisation: pSpec.value, notes: pNotes.value });
+        T.busy(pGo, false);
+        if (r.success) { T.close('mProf'); T.toast(r.message); loadHandlers(); } else T.toast(r.message || 'Could not save.', 'error');
+    };
+
+    (async function () { await loadHandlers(); await loadQueues(); })();
+})();
+</script>

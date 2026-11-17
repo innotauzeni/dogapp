@@ -8,6 +8,9 @@
     var age = isDeceased
         ? (int)((dog.DateOfDeath!.Value - dog.DateOfBirth).TotalDays / 365.25)
         : (int)((DateTime.Today - dog.DateOfBirth).TotalDays / 365.25);
+    var P = PermHelper.For(Context);
+    var handlers = ViewBag.Handlers as List<Dog.Portal.Models.UserDto> ?? new List<Dog.Portal.Models.UserDto>();
+    var branches = ViewBag.Branches as List<Dog.Portal.Models.DogBranchOption> ?? new List<Dog.Portal.Models.DogBranchOption>();
 }
 <style>
 .dog-hero{background:linear-gradient(135deg,#667eea,#764ba2);border-radius:20px;padding:2rem 2rem 4.5rem;margin-bottom:1.5rem;position:relative;overflow:hidden}
@@ -69,16 +72,23 @@
 .abtn-back:hover{background:#e2e8f0;color:#334155}
 .modal-backdrop-custom{position:fixed;inset:0;background:rgba(15,23,42,.45);backdrop-filter:blur(3px);z-index:1050;display:none;align-items:center;justify-content:center;padding:1rem}
 .modal-backdrop-custom.open{display:flex}
-.modal-box{background:#fff;border-radius:16px;box-shadow:0 20px 60px rgba(0,0,0,.2);width:100%;max-width:420px;overflow:hidden}
+.modal-box{background:#fff;border-radius:16px;box-shadow:0 20px 60px rgba(0,0,0,.2);width:100%;max-width:520px;overflow:hidden}
 .modal-hdr{display:flex;align-items:center;justify-content:space-between;padding:1.1rem 1.375rem;border-bottom:1px solid #f1f5f9}
 .modal-hdr h5{font-size:.95rem;font-weight:800;color:#0f172a;margin:0;display:flex;align-items:center;gap:.5rem}
 .modal-close{width:28px;height:28px;border:none;background:#f1f5f9;border-radius:7px;color:#64748b;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:.85rem}
 .modal-body{padding:1.2rem 1.375rem}
 .modal-foot{padding:.875rem 1.375rem;border-top:1px solid #f1f5f9;display:flex;justify-content:flex-end;gap:.5rem}
+.act-btn{width:30px;height:30px;border:1.5px solid #e2e8f0;border-radius:7px;background:#fff;color:#64748b;display:flex;align-items:center;justify-content:center;cursor:pointer}
+.act-btn:hover{background:#f8fafc}
 .finput{width:100%;padding:.6rem .875rem;border:1.5px solid #e2e8f0;border-radius:9px;font-size:.845rem;color:#1e293b;outline:none;transition:border-color .2s}
 .finput:focus{border-color:#667eea;box-shadow:0 0 0 3px rgba(102,126,234,.1)}
 .frow{margin-bottom:.875rem}
 .frow label{display:block;font-size:.78rem;font-weight:600;color:#374151;margin-bottom:.3rem}
+.frow label i{color:#94a3b8;margin-right:.3rem}
+.frow-2{display:grid;grid-template-columns:1fr 1fr;gap:.875rem}
+.frow small{display:block;font-size:.72rem;color:#94a3b8;margin-top:.3rem}
+textarea.finput{resize:vertical;min-height:60px;font-family:inherit}
+.form-section-lbl{font-size:.72rem;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.06em;margin:0 0 .6rem}
 .btn-cancel{padding:.6rem 1.1rem;background:#f1f5f9;color:#64748b;border:1.5px solid #e2e8f0;border-radius:9px;font-size:.835rem;font-weight:600;cursor:pointer}
 .btn-danger-sm{padding:.6rem 1.25rem;background:linear-gradient(135deg,#ef4444,#dc2626);color:#fff;border:none;border-radius:9px;font-size:.835rem;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:.4rem}
 .toast-wrap{position:fixed;bottom:1.75rem;right:1.75rem;z-index:9999;display:flex;flex-direction:column;gap:.5rem;pointer-events:none}
@@ -142,6 +152,266 @@
     <a href="/Reports/DogCertificate/@dog.Id" target="_blank" class="abtn" style="background:linear-gradient(135deg,#f59e0b,#d97706);color:#fff;box-shadow:0 2px 8px rgba(245,158,11,.25);">
         <i class="bi bi-award-fill"></i> Print Certificate
     </a>
+    @if (P.Can("pet.edit"))
+    {
+        <button class="abtn" style="background:#e0e7ff;color:#3730a3" onclick="openModal('assignmentModal')"><i class="bi bi-person-check-fill"></i> Assign Handler / Branch</button>
+        <button class="abtn" style="background:#d1fae5;color:#065f46" onclick="openCareModal()"><i class="bi bi-clipboard2-pulse-fill"></i> Record Care</button>
+    }
+</div>
+
+<!-- Assignment and care timeline -->
+<div class="info-grid">
+    <div class="icard">
+        <div class="icard-hdr"><i class="bi bi-person-workspace"></i><span>Current Assignment</span></div>
+        <div class="icard-body">
+            @if (Model.CurrentAssignment != null)
+            {
+                <div class="drow"><span class="dlabel">Handler</span><span class="dval">@(Model.CurrentAssignment.HandlerName ?? "Not assigned")</span></div>
+                <div class="drow"><span class="dlabel">Branch</span><span class="dval">@(Model.CurrentAssignment.BranchName ?? "Not assigned")</span></div>
+                <div class="drow"><span class="dlabel">Assigned</span><span class="dval">@Model.CurrentAssignment.AssignedOn.ToString("MMM dd, yyyy")</span></div>
+            }
+            else { <p style="margin:0;color:#94a3b8;font-size:.84rem">No handler or branch has been assigned.</p> }
+        </div>
+    </div>
+    <div class="icard">
+        <div class="icard-hdr"><i class="bi bi-heart-pulse-fill"></i><span>Care Summary</span></div>
+        <div class="icard-body">
+            <div class="drow"><span class="dlabel">Care records</span><span class="dval">@Model.CareRecords.Count</span></div>
+            <div class="drow"><span class="dlabel">Needs attention</span><span class="dval">@Model.CareRecords.Count(r => r.RequiresAttention)</span></div>
+            <div class="drow"><span class="dlabel">Latest event</span><span class="dval">@(Model.CareRecords.FirstOrDefault()?.EventType ?? "None")</span></div>
+        </div>
+    </div>
+</div>
+
+<div class="family-section">
+    <div class="family-hdr" style="justify-content:space-between">
+        <div style="display:flex;align-items:center;gap:.5rem"><i class="bi bi-journal-medical" style="color:#667eea"></i><span>Care Timeline</span></div>
+        <div style="display:flex;align-items:center;gap:.5rem">
+            @if (Model.CareRecords.Any()) {
+                <button onclick="openModal('careTimelineModal')" style="display:inline-flex;align-items:center;gap:.35rem;padding:.35rem .8rem;background:#ede9fe;color:#7c3aed;border:none;border-radius:7px;font-size:.78rem;font-weight:700;cursor:pointer">
+                    <i class="bi bi-list-ul"></i> View All (@Model.CareRecords.Count)
+                </button>
+                <button onclick="printCareTimelinePdf()" style="display:inline-flex;align-items:center;gap:.35rem;padding:.35rem .8rem;background:#dbeafe;color:#1d4ed8;border:none;border-radius:7px;font-size:.78rem;font-weight:700;cursor:pointer">
+                    <i class="bi bi-printer-fill"></i> Print PDF
+                </button>
+            }
+        </div>
+    </div>
+    <div style="padding:1rem 1.25rem">
+        @{
+            var eventIcons = new Dictionary<string, (string icon, string color, string bg)>(StringComparer.OrdinalIgnoreCase) {
+                ["Feeding"]      = ("bi-egg-fried",                    "#059669", "#d1fae5"),
+                ["Vaccinated"]   = ("bi-shield-fill-check",            "#0369a1", "#dbeafe"),
+                ["Illness"]      = ("bi-thermometer-high",             "#b45309", "#fef3c7"),
+                ["Injured"]      = ("bi-bandaid-fill",                 "#dc2626", "#fee2e2"),
+                ["Bite someone"] = ("bi-exclamation-triangle-fill",    "#92400e", "#fef3c7"),
+                ["Heat"]         = ("bi-fire",                         "#e11d48", "#ffe4e6"),
+                ["Mating"]       = ("bi-heart-fill",                   "#be185d", "#fce7f3"),
+                ["Birth"]        = ("bi-stars",                        "#7c3aed", "#ede9fe"),
+                ["Other"]        = ("bi-three-dots",                   "#475569", "#f1f5f9"),
+            };
+        }
+        @if (Model.CareRecords.Any())
+        {
+            @* Show only latest 3 to keep the page from growing *@
+            @foreach (var record in Model.CareRecords.Take(3))
+            {
+                var (ico, clr, bg) = eventIcons.TryGetValue(record.EventType, out var v) ? v : ("bi-activity","#667eea","#ede9fe");
+                <div style="display:flex;gap:.875rem;margin-bottom:.875rem;align-items:flex-start">
+                    <div style="width:36px;height:36px;border-radius:10px;background:@bg;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:.95rem;color:@clr">
+                        <i class="bi @ico"></i>
+                    </div>
+                    <div style="flex:1;min-width:0;background:#f8fafc;border-radius:10px;padding:.65rem .9rem;border:1px solid #f1f5f9">
+                        <div style="display:flex;justify-content:space-between;align-items:center;gap:.5rem;flex-wrap:wrap">
+                            <span style="font-weight:700;font-size:.875rem;color:#1e293b">@record.EventType</span>
+                            <span style="font-size:.74rem;color:#94a3b8;white-space:nowrap">@DateDisplay.EventWhen(record.OccurredOn)</span>
+                        </div>
+                        @if (!string.IsNullOrWhiteSpace(record.Details)) {
+                            <div style="font-size:.82rem;color:#475569;margin-top:.3rem;line-height:1.4">@record.Details</div>
+                        }
+                        @if (!string.IsNullOrWhiteSpace(record.QuantityOrOutcome)) {
+                            <div style="font-size:.78rem;font-weight:600;color:#667eea;margin-top:.25rem"><i class="bi bi-check2-circle" style="margin-right:.25rem"></i>@record.QuantityOrOutcome</div>
+                        }
+                        <div style="display:flex;align-items:center;justify-content:space-between;margin-top:.4rem;flex-wrap:wrap;gap:.3rem">
+                            <span style="font-size:.72rem;color:#94a3b8"><i class="bi bi-person-fill" style="margin-right:.2rem"></i>@(record.RecordedByName ?? "System")</span>
+                            @if (record.RequiresAttention) {
+                                <span style="font-size:.7rem;font-weight:700;background:#fee2e2;color:#dc2626;padding:.1rem .45rem;border-radius:8px"><i class="bi bi-exclamation-circle-fill"></i> Needs attention</span>
+                            }
+                        </div>
+                    </div>
+                </div>
+            }
+            @if (Model.CareRecords.Count > 3) {
+                <button onclick="openModal('careTimelineModal')" style="width:100%;padding:.6rem;background:#f8fafc;border:1.5px dashed #e2e8f0;border-radius:9px;color:#64748b;font-size:.82rem;font-weight:600;cursor:pointer;text-align:center">
+                    <i class="bi bi-chevron-down"></i> Show @(Model.CareRecords.Count - 3) more records
+                </button>
+            }
+        }
+        else {
+            <div style="text-align:center;padding:1.5rem;color:#94a3b8">
+                <i class="bi bi-clipboard2-pulse" style="font-size:2rem;display:block;margin-bottom:.5rem;color:#e2e8f0"></i>
+                <p style="margin:0;font-size:.84rem">No care activity recorded yet.</p>
+            </div>
+        }
+    </div>
+</div>
+
+<div class="family-section">
+    <div class="family-hdr" style="justify-content:space-between">
+        <div style="display:flex;align-items:center;gap:.5rem"><i class="bi bi-award-fill" style="color:#f59e0b"></i><span>Certifications</span></div>
+        @if (P.Can("pet.edit")) {
+            <button onclick="openCertModal()" style="display:inline-flex;align-items:center;gap:.35rem;padding:.35rem .8rem;background:#fef3c7;color:#b45309;border:none;border-radius:7px;font-size:.78rem;font-weight:700;cursor:pointer">
+                <i class="bi bi-plus-lg"></i> Add
+            </button>
+        }
+    </div>
+    <div style="padding:1rem 1.25rem" id="certList">
+        <div style="text-align:center;padding:1rem;color:#94a3b8" id="certEmpty">
+            <i class="bi bi-award" style="font-size:2rem;display:block;margin-bottom:.5rem;color:#e2e8f0"></i>
+            <p style="margin:0;font-size:.84rem">Loading certifications...</p>
+        </div>
+    </div>
+</div>
+
+<!-- CERTIFICATION MODAL -->
+<div class="modal-backdrop-custom" id="certModal">
+    <div class="modal-box">
+        <div class="modal-hdr" style="background:linear-gradient(135deg,#fffbeb,#fef3c7);border-bottom:1px solid #fde68a">
+            <h5><span style="width:34px;height:34px;border-radius:9px;background:linear-gradient(135deg,#f59e0b,#d97706);color:#fff;display:inline-flex;align-items:center;justify-content:center;font-size:.95rem"><i class="bi bi-award-fill"></i></span> <span id="certModalTitle">Add Certification</span></h5>
+            <button class="modal-close" onclick="closeModal('certModal')"><i class="bi bi-x-lg"></i></button>
+        </div>
+        <div class="modal-body-p">
+            <input type="hidden" id="cert_id">
+            <p class="form-section-lbl"><i class="bi bi-info-circle"></i> Certification</p>
+            <div class="frow"><label><i class="bi bi-patch-check"></i>Certification Name <span style="color:#ef4444">*</span></label><input class="finput" id="cert_name" placeholder="e.g. Obedience Level 2, Protection Detection"></div>
+            <div class="frow-2">
+                <div class="frow"><label><i class="bi bi-building"></i>Issuing Body</label><input class="finput" id="cert_issuer" placeholder="e.g. K9 Academy"></div>
+                <div class="frow"><label><i class="bi bi-person-badge"></i>Trainer</label><input class="finput" id="cert_trainer" placeholder="Trainer name"></div>
+            </div>
+            <p class="form-section-lbl" style="margin-top:1.1rem"><i class="bi bi-calendar3"></i> Validity</p>
+            <div class="frow-2">
+                <div class="frow"><label><i class="bi bi-calendar-check"></i>Issue Date <span style="color:#ef4444">*</span></label><input class="finput" type="date" id="cert_issueDate"></div>
+                <div class="frow">
+                    <label><i class="bi bi-calendar-x"></i>Expiry Date</label>
+                    <input class="finput" type="date" id="cert_expiryDate">
+                    <small>Leave blank if it doesn't expire</small>
+                </div>
+            </div>
+            <div class="frow" style="margin-top:.5rem"><label><i class="bi bi-journal-text"></i>Notes</label><textarea class="finput" id="cert_notes" rows="3" placeholder="Optional notes..."></textarea></div>
+        </div>
+        <div class="modal-foot">
+            <button class="btn-cancel" onclick="closeModal('certModal')">Cancel</button>
+            <button class="abtn" style="background:linear-gradient(135deg,#f59e0b,#d97706);color:#fff" id="certSaveBtn" onclick="saveCertification()"><i class="bi bi-check2-circle"></i> Save</button>
+        </div>
+    </div>
+</div>
+
+<div class="family-section">
+    <div class="family-hdr" style="justify-content:space-between">
+        <div style="display:flex;align-items:center;gap:.5rem"><i class="bi bi-paperclip" style="color:#667eea"></i><span>Documents</span></div>
+        @if (P.Can("pet.edit")) {
+            <button onclick="document.getElementById('docFileInput').click()" style="display:inline-flex;align-items:center;gap:.35rem;padding:.35rem .8rem;background:#dbeafe;color:#1d4ed8;border:none;border-radius:7px;font-size:.78rem;font-weight:700;cursor:pointer">
+                <i class="bi bi-upload"></i> Upload
+            </button>
+            <input type="file" id="docFileInput" style="display:none" accept=".jpg,.jpeg,.png,.gif,.pdf,.doc,.docx" onchange="uploadDocument(this)">
+        }
+    </div>
+    <div style="padding:1rem 1.25rem" id="docList">
+        <div style="text-align:center;padding:1rem;color:#94a3b8"><p style="margin:0;font-size:.84rem">Loading documents...</p></div>
+    </div>
+</div>
+
+<!-- GALLERY -->
+<style>
+.gal-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:.6rem}
+.gal-thumb{aspect-ratio:1/1;border-radius:10px;overflow:hidden;background:#f1f5f9;cursor:zoom-in;border:1px solid #e2e8f0;transition:transform .15s,box-shadow .15s}
+.gal-thumb:hover{transform:translateY(-2px);box-shadow:0 6px 16px rgba(15,23,42,.15)}
+.gal-thumb img{width:100%;height:100%;object-fit:cover;display:block}
+.lightbox{position:fixed;inset:0;background:rgba(15,23,42,.92);z-index:3000;display:none;flex-direction:column;align-items:center;justify-content:center;padding:1rem}
+.lightbox.open{display:flex}
+.lightbox img{max-width:96vw;max-height:76vh;object-fit:contain;border-radius:10px;background:#0f172a}
+.lb-bar{display:flex;gap:.6rem;flex-wrap:wrap;justify-content:center;margin-top:1rem}
+.lb-btn{display:inline-flex;align-items:center;gap:.4rem;padding:.6rem 1.2rem;border:none;border-radius:9px;font-size:.88rem;font-weight:700;cursor:pointer}
+.lb-ok{background:linear-gradient(135deg,#667eea,#764ba2);color:#fff}
+.lb-prof{background:#d1fae5;color:#065f46}
+.lb-del{background:#fee2e2;color:#991b1b}
+</style>
+<div class="family-section">
+    <div class="family-hdr" style="justify-content:space-between">
+        <div style="display:flex;align-items:center;gap:.5rem"><i class="bi bi-images" style="color:#667eea"></i><span>Gallery</span><span id="galleryCount" style="font-size:.74rem;font-weight:600;color:#94a3b8"></span></div>
+        @if (P.Can("pet.edit")) {
+            <button id="galleryAddBtn" onclick="document.getElementById('galleryFileInput').click()" style="display:inline-flex;align-items:center;gap:.35rem;padding:.35rem .8rem;background:#dbeafe;color:#1d4ed8;border:none;border-radius:7px;font-size:.78rem;font-weight:700;cursor:pointer">
+                <i class="bi bi-plus-lg"></i> Add Photos
+            </button>
+            <input type="file" id="galleryFileInput" style="display:none" accept="image/*" multiple onchange="uploadGalleryImages(this)">
+        }
+    </div>
+    <div style="padding:1rem 1.25rem">
+        <div class="gal-grid" id="galleryGrid"><div style="grid-column:1/-1;text-align:center;padding:1rem;color:#94a3b8;font-size:.84rem">Loading gallery...</div></div>
+    </div>
+</div>
+
+<div class="lightbox" id="lightbox" onclick="if(event.target===this)closeLightbox()">
+    <img id="lightboxImg" src="" alt="Dog photo" />
+    <div class="lb-bar">
+        <span id="lightboxActions" style="display:none;gap:.6rem;flex-wrap:wrap;justify-content:center">
+            <button class="lb-btn lb-prof" onclick="setGalleryAsProfile()"><i class="bi bi-person-circle"></i> Set as profile picture</button>
+            <button class="lb-btn lb-del" onclick="deleteGalleryImage()"><i class="bi bi-trash3-fill"></i> Delete</button>
+        </span>
+        <button class="lb-btn lb-ok" onclick="closeLightbox()"><i class="bi bi-check2"></i> OK</button>
+    </div>
+</div>
+
+<!-- CARE TIMELINE FULL MODAL -->
+<div class="modal-backdrop-custom" id="careTimelineModal">
+    <div class="modal-box" style="max-width:720px">
+        <div class="modal-hdr">
+            <h5><i class="bi bi-journal-medical" style="color:#667eea"></i> Full Care Timeline — @dog.Name</h5>
+            <div style="display:flex;align-items:center;gap:.5rem">
+                <button onclick="printCareTimelinePdf()" style="display:inline-flex;align-items:center;gap:.35rem;padding:.35rem .75rem;background:#dbeafe;color:#1d4ed8;border:none;border-radius:7px;font-size:.78rem;font-weight:700;cursor:pointer">
+                    <i class="bi bi-printer-fill"></i> Print PDF
+                </button>
+                <button class="modal-close" onclick="closeModal('careTimelineModal')"><i class="bi bi-x-lg"></i></button>
+            </div>
+        </div>
+        <div class="modal-body-p" style="padding:1.25rem 1.5rem">
+            @if (Model.CareRecords.Any()) {
+                @foreach (var record in Model.CareRecords)
+                {
+                    var (ico2, clr2, bg2) = eventIcons.TryGetValue(record.EventType, out var v2) ? v2 : ("bi-activity","#667eea","#ede9fe");
+                    <div style="display:flex;gap:.875rem;margin-bottom:1rem;align-items:flex-start">
+                        <div style="display:flex;flex-direction:column;align-items:center;gap:0">
+                            <div style="width:36px;height:36px;border-radius:10px;background:@bg2;display:flex;align-items:center;justify-content:center;font-size:.95rem;color:@clr2;flex-shrink:0"><i class="bi @ico2"></i></div>
+                            @if (record != Model.CareRecords.Last()) {
+                                <div style="width:2px;height:1rem;background:#e2e8f0;margin-top:.25rem"></div>
+                            }
+                        </div>
+                        <div style="flex:1;background:@(record.RequiresAttention?"#fff7f7":"#f8fafc");border-radius:10px;padding:.75rem 1rem;border:1px solid @(record.RequiresAttention?"#fecaca":"#f1f5f9")">
+                            <div style="display:flex;justify-content:space-between;align-items:center;gap:.5rem;flex-wrap:wrap">
+                                <span style="font-weight:700;font-size:.9rem;color:#1e293b">@record.EventType</span>
+                                <span style="font-size:.76rem;color:#94a3b8">@DateDisplay.EventWhen(record.OccurredOn, "MMMM dd, yyyy")</span>
+                            </div>
+                            @if (!string.IsNullOrWhiteSpace(record.Details)) {
+                                <div style="font-size:.845rem;color:#374151;margin-top:.4rem;line-height:1.5">@record.Details</div>
+                            }
+                            @if (!string.IsNullOrWhiteSpace(record.QuantityOrOutcome)) {
+                                <div style="font-size:.8rem;font-weight:600;color:#667eea;margin-top:.3rem"><i class="bi bi-check2-circle" style="margin-right:.3rem"></i>@record.QuantityOrOutcome</div>
+                            }
+                            <div style="display:flex;align-items:center;justify-content:space-between;margin-top:.5rem;flex-wrap:wrap;gap:.3rem">
+                                <span style="font-size:.74rem;color:#94a3b8"><i class="bi bi-person-fill" style="margin-right:.2rem"></i>@(record.RecordedByName ?? "System")</span>
+                                @if (record.RequiresAttention) {
+                                    <span style="font-size:.72rem;font-weight:700;background:#fee2e2;color:#dc2626;padding:.15rem .5rem;border-radius:8px"><i class="bi bi-exclamation-circle-fill"></i> Needs attention</span>
+                                }
+                            </div>
+                        </div>
+                    </div>
+                }
+            } else {
+                <p style="color:#94a3b8;font-size:.84rem;margin:0">No care records found.</p>
+            }
+        </div>
+        <div class="modal-foot"><button class="btn-cancel" onclick="closeModal('careTimelineModal')">Close</button></div>
+    </div>
 </div>
 
 <!-- Full photo -->
@@ -330,15 +600,34 @@
                                 {
                                     <div style="margin-top:.75rem;">
                                         <p style="font-size:.75rem;font-weight:600;color:#374151;margin:0 0 .5rem;">Puppies:</p>
-                                        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:.5rem;">
+                                        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:.5rem;">
                                             @foreach (var puppy in litter.Puppies)
                                             {
-                                                <div style="background:#fff;border:1px solid #e5e7eb;border-radius:6px;padding:.5rem;font-size:.75rem;">
-                                                    <div style="font-weight:600;color:#1f2937;">@puppy.Name</div>
-                                                    <div style="color:#6b7280;">@puppy.Color @(puppy.Gender != null ? $"• {puppy.Gender}" : "")</div>
+                                                <div style="background:#fff;border:1px solid #e5e7eb;border-radius:6px;padding:.6rem;font-size:.75rem;">
+                                                    <div style="font-weight:600;color:#1f2937;margin-bottom:.3rem;">@puppy.Name</div>
+                                                    <div style="color:#6b7280;margin-bottom:.3rem;">@puppy.Color @(puppy.Gender != null ? $"• {puppy.Gender}" : "")</div>
                                                     @if (puppy.DateOfDeath.HasValue)
                                                     {
-                                                        <div style="color:#dc2626;font-size:.7rem;">† @puppy.DateOfDeath.Value.ToString("MMM dd, yyyy")</div>
+                                                        <div style="color:#dc2626;font-size:.7rem;margin-bottom:.3rem;">† @puppy.DateOfDeath.Value.ToString("MMM dd, yyyy")</div>
+                                                    }
+                                                    <button class="btn-small" onclick="openPuppyVaccineModal(@puppy.Id, '@puppy.Name')" style="background:#059669;color:#fff;border:none;padding:.3rem .5rem;border-radius:4px;font-size:.7rem;cursor:pointer;margin-top:.4rem;display:inline-block;">
+                                                        <i class="bi bi-shield-plus-fill"></i> Add Vaccine
+                                                    </button>
+                                                    @if (puppy.Vaccinations.Any())
+                                                    {
+                                                        <div style="margin-top:.5rem;border-top:1px solid #e5e7eb;padding-top:.4rem;">
+                                                            <div style="font-weight:600;color:#059669;font-size:.7rem;margin-bottom:.3rem;">Vaccines:</div>
+                                                            @foreach (var vacc in puppy.Vaccinations.OrderByDescending(v => v.VaccinationDate))
+                                                            {
+                                                                <div style="background:#f0fdf4;padding:.3rem;border-radius:4px;margin-bottom:.2rem;font-size:.65rem;color:#374151;">
+                                                                    <div><strong>@vacc.Name</strong> - @vacc.VaccinationDate.ToString("MMM dd, yyyy")</div>
+                                                                    @if (!string.IsNullOrEmpty(vacc.VetclinicName))
+                                                                    {
+                                                                        <div style="color:#6b7280;font-size:.65rem;">@vacc.VetclinicName</div>
+                                                                    }
+                                                                </div>
+                                                            }
+                                                        </div>
                                                     }
                                                 </div>
                                             }
@@ -372,17 +661,22 @@
                 <label>Date of Death <span style="color:#ef4444;">*</span></label>
                 <input class="finput" id="deceasedDate" type="date" />
             </div>
+            <div class="frow">
+                <label>Photo of the deceased dog <span style="font-size:.72rem;color:#94a3b8;font-weight:400">(optional)</span></label>
+                <input class="finput" type="file" id="deceasedPhoto" accept=".jpg,.jpeg,.png,.gif" style="padding:.4rem" />
+                <div style="font-size:.72rem;color:#94a3b8;margin-top:.25rem">Uploads a final photo and sets it on the dog's record.</div>
+            </div>
         </div>
         <div class="modal-foot">
             <button class="btn-cancel" onclick="closeModal('deceasedModal')">Cancel</button>
-            <button class="btn-danger-sm" onclick="markAsDeceased(@dog.Id)"><i class="bi bi-heartbreak-fill"></i> Confirm</button>
+            <button class="btn-danger-sm" id="deceasedConfirmBtn" onclick="markAsDeceased(@dog.Id)"><i class="bi bi-heartbreak-fill"></i> Confirm</button>
         </div>
     </div>
 </div>
 
 <!-- Edit Dog Modal -->
 <div class="modal-backdrop-custom" id="editDogModal">
-    <div class="modal-box" style="max-width:600px">
+    <div class="modal-box" style="max-width:720px">
         <div class="modal-hdr">
             <h5><i class="bi bi-pencil-fill" style="color:#667eea;"></i> Edit Dog</h5>
             <button class="modal-close" onclick="closeModal('editDogModal')"><i class="bi bi-x-lg"></i></button>
@@ -391,6 +685,11 @@
             <input type="hidden" id="ed_id" value="@dog.Id">
             <input type="hidden" id="ed_existingPhoto" value="@dog.PhotoUrl">
             <input type="hidden" id="ed_companyId" value="@dog.CompanyId">
+            <!-- This modal has no Sire/Dam pickers of its own (use the Dogs list page to
+                 change parentage) — carry the existing values through unchanged so saving
+                 here doesn't silently clear recorded parentage. -->
+            <input type="hidden" id="ed_sireId" value="@dog.SireId">
+            <input type="hidden" id="ed_damId" value="@dog.DamId">
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:.875rem">
                 <div class="frow"><label>Name <span style="color:#ef4444">*</span></label><input class="finput" id="ed_name" value="@dog.Name"></div>
                 <div class="frow"><label>Breed <span style="color:#ef4444">*</span></label><input class="finput" id="ed_breed" value="@dog.Breed"></div>
@@ -436,6 +735,93 @@
     </div>
 </div>
 
+<!-- Assignment modal -->
+<div class="modal-backdrop-custom" id="assignmentModal"><div class="modal-box"><div class="modal-hdr"><h5><i class="bi bi-person-check-fill"></i> Assign Dog</h5><button class="modal-close" onclick="closeModal('assignmentModal')"><i class="bi bi-x-lg"></i></button></div><div class="modal-body">
+    <div class="frow">
+        <label>Handler</label>
+        <select class="finput" id="assignmentHandler">
+            <option value="">-- No handler --</option>
+            @foreach(var handler in handlers)
+            {
+                if (Model.CurrentAssignment?.HandlerUserId == handler.Id)
+                {
+                    <option value="@handler.Id" selected>@handler.FullName</option>
+                }
+                else
+                {
+                    <option value="@handler.Id">@handler.FullName</option>
+                }
+            }
+        </select>
+    </div>
+    <div class="frow">
+        <label>Branch</label>
+        <select class="finput" id="assignmentBranch">
+            <option value="">-- No branch --</option>
+            @{
+                var defaultBranchId = ViewBag.DefaultBranchId as int?;
+            }
+            @foreach(var branch in branches)
+            {
+                var isSelected = (Model.CurrentAssignment?.BranchId == branch.Id) || (Model.CurrentAssignment == null && defaultBranchId == branch.Id);
+                if (isSelected)
+                {
+                    <option value="@branch.Id" selected>@branch.CompanyName</option>
+                }
+                else
+                {
+                    <option value="@branch.Id">@branch.CompanyName</option>
+                }
+            }
+        </select>
+    </div>
+    <div class="frow"><label>Assignment notes</label><textarea class="finput" id="assignmentNotes" rows="3">@Model.CurrentAssignment?.Notes</textarea></div>
+</div><div class="modal-foot"><button class="btn-cancel" onclick="closeModal('assignmentModal')">Cancel</button><button class="btn-danger-sm" style="background:linear-gradient(135deg,#667eea,#764ba2)" onclick="saveAssignment()">Save Assignment</button></div></div></div>
+
+<!-- Care record modal -->
+<div class="modal-backdrop-custom" id="careModal"><div class="modal-box"><div class="modal-hdr"><h5><i class="bi bi-clipboard2-pulse-fill"></i> Record Dog Care</h5><button class="modal-close" onclick="closeModal('careModal')"><i class="bi bi-x-lg"></i></button></div><div class="modal-body">
+    <div class="frow"><label>Event type <span style="color:#ef4444">*</span></label>
+        <select class="finput" id="careType">
+            <option value="Feeding">Feeding</option>
+            <option value="Vaccinated">Vaccinated</option>
+            <option value="Illness">Illness / Sick</option>
+            <option value="Injured">Injured</option>
+            <option value="Bite someone">Bite someone</option>
+            <option value="Heat">On Heat</option>
+            <option value="Mating">Mating</option>
+            <option value="Birth">Gave Birth</option>
+            <option value="Other">Other</option>
+        </select>
+    </div>
+    <div class="frow"><label>Date and time <span style="color:#ef4444">*</span></label><input class="finput" type="datetime-local" id="careOccurredOn">
+        <small id="careFeedWarn" style="display:none;color:#dc2626;font-weight:600"><i class="bi bi-exclamation-circle-fill"></i> A feeding is already recorded for that day — a dog is fed once a day.</small>
+    </div>
+    <div class="frow" id="c_location" style="display:none;"><label>Kennel / Location</label><input class="finput" id="careLocation" placeholder="Where was the dog?" /></div>
+    <div class="frow"><label>Details</label><textarea class="finput" id="careDetails" rows="3" placeholder="Food given, symptoms, mating details, birth outcome, or observation"></textarea></div>
+    <div class="frow"><label>Quantity / outcome</label><input class="finput" id="careOutcome" placeholder="e.g. 2 cups, medication given, 6 puppies"></div>
+    <label style="font-size:.8rem;color:#374151"><input type="checkbox" id="careAttention"> Requires attention or follow-up</label>
+
+    <!-- Extra conditional fields -->
+    <div id="careExtra" style="display:none;margin-top:.75rem;">
+        <div class="frow" id="c_vaccineName"><label>Vaccine</label><input class="finput" id="careVaccineName" placeholder="Vaccine name (e.g. Rabies, DHPP)" /></div>
+        <div class="frow" id="c_vaccineBatch"><label>Batch / Lot</label><input class="finput" id="careVaccineBatch" placeholder="Batch or lot number" /></div>
+        <div class="frow" id="c_vaccineNext"><label>Next due</label><input class="finput" type="date" id="careVaccineNextDue" /></div>
+        <div class="frow" id="c_vaccineNotes"><label>Vaccine notes</label><textarea class="finput" id="careVaccineNotes" rows="2" placeholder="Notes about reaction, dosage, or route"></textarea></div>
+
+        <div class="frow" id="c_matingPartner"><label>Mating partner</label><select class="finput" id="careMatingPartner"><option value="">-- Select a dog or choose Other --</option></select></div>
+        <div class="frow" id="c_matingPartnerOther" style="display:none;"><label>Outside dog name</label><input class="finput" id="careMatingPartnerOther" placeholder="Partner dog's name" /></div>
+        <div class="frow" id="c_matingDuration"><label>Duration</label><input class="finput" id="careMatingDuration" placeholder="Duration (e.g. 5 min)" /></div>
+
+        <div class="frow" id="c_injurySeverity"><label>Severity</label><select class="finput" id="careInjurySeverity"><option>Minor</option><option>Moderate</option><option>Severe</option></select></div>
+        <div class="frow" id="c_injuryDetails"><label>Injury details</label><textarea class="finput" id="careInjuryDetails" rows="2" placeholder="Describe injury and treatment"></textarea></div>
+        <div class="frow" id="c_injuryTreated"><label>Treated</label><input type="checkbox" id="careInjuryTreated" /> <span style="margin-left:.5rem;color:#64748b;font-size:.92rem;">Treated on-site</span></div>
+
+        <div class="frow" id="c_biteSeverity"><label>Bite severity</label><select class="finput" id="careBiteSeverity"><option>Minor</option><option>Moderate</option><option>Severe</option></select></div>
+        <div class="frow" id="c_biteDetails"><label>Victim / details</label><textarea class="finput" id="careBiteDetails" rows="2" placeholder="Who was bitten and first aid given"></textarea></div>
+        <div class="frow" id="c_biteReported"><label>Reported to</label><input class="finput" id="careBiteReportedTo" placeholder="e.g. Owner, Clinic, Police" /></div>
+    </div>
+</div><div class="modal-foot"><button class="btn-cancel" onclick="closeModal('careModal')">Cancel</button><button class="btn-danger-sm" style="background:linear-gradient(135deg,#059669,#047857)" onclick="saveCareRecord()">Save Record</button></div></div></div>
+
 <script>
 function openModal(id){document.getElementById(id).classList.add('open');document.body.style.overflow='hidden';}
 function closeModal(id){document.getElementById(id).classList.remove('open');document.body.style.overflow='';}
@@ -443,6 +829,324 @@ document.querySelectorAll('.modal-backdrop-custom').forEach(bd=>{bd.addEventList
 document.addEventListener('keydown',e=>{if(e.key==='Escape')document.querySelectorAll('.modal-backdrop-custom.open').forEach(m=>closeModal(m.id));});
 function openDeceasedModal(){document.getElementById('deceasedDate').value=new Date().toISOString().split('T')[0];openModal('deceasedModal');}
 function goEdit(id){openModal('editDogModal');}
+// datetime-local expects a *local* wall-clock string. toISOString() is UTC, so
+// prefilling straight from it back-dates the record by the timezone offset.
+function nowForDateTimeInput(){
+    const d = new Date();
+    d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
+    return d.toISOString().slice(0,16);
+}
+async function openCareModal(){
+    document.getElementById('careOccurredOn').value=nowForDateTimeInput();
+    document.getElementById('careLocation').value='';
+    document.getElementById('careDetails').value='';
+    document.getElementById('careOutcome').value='';
+    document.getElementById('careAttention').checked=false;
+    // clear conditional fields
+    try{ document.getElementById('careVaccineName').value=''; }catch(e){}
+    try{ document.getElementById('careVaccineBatch').value=''; }catch(e){}
+    try{ document.getElementById('careVaccineNextDue').value=''; }catch(e){}
+    try{ document.getElementById('careVaccineNotes').value=''; }catch(e){}
+    try{ document.getElementById('careMatingPartner').value=''; }catch(e){}
+    try{ document.getElementById('careMatingPartnerOther').value=''; }catch(e){}
+    try{ document.getElementById('careMatingDuration').value=''; }catch(e){}
+    try{ document.getElementById('careInjuryDetails').value=''; }catch(e){}
+    try{ document.getElementById('careInjurySeverity').value='Minor'; }catch(e){}
+    try{ document.getElementById('careInjuryTreated').checked=false; }catch(e){}
+    try{ document.getElementById('careBiteDetails').value=''; }catch(e){}
+    try{ document.getElementById('careBiteSeverity').value='Minor'; }catch(e){}
+    try{ document.getElementById('careBiteReportedTo').value=''; }catch(e){}
+
+    // Load all dogs for mating dropdown
+    await loadDogsForMating();
+    updateDetailsExtraFields();
+    updateFeedWarning();
+    openModal('careModal');
+}
+
+async function loadDogsForMating(){
+    try {
+        const resp = await fetch('/api/animals');
+        const data = await resp.json();
+        const dogs = data.data || [];
+        const dropdown = document.getElementById('careMatingPartner');
+        if (!dropdown) return;
+
+        dropdown.innerHTML = '<option value="">-- Select a dog or choose Other --</option>';
+        dogs.forEach(function(dog) {
+            if (dog.id !== @dog.Id) {
+                const opt = document.createElement('option');
+                opt.value = dog.name;
+                opt.textContent = dog.name + ' (' + dog.breed + ')';
+                dropdown.appendChild(opt);
+            }
+        });
+
+        const otherOpt = document.createElement('option');
+        otherOpt.value = '-1';
+        otherOpt.textContent = 'Other (outside dog)';
+        dropdown.appendChild(otherOpt);
+    } catch (e) {
+        console.error('Failed to load dogs:', e);
+    }
+}
+
+function updateDetailsExtraFields(){
+    var tEl = document.getElementById('careType'); if(!tEl) return;
+    var t = tEl.value;
+    var extra = document.getElementById('careExtra'); if(!extra) return;
+    extra.style.display='none';
+    var ids = ['c_location','c_vaccineName','c_vaccineBatch','c_vaccineNext','c_vaccineNotes','c_matingPartner','c_matingPartnerOther','c_matingDuration','c_injurySeverity','c_injuryDetails','c_injuryTreated','c_biteSeverity','c_biteDetails','c_biteReported'];
+    ids.forEach(function(id){var el=document.getElementById(id); if(el) el.style.display='none';});
+
+    // Location shown for Feeding
+    var locEl = document.getElementById('c_location'); if(locEl && t === 'Feeding') locEl.style.display='flex';
+
+    if(t === 'Vaccinated'){
+        extra.style.display='block'; ['c_vaccineName','c_vaccineBatch','c_vaccineNext','c_vaccineNotes'].forEach(function(id){var el=document.getElementById(id); if(el) el.style.display='flex';});
+    } else if(t === 'Mating'){
+        extra.style.display='block'; ['c_matingPartner','c_matingDuration'].forEach(function(id){var el=document.getElementById(id); if(el) el.style.display='flex';});
+    } else if(t === 'Injured'){
+        extra.style.display='block'; ['c_injurySeverity','c_injuryDetails','c_injuryTreated'].forEach(function(id){var el=document.getElementById(id); if(el) el.style.display='flex';});
+    } else if(t === 'Bite someone'){
+        extra.style.display='block'; ['c_biteSeverity','c_biteDetails','c_biteReported'].forEach(function(id){var el=document.getElementById(id); if(el) el.style.display='flex';});
+    }
+}
+
+// Handle mating partner "Other" selection
+document.addEventListener('DOMContentLoaded', function() {
+    var partnerDropdown = document.getElementById('careMatingPartner');
+    if (partnerDropdown) {
+        partnerDropdown.addEventListener('change', function() {
+            var otherField = document.getElementById('c_matingPartnerOther');
+            if (otherField) {
+                otherField.style.display = this.value === '-1' ? 'flex' : 'none';
+            }
+        });
+    }
+});
+
+try{ document.getElementById('careType').addEventListener('change', updateDetailsExtraFields); }catch(e){}
+
+// ── Once-a-day feeding rule ─────────────────────────────────────────────────
+// Days this dog already has a feeding record for. The API enforces the rule as
+// well; this just saves the round-trip and explains it while the form is open.
+const feedingDays = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(
+    Model.CareRecords
+        .Where(r => string.Equals(r.EventType, "Feeding", StringComparison.OrdinalIgnoreCase))
+        .Select(r => r.OccurredOn.ToString("yyyy-MM-dd"))
+        .Distinct()
+        .ToList()));
+
+function isDuplicateFeeding(){
+    var typeEl = document.getElementById('careType');
+    var dateEl = document.getElementById('careOccurredOn');
+    if(!typeEl || !dateEl || typeEl.value !== 'Feeding' || !dateEl.value) return false;
+    return feedingDays.indexOf(dateEl.value.slice(0,10)) !== -1;
+}
+
+function updateFeedWarning(){
+    var warn = document.getElementById('careFeedWarn');
+    if(warn) warn.style.display = isDuplicateFeeding() ? 'block' : 'none';
+}
+
+try{ document.getElementById('careType').addEventListener('change', updateFeedWarning); }catch(e){}
+try{ document.getElementById('careOccurredOn').addEventListener('change', updateFeedWarning); }catch(e){}
+async function saveAssignment(){const handlerUserId=document.getElementById('assignmentHandler').value||null;const branchValue=document.getElementById('assignmentBranch').value;const branchId=branchValue?parseInt(branchValue,10):null;if(!handlerUserId&&!branchId){showToast('Choose a handler, a branch, or both.','error');return;}try{const r=await fetch('/Dogs/AssignDog',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({dogId:@dog.Id,handlerUserId,branchId,notes:document.getElementById('assignmentNotes').value.trim()||null})});const d=await r.json();if(d.success){showToast(d.message||'Assignment saved.','success');closeModal('assignmentModal');setTimeout(()=>location.reload(),700);}else showToast(d.message||'Failed to save assignment.','error');}catch{showToast('Network error.','error');}}
+async function saveCareRecord(){
+    const occurredOn=document.getElementById('careOccurredOn').value;
+    if(!occurredOn){showToast('Date and time are required.','error');return;}
+    if(isDuplicateFeeding()){showToast('A feeding is already recorded for that day — a dog is fed once a day.','error');return;}
+    const eventType = document.getElementById('careType').value;
+    const payload = { dogId: @dog.Id, eventType: eventType, occurredOn: occurredOn, details: document.getElementById('careDetails').value.trim()||null, quantityOrOutcome: document.getElementById('careOutcome').value.trim()||null, location: document.getElementById('careLocation').value.trim()||null, requiresAttention: document.getElementById('careAttention').checked };
+
+    if(eventType === 'Vaccinated'){
+        try{ payload.vaccineName = document.getElementById('careVaccineName').value.trim() || null; }catch(e){}
+        try{ payload.vaccineBatch = document.getElementById('careVaccineBatch').value.trim() || null; }catch(e){}
+        try{ payload.vaccineNextDue = document.getElementById('careVaccineNextDue').value || null; }catch(e){}
+        try{ payload.vaccineNotes = document.getElementById('careVaccineNotes').value.trim() || null; }catch(e){}
+    }
+    if(eventType === 'Mating'){
+        const partnerVal = document.getElementById('careMatingPartner').value;
+        if (partnerVal === '-1') {
+            try{ payload.matingPartnerName = document.getElementById('careMatingPartnerOther').value.trim() || null; }catch(e){}
+        } else if (partnerVal) {
+            try{ payload.matingPartnerName = partnerVal; }catch(e){}
+        }
+        try{ payload.matingDuration = document.getElementById('careMatingDuration').value.trim() || null; }catch(e){}
+    }
+    if(eventType === 'Injured'){
+        try{ payload.injurySeverity = document.getElementById('careInjurySeverity').value || null; }catch(e){}
+        try{ payload.injuryDetails = document.getElementById('careInjuryDetails').value.trim() || null; }catch(e){}
+        try{ payload.injuryTreated = document.getElementById('careInjuryTreated').checked || false; }catch(e){}
+    }
+    if(eventType === 'Bite someone'){
+        try{ payload.biteSeverity = document.getElementById('careBiteSeverity').value || null; }catch(e){}
+        try{ payload.biteDetails = document.getElementById('careBiteDetails').value.trim() || null; }catch(e){}
+        try{ payload.biteReportedTo = document.getElementById('careBiteReportedTo').value.trim() || null; }catch(e){}
+    }
+
+    try{
+        const r = await fetch('/Dogs/AddCareRecord',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+        const d = await r.json();
+        if(d.success){ showToast(d.message||'Care record saved.','success'); closeModal('careModal'); setTimeout(()=>location.reload(),700); }
+        else showToast(d.message||'Failed to save care record.','error');
+    }catch{ showToast('Network error.','error'); }
+}
+
+// ── Certifications ──────────────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', function(){ loadCertifications(); });
+
+async function loadCertifications(){
+    var list = document.getElementById('certList');
+    try{
+        var r = await fetch('/DogCertifications/GetByDog?dogId=@dog.Id');
+        var d = await r.json();
+        var certs = (d.success && d.data) ? d.data : [];
+        if(certs.length === 0){
+            list.innerHTML = '<div style="text-align:center;padding:1rem;color:#94a3b8"><i class="bi bi-award" style="font-size:2rem;display:block;margin-bottom:.5rem;color:#e2e8f0"></i><p style="margin:0;font-size:.84rem">No certifications recorded yet.</p></div>';
+            return;
+        }
+        list.innerHTML = certs.map(function(c){
+            var expiry = c.expiryDate ? new Date(c.expiryDate) : null;
+            var expired = expiry && expiry < new Date();
+            var expiryHtml = expiry ? ('<span style="font-size:.72rem;font-weight:700;padding:.1rem .45rem;border-radius:8px;background:'+(expired?'#fee2e2':'#d1fae5')+';color:'+(expired?'#dc2626':'#065f46')+'">'+(expired?'Expired ':'Valid until ')+expiry.toLocaleDateString()+'</span>') : '';
+            return '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:.75rem;padding:.75rem;border:1px solid #f1f5f9;border-radius:10px;margin-bottom:.6rem">'
+                + '<div><div style="font-weight:700;color:#1e293b;font-size:.9rem">'+c.certificationName+'</div>'
+                + '<div style="font-size:.78rem;color:#64748b;margin-top:.2rem">'+[c.issuingBody, c.trainerName].filter(Boolean).join('  •  ')+'</div>'
+                + '<div style="font-size:.74rem;color:#94a3b8;margin-top:.3rem">Issued '+new Date(c.issueDate).toLocaleDateString()+'</div>'
+                + (expiryHtml ? '<div style="margin-top:.35rem">'+expiryHtml+'</div>' : '')
+                + '</div>'
+                + '<div style="display:flex;gap:.35rem;flex-shrink:0">'
+                + '<a class="act-btn" title="Download Certificate" href="/DogCertifications/Certificate/'+c.id+'" target="_blank" style="color:#b45309"><i class="bi bi-file-earmark-arrow-down-fill"></i></a>'
+                + '<button class="act-btn" title="Edit" onclick=\'editCertification('+JSON.stringify(c)+')\'><i class="bi bi-pencil-fill"></i></button>'
+                + '<button class="act-btn" title="Delete" onclick="deleteCertification('+c.id+')"><i class="bi bi-trash3-fill"></i></button>'
+                + '</div></div>';
+        }).join('');
+    }catch(e){
+        list.innerHTML = '<div style="text-align:center;padding:1rem;color:#dc2626;font-size:.84rem">Failed to load certifications.</div>';
+    }
+}
+
+function openCertModal(){
+    document.getElementById('certModalTitle').textContent = 'Add Certification';
+    document.getElementById('cert_id').value = '';
+    document.getElementById('cert_name').value = '';
+    document.getElementById('cert_issuer').value = '';
+    document.getElementById('cert_trainer').value = '';
+    document.getElementById('cert_issueDate').value = new Date().toISOString().split('T')[0];
+    document.getElementById('cert_expiryDate').value = '';
+    document.getElementById('cert_notes').value = '';
+    openModal('certModal');
+}
+
+function editCertification(c){
+    document.getElementById('certModalTitle').textContent = 'Edit Certification';
+    document.getElementById('cert_id').value = c.id;
+    document.getElementById('cert_name').value = c.certificationName || '';
+    document.getElementById('cert_issuer').value = c.issuingBody || '';
+    document.getElementById('cert_trainer').value = c.trainerName || '';
+    document.getElementById('cert_issueDate').value = c.issueDate ? c.issueDate.substring(0,10) : '';
+    document.getElementById('cert_expiryDate').value = c.expiryDate ? c.expiryDate.substring(0,10) : '';
+    document.getElementById('cert_notes').value = c.notes || '';
+    openModal('certModal');
+}
+
+async function saveCertification(){
+    var name = document.getElementById('cert_name').value.trim();
+    var issueDate = document.getElementById('cert_issueDate').value;
+    if(!name){ showToast('Certification name is required.','error'); return; }
+    if(!issueDate){ showToast('Issue date is required.','error'); return; }
+    var id = document.getElementById('cert_id').value;
+    var payload = {
+        id: id ? parseInt(id) : 0,
+        dogId: @dog.Id,
+        certificationName: name,
+        issuingBody: document.getElementById('cert_issuer').value.trim() || null,
+        trainerName: document.getElementById('cert_trainer').value.trim() || null,
+        issueDate: issueDate,
+        expiryDate: document.getElementById('cert_expiryDate').value || null,
+        notes: document.getElementById('cert_notes').value.trim() || null,
+    };
+    try{
+        var url = id ? '/DogCertifications/Update' : '/DogCertifications/Create';
+        var r = await fetch(url, {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload)});
+        var d = await r.json();
+        if(d.success){ showToast(d.message||'Certification saved.','success'); closeModal('certModal'); loadCertifications(); }
+        else showToast(d.message||'Failed to save certification.','error');
+    }catch(e){ showToast('Network error.','error'); }
+}
+
+async function deleteCertification(id){
+    if(!confirm('Delete this certification?')) return;
+    try{
+        var r = await fetch('/DogCertifications/Delete/'+id, {method:'POST'});
+        var d = await r.json();
+        if(d.success){ showToast('Certification deleted.','success'); loadCertifications(); }
+        else showToast(d.message||'Failed to delete certification.','error');
+    }catch(e){ showToast('Network error.','error'); }
+}
+
+// ── Documents ────────────────────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', function(){ loadDocuments(); });
+
+function fileIcon(contentType){
+    if(!contentType) return 'bi-file-earmark';
+    if(contentType.indexOf('image') > -1) return 'bi-file-earmark-image';
+    if(contentType.indexOf('pdf') > -1) return 'bi-file-earmark-pdf';
+    if(contentType.indexOf('word') > -1) return 'bi-file-earmark-word';
+    return 'bi-file-earmark';
+}
+
+async function loadDocuments(){
+    var list = document.getElementById('docList');
+    try{
+        var r = await fetch('/Documents/GetByEntity?entityType=Dog&entityId=@dog.Id');
+        var d = await r.json();
+        var docs = (d.success && d.data) ? d.data : [];
+        if(docs.length === 0){
+            list.innerHTML = '<div style="text-align:center;padding:1rem;color:#94a3b8"><i class="bi bi-paperclip" style="font-size:2rem;display:block;margin-bottom:.5rem;color:#e2e8f0"></i><p style="margin:0;font-size:.84rem">No documents attached yet.</p></div>';
+            return;
+        }
+        list.innerHTML = docs.map(function(doc){
+            return '<div style="display:flex;justify-content:space-between;align-items:center;gap:.75rem;padding:.65rem .75rem;border:1px solid #f1f5f9;border-radius:10px;margin-bottom:.5rem">'
+                + '<a href="'+doc.fileUrl+'" target="_blank" style="display:flex;align-items:center;gap:.6rem;text-decoration:none;color:inherit;min-width:0">'
+                + '<i class="bi '+fileIcon(doc.contentType)+'" style="font-size:1.3rem;color:#667eea;flex-shrink:0"></i>'
+                + '<div style="min-width:0"><div style="font-weight:600;color:#1e293b;font-size:.86rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+doc.fileName+'</div>'
+                + '<div style="font-size:.72rem;color:#94a3b8">'+new Date(doc.createdAt).toLocaleDateString()+'</div></div></a>'
+                + '<button class="act-btn" title="Delete" onclick="deleteDocument('+doc.id+')" style="flex-shrink:0"><i class="bi bi-trash3-fill"></i></button>'
+                + '</div>';
+        }).join('');
+    }catch(e){
+        list.innerHTML = '<div style="text-align:center;padding:1rem;color:#dc2626;font-size:.84rem">Failed to load documents.</div>';
+    }
+}
+
+async function uploadDocument(input){
+    var file = input.files[0];
+    if(!file) return;
+    var form = new FormData();
+    form.append('file', file);
+    form.append('entityType', 'Dog');
+    form.append('entityId', '@dog.Id');
+    try{
+        var r = await fetch('/Documents/Upload', {method:'POST', body: form});
+        var d = await r.json();
+        if(d.success){ showToast(d.message||'Document uploaded.','success'); loadDocuments(); }
+        else showToast(d.message||'Failed to upload document.','error');
+    }catch(e){ showToast('Network error.','error'); }
+    input.value = '';
+}
+
+async function deleteDocument(id){
+    if(!confirm('Delete this document?')) return;
+    try{
+        var r = await fetch('/Documents/Delete/'+id, {method:'POST'});
+        var d = await r.json();
+        if(d.success){ showToast('Document deleted.','success'); loadDocuments(); }
+        else showToast(d.message||'Failed to delete document.','error');
+    }catch(e){ showToast('Network error.','error'); }
+}
 
 // Show hint when date of death is cleared
 document.addEventListener('DOMContentLoaded',function(){
@@ -466,13 +1170,24 @@ function setLoading(id,on,html){const b=document.getElementById(id);b.disabled=o
 async function markAsDeceased(id){
     const d=document.getElementById('deceasedDate').value;
     if(!d){showToast('Date of death is required','error');return;}
-    const fd=new FormData();fd.append('dateOfDeath',d);
+    setLoading('deceasedConfirmBtn',true);
     try{
+        const fd=new FormData();fd.append('dateOfDeath',d);
+        // Upload the deceased photo first (optional)
+        const photoFile=document.getElementById('deceasedPhoto').files[0];
+        if(photoFile){
+            const pf=new FormData();pf.append('file',photoFile);
+            const up=await fetch('/Dogs/UploadPhoto',{method:'POST',body:pf});
+            const upData=await up.json();
+            if(upData.success){ fd.append('photoUrl',upData.url); }
+            else { showToast(upData.message||'Photo upload failed.','error'); setLoading('deceasedConfirmBtn',false,'<i class="bi bi-heartbreak-fill"></i> Confirm'); return; }
+        }
         const r=await fetch('/Dogs/MarkAsDeceased/'+id,{method:'POST',body:fd});
         const data=await r.json();
         if(data.success){showToast(data.message||'Marked as deceased','success');closeModal('deceasedModal');setTimeout(()=>location.reload(),1000);}
         else{showToast(data.message||'Failed','error');}
     }catch{showToast('Network error','error');}
+    finally{setLoading('deceasedConfirmBtn',false,'<i class="bi bi-heartbreak-fill"></i> Confirm');}
 }
 
 async function submitEditDog(){
@@ -487,6 +1202,8 @@ async function submitEditDog(){
     const photoFile = document.getElementById('ed_photo').files[0];
     const existingPhoto = document.getElementById('ed_existingPhoto').value;
     const companyId = parseInt(document.getElementById('ed_companyId').value, 10) || 0;
+    const sireId = document.getElementById('ed_sireId').value;
+    const damId = document.getElementById('ed_damId').value;
 
     // If date of death is cleared → restore to active, null out date of death
     const dateOfDeath = dod ? dod : null;
@@ -525,7 +1242,9 @@ async function submitEditDog(){
                 MicrochipNumber: microchip||null,
                 PhotoUrl: photoUrl,
                 CompanyId: parseInt(companyId, 10) || 0,
-                IsActive: isActive
+                IsActive: isActive,
+                SireId: sireId ? parseInt(sireId, 10) : null,
+                DamId: damId ? parseInt(damId, 10) : null
             })
         });
         const data = await res.json();
@@ -540,4 +1259,142 @@ async function submitEditDog(){
     }catch(e){showToast(e.message||'Network error','error');}
     finally{setLoading('editDogBtn',false,'<i class="bi bi-check2-circle"></i> Save Changes');}
 }
+</script>
+
+<script>
+/* ── Activity report: real PDF (company logo + details), not an HTML print page ── */
+function printCareTimelinePdf() {
+    window.open('/Dogs/ActivityReportPdf/@dog.Id', '_blank');
+}
+
+/* ── Gallery ─────────────────────────────────────────────────────────────────── */
+var GALLERY_CAN_EDIT = @(P.Can("pet.edit") ? "true" : "false");
+var galleryItems = [];
+var galleryIndex = -1;
+
+async function loadGallery(){
+    var grid = document.getElementById('galleryGrid');
+    if(!grid) return;
+    try{
+        var r = await fetch('/Dogs/GalleryList?dogId=@dog.Id');
+        var d = await r.json();
+        galleryItems = (d.success && d.data) ? d.data : [];
+    }catch(e){ galleryItems = []; }
+    document.getElementById('galleryCount').textContent = galleryItems.length + (galleryItems.length === 1 ? ' photo' : ' photos');
+    if(galleryItems.length === 0){
+        grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:1.25rem;color:#94a3b8"><i class="bi bi-images" style="font-size:2rem;display:block;margin-bottom:.5rem;color:#e2e8f0"></i><p style="margin:0;font-size:.84rem">No photos in the gallery yet.</p></div>';
+        return;
+    }
+    grid.innerHTML = galleryItems.map(function(it, i){
+        return '<div class="gal-thumb" onclick="openLightbox('+i+')"><img loading="lazy" src="'+it.fileUrl+'" alt="Gallery photo '+(i+1)+'"></div>';
+    }).join('');
+}
+
+/* Resize in the browser before upload: longest side 1600px, JPEG 85% — keeps uploads small and fast. */
+function resizeImage(file, maxSide){
+    return new Promise(function(resolve){
+        if(!file.type || file.type.indexOf('image/') !== 0 || file.type === 'image/gif'){ resolve(file); return; }
+        var img = new Image();
+        var url = URL.createObjectURL(file);
+        img.onload = function(){
+            var w = img.naturalWidth, h = img.naturalHeight;
+            var scale = Math.min(1, maxSide / Math.max(w, h));
+            var cw = Math.round(w * scale), ch = Math.round(h * scale);
+            var canvas = document.createElement('canvas');
+            canvas.width = cw; canvas.height = ch;
+            var ctx = canvas.getContext('2d');
+            ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, cw, ch);
+            ctx.drawImage(img, 0, 0, cw, ch);
+            URL.revokeObjectURL(url);
+            canvas.toBlob(function(blob){
+                if(!blob){ resolve(file); return; }
+                var name = file.name.replace(/\.[^.]+$/, '') + '.jpg';
+                resolve(new File([blob], name, {type:'image/jpeg'}));
+            }, 'image/jpeg', 0.85);
+        };
+        img.onerror = function(){ URL.revokeObjectURL(url); resolve(file); };
+        img.src = url;
+    });
+}
+
+async function uploadGalleryImages(input){
+    var files = Array.prototype.slice.call(input.files || []);
+    if(files.length === 0) return;
+    var btn = document.getElementById('galleryAddBtn');
+    if(btn){ btn.disabled = true; btn.innerHTML = '<i class="bi bi-hourglass-split"></i> Uploading...'; }
+    var ok = 0, failed = 0;
+    for(var i = 0; i < files.length; i++){
+        try{
+            var resized = await resizeImage(files[i], 1600);
+            var form = new FormData();
+            form.append('file', resized);
+            form.append('dogId', '@dog.Id');
+            var r = await fetch('/Dogs/GalleryUpload', {method:'POST', body: form});
+            var d = await r.json();
+            if(d.success) ok++; else { failed++; showToast(d.message || 'Upload failed.', 'error'); }
+        }catch(e){ failed++; }
+    }
+    input.value = '';
+    if(btn){ btn.disabled = false; btn.innerHTML = '<i class="bi bi-plus-lg"></i> Add Photos'; }
+    if(ok > 0) showToast(ok + ' photo' + (ok === 1 ? '' : 's') + ' added.', 'success');
+    loadGallery();
+}
+
+function openLightbox(src, idx){
+    /* openLightbox(index) for gallery items, openLightbox(url, -1) for a standalone image (e.g. the profile photo). */
+    var lb = document.getElementById('lightbox');
+    var img = document.getElementById('lightboxImg');
+    var actions = document.getElementById('lightboxActions');
+    if(typeof src === 'number'){
+        galleryIndex = src;
+        img.src = galleryItems[src].fileUrl;
+        actions.style.display = GALLERY_CAN_EDIT ? 'flex' : 'none';
+    } else {
+        galleryIndex = -1;
+        img.src = src;
+        actions.style.display = 'none';
+    }
+    lb.classList.add('open');
+    document.body.style.overflow = 'hidden';
+}
+
+function closeLightbox(){
+    document.getElementById('lightbox').classList.remove('open');
+    document.getElementById('lightboxImg').src = '';
+    document.body.style.overflow = '';
+}
+
+async function setGalleryAsProfile(){
+    if(galleryIndex < 0) return;
+    var it = galleryItems[galleryIndex];
+    try{
+        var form = new FormData();
+        form.append('photoUrl', it.fileUrl);
+        var r = await fetch('/Dogs/SetProfilePhoto/@dog.Id', {method:'POST', body: form});
+        var d = await r.json();
+        if(d.success){ showToast('Profile picture updated.', 'success'); setTimeout(function(){ location.reload(); }, 800); }
+        else showToast(d.message || 'Failed to update profile picture.', 'error');
+    }catch(e){ showToast('Network error.', 'error'); }
+}
+
+async function deleteGalleryImage(){
+    if(galleryIndex < 0) return;
+    if(!confirm('Delete this photo from the gallery?')) return;
+    var it = galleryItems[galleryIndex];
+    try{
+        var r = await fetch('/Dogs/GalleryDelete?dogId=@dog.Id&id=' + it.id, {method:'POST'});
+        var d = await r.json();
+        if(d.success){ showToast('Photo deleted.', 'success'); closeLightbox(); loadGallery(); }
+        else showToast(d.message || 'Failed to delete photo.', 'error');
+    }catch(e){ showToast('Network error.', 'error'); }
+}
+
+document.addEventListener('keydown', function(e){ if(e.key === 'Escape') closeLightbox(); });
+document.addEventListener('DOMContentLoaded', function(){
+    loadGallery();
+    document.querySelectorAll('.hero-photo, .photo-full').forEach(function(el){
+        el.style.cursor = 'zoom-in';
+        el.addEventListener('click', function(){ openLightbox(el.getAttribute('src'), -1); });
+    });
+});
 </script>

@@ -1,0 +1,77 @@
+@{
+    Layout = "_AdminLayout";
+    ViewData["Title"] = "Daily Training Logbook";
+}
+<partial name="_TrainingShared" />
+<div class="tr">
+    <div class="tr-head">
+        <div><h4><i class="bi bi-journal-text me-2" style="color:#667eea"></i>Daily Training Logbook</h4><p id="sub">Record each day's training for the dogs allocated to you</p></div>
+    </div>
+
+    <div class="tr-tabs" id="tabs">
+        <button class="tr-tab on" data-t="mine"><i class="bi bi-phone"></i> My dogs today</button>
+        <button class="tr-tab" data-t="all"><i class="bi bi-list-ul"></i> All records</button>
+    </div>
+
+    <div id="pMine">
+        <div id="myDogs" class="tr-grid" style="grid-template-columns:repeat(auto-fill,minmax(290px,1fr))"><div class="tr-empty" style="grid-column:1/-1">Loading…</div></div>
+    </div>
+
+    <div id="pAll" style="display:none">
+        <div class="tr-filters">
+            <div class="tr-field"><label>From</label><input type="date" class="tr-in" id="fFrom"></div>
+            <div class="tr-field"><label>To</label><input type="date" class="tr-in" id="fTo"></div>
+            <button class="tr-btn btn-primary-t" id="fGo"><i class="bi bi-search"></i> Show</button>
+        </div>
+        <div class="tr-tablewrap"><table class="tr-table">
+            <thead><tr><th>Date</th><th>Dog</th><th>Handler</th><th>Week / Day</th><th>Minutes</th><th>Avg rating</th><th>Performance</th><th></th></tr></thead>
+            <tbody id="logRows"></tbody>
+        </table></div>
+    </div>
+</div>
+
+<script>
+(function () {
+    var today = T.isoDate();
+    var canRecord = T.can('training.log.record');
+
+    async function loadMine() {
+        var r = await T.api('GET', 'my-dogs');
+        var t = await T.api('GET', 'logs?date=' + today);
+        var done = {}; if (t.success) t.data.forEach(function (l) { done[l.enrollmentId] = l; });
+        var el = document.getElementById('myDogs');
+        if (!r.success) { el.innerHTML = '<div class="tr-empty" style="grid-column:1/-1"><i class="bi bi-exclamation-circle"></i>' + T.esc(r.message || 'Could not load.') + '</div>'; return; }
+        if (r.data.length === 0) { el.innerHTML = '<div class="tr-empty" style="grid-column:1/-1"><i class="bi bi-emoji-neutral"></i>No dogs are allocated to you for training right now.</div>'; return; }
+        el.innerHTML = r.data.map(function (e) {
+            var total = e.durationDays + e.extensionDays, pct = e.currentWeek ? Math.min(100, Math.round(e.dayNumber * 100 / total)) : 0, logged = !!done[e.id];
+            var started = e.status === 'InTraining' || e.status === 'AwaitingFinalAssessment';
+            return '<div class="tr-card" style="margin:0">' + T.dog(e.dogName, (e.dogBreed || '') + ' · ' + (e.customerName || ''), e.dogPhotoUrl) +
+                '<div style="margin:.8rem 0 .3rem;display:flex;justify-content:space-between;font-size:.78rem"><span>' + (started ? 'Week <b>' + e.currentWeek + '</b> · Day <b>' + e.dayNumber + '</b> of ' + total : T.badge(e.status)) + '</span>' + (started ? (logged ? '<span class="tr-badge b-green"><i class="bi bi-check2"></i> Logged today</span>' : '<span class="tr-badge b-amber">Not logged yet</span>') : '') + '</div>' +
+                '<div class="tr-bar"><div style="width:' + pct + '%"></div></div>' +
+                (started ? '<div style="display:flex;gap:.4rem;margin-top:.8rem;flex-wrap:wrap"><a class="tr-btn btn-primary-t" style="flex:1" href="/Training/Log/' + e.id + '"><i class="bi bi-journal-plus"></i> ' + (logged ? 'Edit today' : 'Log today') + '</a>' +
+                    (T.can('training.progress.submit') ? '<a class="tr-btn btn-ghost-t" href="/Training/ProgressReport?enrollmentId=' + e.id + '&week=' + Math.max(1, e.currentWeek) + '"><i class="bi bi-graph-up-arrow"></i> Week report</a>' : '') + '</div>'
+                    : '<div class="tr-note" style="margin-top:.6rem">Waiting for the Training Manager to start training.</div>') + '</div>';
+        }).join('');
+    }
+
+    async function loadAll() {
+        var p = []; if (fFrom.value) p.push('from=' + fFrom.value); if (fTo.value) p.push('to=' + fTo.value);
+        var r = await T.api('GET', 'logs' + (p.length ? '?' + p.join('&') : ''));
+        logRows.innerHTML = !r.success ? '<tr><td colspan="8"><div class="tr-empty">' + T.esc(r.message || 'Could not load.') + '</div></td></tr>' :
+            r.data.length === 0 ? '<tr><td colspan="8"><div class="tr-empty"><i class="bi bi-journal"></i>No records for this period.</div></td></tr>' :
+            r.data.map(function (l) {
+                return '<tr class="click" onclick="location.href=\'/Training/Log/' + l.enrollmentId + '?date=' + T.isoDate(l.trainingDate) + '\'"><td>' + T.date(l.trainingDate) + '</td><td><b>' + T.esc(l.dogName) + '</b></td><td>' + T.esc(l.handlerName || '—') + '</td><td>W' + l.weekNumber + ' · D' + l.dayNumber + '</td><td>' + l.durationMinutes + '</td><td>' + (l.averageSlotRating != null ? l.averageSlotRating + '/10' : '—') + '</td><td><span class="tr-badge b-blue">' + T.esc(l.performance) + '</span></td><td><i class="bi bi-chevron-right"></i></td></tr>';
+            }).join('');
+    }
+
+    document.querySelectorAll('#tabs .tr-tab').forEach(function (b) {
+        b.onclick = function () {
+            document.querySelectorAll('#tabs .tr-tab').forEach(function (x) { x.classList.toggle('on', x === b); });
+            pMine.style.display = b.dataset.t === 'mine' ? '' : 'none'; pAll.style.display = b.dataset.t === 'all' ? '' : 'none';
+            if (b.dataset.t === 'all') loadAll();
+        };
+    });
+    fGo.onclick = loadAll;
+    loadMine();
+})();
+</script>

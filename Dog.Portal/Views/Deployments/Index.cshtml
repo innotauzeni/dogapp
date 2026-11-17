@@ -1,10 +1,11 @@
-﻿@model Dog.Portal.Models.DeploymentListViewModel
+@model Dog.Portal.Models.DeploymentListViewModel
 @{
     Layout = "_AdminLayout";
     ViewData["Title"] = "Deployments";
     var totalAll = Model.TotalCount;
     var activeCount = Model.DeploymentList.Count(d => d.IsActive);
     var inactiveCount = Model.DeploymentList.Count(d => !d.IsActive);
+    var P = PermHelper.For(Context);
 }
 <style>
 .page-hdr h4{font-size:1.15rem;font-weight:800;color:#0f172a;margin:0 0 .25rem}
@@ -65,7 +66,7 @@
 .dep-cell{display:flex;align-items:center;gap:.625rem}
 .modal-backdrop-custom{position:fixed;inset:0;background:rgba(15,23,42,.45);backdrop-filter:blur(3px);z-index:1050;display:none;align-items:center;justify-content:center;padding:1rem}
 .modal-backdrop-custom.open{display:flex}
-.modal-box{background:#fff;border-radius:16px;box-shadow:0 20px 60px rgba(0,0,0,.2);width:100%;max-width:560px;max-height:90vh;overflow-y:auto;animation:mslide .22s ease}
+.modal-box{background:#fff;border-radius:16px;box-shadow:0 20px 60px rgba(0,0,0,.2);width:100%;max-width:780px;max-height:90vh;overflow-y:auto;animation:mslide .22s ease}
 @@keyframes mslide{from{opacity:0;transform:translateY(-16px)}to{opacity:1;transform:translateY(0)}}
 .modal-hdr{display:flex;align-items:center;justify-content:space-between;padding:1.25rem 1.5rem;border-bottom:1px solid #f1f5f9}
 .modal-hdr h5{font-size:1rem;font-weight:800;color:#0f172a;margin:0;display:flex;align-items:center;gap:.5rem}
@@ -98,7 +99,9 @@
   <div class="page-hdr"><h4>Deployments</h4><p>Track dog deployment assignments and locations</p></div>
   <div class="hdr-actions">
     <div class="total-chip"><i class="bi bi-geo-alt"></i> @totalAll Total</div>
+    @if (P.Can("deployment.create")) {
     <button type="button" class="btn-add" onclick="openCreateModal()"><i class="bi bi-plus-lg"></i> Add Deployment</button>
+    }
   </div>
 </div>
 <div class="stats-row">
@@ -130,6 +133,7 @@
           <th style="width:160px">Location</th>
           <th style="width:160px">Deployed To</th>
           <th style="width:160px">Security Guard</th>
+          <th style="width:170px">Customer / Site</th>
           <th style="width:110px">Start Date</th>
           <th style="width:110px">End Date</th>
           <th style="width:90px">Status</th>
@@ -150,6 +154,13 @@
               <td title="@item.Location">@item.Location</td>
               <td title="@item.CompanyDeployedTo">@item.CompanyDeployedTo</td>
               <td title="@item.SecurityGuardAssigned">@item.SecurityGuardAssigned</td>
+              <td title="@item.CustomerSiteAddress">
+                @if (!string.IsNullOrWhiteSpace(item.CustomerName)) {
+                  <span>@item.CustomerName@(!string.IsNullOrWhiteSpace(item.CustomerSiteName) ? " – " + item.CustomerSiteName : "")</span>
+                } else {
+                  <span style="color:#cbd5e1">-</span>
+                }
+              </td>
               <td>@item.StartDate.ToString("MMM dd, yyyy")</td>
               <td>@(item.EndDate.HasValue ? item.EndDate.Value.ToString("MMM dd, yyyy") : "-")</td>
               <td><span class="s-badge @(item.IsActive ? "s-active" : "s-inactive")"><i class="bi @(item.IsActive ? "bi-check-circle" : "bi-x-circle")"></i>@(item.IsActive ? "Active" : "Inactive")</span></td>
@@ -162,14 +173,25 @@
                        data-location="@item.Location"
                        data-companydeployedto="@item.CompanyDeployedTo"
                        data-securityguardassigned="@item.SecurityGuardAssigned"
+                       data-customerid="@item.CustomerId"
+                       data-customersiteid="@item.CustomerSiteId"
+                       data-customername="@item.CustomerName"
+                       data-customersitename="@item.CustomerSiteName"
                        data-startdate="@item.StartDate.ToString("yyyy-MM-dd")"
                        data-enddate="@(item.EndDate.HasValue ? item.EndDate.Value.ToString("yyyy-MM-dd") : "")"
                        data-notes="@item.Notes"
                        data-isactive="@item.IsActive.ToString().ToLower()">
                     <button class="act-item" onclick="openView(this.closest('.act-menu'))"><i class="bi bi-eye" style="color:#667eea"></i> View Details</button>
+                    @if (P.Can("deployment.edit")) {
                     <button class="act-item" onclick="openEdit(this.closest('.act-menu'))"><i class="bi bi-pencil-fill" style="color:#667eea"></i> Edit</button>
+                    @if (item.IsActive) {
+                    <button class="act-item" onclick="openReturn(this.closest('.act-menu'))"><i class="bi bi-arrow-return-left" style="color:#059669"></i> Return Dog</button>
+                    }
+                    }
+                    @if (P.Can("deployment.delete")) {
                     <div class="act-divider"></div>
                     <button class="act-item danger" onclick="openDelete(this.closest('.act-menu'))"><i class="bi bi-trash3-fill"></i> Delete</button>
+                    }
                   </div>
                 </div>
               </td>
@@ -240,6 +262,19 @@
         <div class="frow"><label>Security Guard</label><input class="finput" id="c_securityGuard" placeholder="Guard name"></div>
       </div>
       <div class="frow-2">
+        <div class="frow"><label>Customer</label>
+          <select class="finput" id="c_customerId" onchange="onCustomerChange('c_customerId','c_siteId')">
+            <option value="">Select customer</option>
+            @foreach (var c in Model.Customers) { <option value="@c.Id">@c.FullName</option> }
+          </select>
+        </div>
+        <div class="frow"><label>Site / Premise</label>
+          <select class="finput" id="c_siteId">
+            <option value="">Select customer first</option>
+          </select>
+        </div>
+      </div>
+      <div class="frow-2">
         <div class="frow"><label>Start Date <span style="color:#ef4444">*</span></label><input class="finput" type="date" id="c_startDate"></div>
         <div class="frow"><label>End Date</label><input class="finput" type="date" id="c_endDate"></div>
       </div>
@@ -279,6 +314,19 @@
         <div class="frow"><label>Security Guard</label><input class="finput" id="e_securityGuard"></div>
       </div>
       <div class="frow-2">
+        <div class="frow"><label>Customer</label>
+          <select class="finput" id="e_customerId" onchange="onCustomerChange('e_customerId','e_siteId')">
+            <option value="">Select customer</option>
+            @foreach (var c in Model.Customers) { <option value="@c.Id">@c.FullName</option> }
+          </select>
+        </div>
+        <div class="frow"><label>Site / Premise</label>
+          <select class="finput" id="e_siteId">
+            <option value="">Select customer first</option>
+          </select>
+        </div>
+      </div>
+      <div class="frow-2">
         <div class="frow"><label>Start Date</label><input class="finput" type="date" id="e_startDate"></div>
         <div class="frow"><label>End Date</label><input class="finput" type="date" id="e_endDate"></div>
       </div>
@@ -316,6 +364,27 @@
   </div>
 </div>
 
+<!-- RETURN DOG MODAL -->
+<div class="modal-backdrop-custom" id="returnModal">
+  <div class="modal-box">
+    <div class="modal-hdr">
+      <h5><i class="bi bi-arrow-return-left" style="color:#059669"></i> Return Dog</h5>
+      <button class="modal-close" onclick="closeModal('returnModal')"><i class="bi bi-x-lg"></i></button>
+    </div>
+    <div class="modal-body-p" style="text-align:center;padding-top:1.75rem">
+      <input type="hidden" id="rt_id">
+      <div class="del-icon" style="background:#d1fae5;color:#059669"><i class="bi bi-house-door-fill"></i></div>
+      <p style="font-size:.9rem;color:#374151;margin-bottom:.5rem">Recall this dog back to its branch/head office?</p>
+      <p id="rt_name" style="font-weight:700;color:#1e293b;font-size:1rem;margin-bottom:.5rem"></p>
+      <p style="font-size:.82rem;color:#94a3b8;margin:0">This ends the current deployment. You can deploy the dog again later.</p>
+    </div>
+    <div class="modal-foot">
+      <button class="btn-cancel" onclick="closeModal('returnModal')">Cancel</button>
+      <button class="btn-pm" id="returnBtn" onclick="submitReturn()" style="background:linear-gradient(135deg,#10b981,#059669)"><i class="bi bi-arrow-return-left"></i> Return Dog</button>
+    </div>
+  </div>
+</div>
+
 <script>
 function openModal(id){document.getElementById(id).classList.add('open');document.body.style.overflow='hidden';}
 function closeModal(id){document.getElementById(id).classList.remove('open');document.body.style.overflow='';}
@@ -331,12 +400,16 @@ function setLoading(id,on,html){var b=document.getElementById(id);b.disabled=on;
 function showToast(msg,type){var w=document.getElementById('toastWrap');var el=document.createElement('div');el.className='toast-msg toast-'+type;el.innerHTML='<i class="bi '+(type==='success'?'bi-check-circle-fill':'bi-exclamation-circle-fill')+'"></i>'+msg;w.appendChild(el);requestAnimationFrame(function(){el.classList.add('show');});setTimeout(function(){el.classList.remove('show');setTimeout(function(){el.remove();},350);},3500);}
 function drow(l,v){return '<div><div style="font-size:.72rem;color:#94a3b8;font-weight:600;text-transform:uppercase">'+l+'</div><div style="font-size:.875rem;color:#1e293b;font-weight:500;margin-top:.15rem">'+(v||'-')+'</div></div>';}
 function fmtDate(s){if(!s)return'-';var d=new Date(s);return isNaN(d)?s:d.toLocaleDateString('en-US',{year:'numeric',month:'short',day:'2-digit'});}
-function openView(menu){closeAllActMenus();var d=menu.dataset;document.getElementById('viewContent').innerHTML=drow('Dog ID','#'+d.dogid)+drow('Location',d.location)+drow('Deployed To',d.companydeployedto)+drow('Security Guard',d.securityguardassigned)+drow('Start Date',fmtDate(d.startdate))+drow('End Date',fmtDate(d.enddate))+drow('Status',d.isactive==='true'?'Active':'Inactive')+drow('Notes',d.notes);document.getElementById('v_editBtn').onclick=function(){closeModal('viewModal');setTimeout(function(){openEdit(menu);},300);};openModal('viewModal');}
-function openCreateModal(){document.getElementById('c_dogId').value='';document.getElementById('c_location').value='';document.getElementById('c_companyDeployedTo').value='';document.getElementById('c_securityGuard').value='';document.getElementById('c_startDate').value='';document.getElementById('c_endDate').value='';document.getElementById('c_notes').value='';document.getElementById('c_isActive').checked=true;openModal('createModal');}
-function openEdit(menu){closeAllActMenus();var d=menu.dataset;document.getElementById('e_id').value=d.id;document.getElementById('e_dogId').value=d.dogid||'';document.getElementById('e_location').value=d.location||'';document.getElementById('e_companyDeployedTo').value=d.companydeployedto||'';document.getElementById('e_securityGuard').value=d.securityguardassigned||'';document.getElementById('e_startDate').value=d.startdate||'';document.getElementById('e_endDate').value=d.enddate||'';document.getElementById('e_notes').value=d.notes||'';document.getElementById('e_isActive').checked=d.isactive==='true';openModal('editModal');}
+function openView(menu){closeAllActMenus();var d=menu.dataset;document.getElementById('viewContent').innerHTML=drow('Dog ID','#'+d.dogid)+drow('Location',d.location)+drow('Deployed To',d.companydeployedto)+drow('Security Guard',d.securityguardassigned)+drow('Customer',d.customername)+drow('Site / Premise',d.customersitename)+drow('Start Date',fmtDate(d.startdate))+drow('End Date',fmtDate(d.enddate))+drow('Status',d.isactive==='true'?'Active':'Inactive')+drow('Notes',d.notes);document.getElementById('v_editBtn').onclick=function(){closeModal('viewModal');setTimeout(function(){openEdit(menu);},300);};openModal('viewModal');}
+async function loadSitesInto(customerId,siteSelectId,selectedSiteId){var sel=document.getElementById(siteSelectId);sel.innerHTML='<option value="">Loading...</option>';if(!customerId){sel.innerHTML='<option value="">Select customer first</option>';return;}try{var r=await fetch('/CustomerSites/GetByCustomer?customerId='+customerId);var d=await r.json();var sites=(d.success&&d.data)?d.data:[];var html='<option value="">No site (general location only)</option>';sites.forEach(function(s){html+='<option value="'+s.id+'"'+(selectedSiteId&&String(selectedSiteId)===String(s.id)?' selected':'')+'>'+s.siteName+'</option>';});sel.innerHTML=html;}catch(e){sel.innerHTML='<option value="">Unable to load sites</option>';}}
+function onCustomerChange(customerSelectId,siteSelectId){var customerId=document.getElementById(customerSelectId).value;loadSitesInto(customerId,siteSelectId,null);}
+function openCreateModal(){document.getElementById('c_dogId').value='';document.getElementById('c_location').value='';document.getElementById('c_companyDeployedTo').value='';document.getElementById('c_securityGuard').value='';document.getElementById('c_customerId').value='';document.getElementById('c_siteId').innerHTML='<option value="">Select customer first</option>';document.getElementById('c_startDate').value='';document.getElementById('c_endDate').value='';document.getElementById('c_notes').value='';document.getElementById('c_isActive').checked=true;openModal('createModal');}
+function openEdit(menu){closeAllActMenus();var d=menu.dataset;document.getElementById('e_id').value=d.id;document.getElementById('e_dogId').value=d.dogid||'';document.getElementById('e_location').value=d.location||'';document.getElementById('e_companyDeployedTo').value=d.companydeployedto||'';document.getElementById('e_securityGuard').value=d.securityguardassigned||'';document.getElementById('e_customerId').value=d.customerid||'';loadSitesInto(d.customerid,'e_siteId',d.customersiteid);document.getElementById('e_startDate').value=d.startdate||'';document.getElementById('e_endDate').value=d.enddate||'';document.getElementById('e_notes').value=d.notes||'';document.getElementById('e_isActive').checked=d.isactive==='true';openModal('editModal');}
 function openDelete(menu){closeAllActMenus();var d=menu.dataset;document.getElementById('d_id').value=d.id;document.getElementById('d_name').textContent=d.location||'this deployment';openModal('deleteModal');}
-async function submitCreate(){var dogId=parseInt(document.getElementById('c_dogId').value);var loc=document.getElementById('c_location').value.trim();var sd=document.getElementById('c_startDate').value;if(!dogId){showToast('Please select a dog.','error');return;}if(!loc){showToast('Location is required.','error');return;}if(!sd){showToast('Start date is required.','error');return;}setLoading('createBtn',true);try{var r=await fetch('/Deployments/Create',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({dogId:dogId,location:loc,companyDeployedTo:document.getElementById('c_companyDeployedTo').value.trim(),securityGuardAssigned:document.getElementById('c_securityGuard').value.trim(),startDate:sd,endDate:document.getElementById('c_endDate').value||null,notes:document.getElementById('c_notes').value.trim(),isActive:document.getElementById('c_isActive').checked})});var d=await r.json();if(d.success){showToast(d.message||'Deployment created!','success');closeModal('createModal');setTimeout(function(){location.reload();},900);}else showToast(d.message||'Failed.','error');}catch(e){showToast('Network error.','error');}finally{setLoading('createBtn',false,'<i class="bi bi-geo-alt"></i> Save Deployment');}}
-async function submitEdit(){var loc=document.getElementById('e_location').value.trim();if(!loc){showToast('Location is required.','error');return;}var id=document.getElementById('e_id').value;setLoading('editBtn',true);try{var r=await fetch('/Deployments/Update',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:parseInt(id),dogId:parseInt(document.getElementById('e_dogId').value),location:loc,companyDeployedTo:document.getElementById('e_companyDeployedTo').value.trim(),securityGuardAssigned:document.getElementById('e_securityGuard').value.trim(),startDate:document.getElementById('e_startDate').value,endDate:document.getElementById('e_endDate').value||null,notes:document.getElementById('e_notes').value.trim(),isActive:document.getElementById('e_isActive').checked})});var d=await r.json();if(d.success){showToast(d.message||'Deployment updated!','success');closeModal('editModal');setTimeout(function(){location.reload();},900);}else showToast(d.message||'Failed.','error');}catch(e){showToast('Network error.','error');}finally{setLoading('editBtn',false,'<i class="bi bi-check2-circle"></i> Save Changes');}}
+function openReturn(menu){closeAllActMenus();var d=menu.dataset;document.getElementById('rt_id').value=d.id;document.getElementById('rt_name').textContent=d.location||'this deployment';openModal('returnModal');}
+async function submitReturn(){var id=document.getElementById('rt_id').value;setLoading('returnBtn',true);try{var r=await fetch('/Deployments/Return/'+id,{method:'POST'});var d=await r.json();if(d.success){showToast(d.message||'Dog returned to branch.','success');closeModal('returnModal');setTimeout(function(){location.reload();},900);}else showToast(d.message||'Failed.','error');}catch(e){showToast('Network error.','error');}finally{setLoading('returnBtn',false,'<i class="bi bi-arrow-return-left"></i> Return Dog');}}
+async function submitCreate(){var dogId=parseInt(document.getElementById('c_dogId').value);var loc=document.getElementById('c_location').value.trim();var sd=document.getElementById('c_startDate').value;if(!dogId){showToast('Please select a dog.','error');return;}if(!loc){showToast('Location is required.','error');return;}if(!sd){showToast('Start date is required.','error');return;}setLoading('createBtn',true);try{var custId=document.getElementById('c_customerId').value;var siteId=document.getElementById('c_siteId').value;var r=await fetch('/Deployments/Create',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({dogId:dogId,location:loc,companyDeployedTo:document.getElementById('c_companyDeployedTo').value.trim(),securityGuardAssigned:document.getElementById('c_securityGuard').value.trim(),customerId:custId?parseInt(custId):null,customerSiteId:siteId?parseInt(siteId):null,startDate:sd,endDate:document.getElementById('c_endDate').value||null,notes:document.getElementById('c_notes').value.trim(),isActive:document.getElementById('c_isActive').checked})});var d=await r.json();if(d.success){showToast(d.message||'Deployment created!','success');closeModal('createModal');setTimeout(function(){location.reload();},900);}else showToast(d.message||'Failed.','error');}catch(e){showToast('Network error.','error');}finally{setLoading('createBtn',false,'<i class="bi bi-geo-alt"></i> Save Deployment');}}
+async function submitEdit(){var loc=document.getElementById('e_location').value.trim();if(!loc){showToast('Location is required.','error');return;}var id=document.getElementById('e_id').value;setLoading('editBtn',true);try{var custId=document.getElementById('e_customerId').value;var siteId=document.getElementById('e_siteId').value;var r=await fetch('/Deployments/Update',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:parseInt(id),dogId:parseInt(document.getElementById('e_dogId').value),location:loc,companyDeployedTo:document.getElementById('e_companyDeployedTo').value.trim(),securityGuardAssigned:document.getElementById('e_securityGuard').value.trim(),customerId:custId?parseInt(custId):null,customerSiteId:siteId?parseInt(siteId):null,startDate:document.getElementById('e_startDate').value,endDate:document.getElementById('e_endDate').value||null,notes:document.getElementById('e_notes').value.trim(),isActive:document.getElementById('e_isActive').checked})});var d=await r.json();if(d.success){showToast(d.message||'Deployment updated!','success');closeModal('editModal');setTimeout(function(){location.reload();},900);}else showToast(d.message||'Failed.','error');}catch(e){showToast('Network error.','error');}finally{setLoading('editBtn',false,'<i class="bi bi-check2-circle"></i> Save Changes');}}
 async function submitDelete(){var id=document.getElementById('d_id').value;setLoading('deleteBtn',true);try{var r=await fetch('/Deployments/Delete/'+id,{method:'POST'});var d=await r.json();if(d.success){showToast(d.message||'Deployment deleted.','success');closeModal('deleteModal');setTimeout(function(){location.reload();},900);}else showToast(d.message||'Failed.','error');}catch(e){showToast('Network error.','error');}finally{setLoading('deleteBtn',false,'<i class="bi bi-trash3-fill"></i> Delete');}}
 </script>
 

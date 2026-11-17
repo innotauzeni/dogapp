@@ -68,7 +68,7 @@ namespace Dog.Application.Features.Companies.Handlers
             {
                 CompanyName = d.CompanyName, CompanyCode = d.CompanyCode,
                 EmailAddress = d.EmailAddress, PhoneNumber = d.PhoneNumber,
-                Website = d.Website, Address = d.Address, Location = d.Location,
+                Website = d.Website, Address = d.Address, Logo = d.Logo, BrandColor = d.BrandColor, Location = d.Location,
                 CountryId = d.CountryId, ProvinceId = d.ProvinceId, CityId = d.CityId,
                 DefaultCurrencyId = d.DefaultCurrencyId, ParentCompanyId = d.ParentCompanyId,
                 IsActive = d.IsActive,
@@ -91,7 +91,7 @@ namespace Dog.Application.Features.Companies.Handlers
             var d = request.Dto;
             e.CompanyName = d.CompanyName; e.CompanyCode = d.CompanyCode;
             e.EmailAddress = d.EmailAddress; e.PhoneNumber = d.PhoneNumber;
-            e.Website = d.Website; e.Address = d.Address; e.Location = d.Location;
+            e.Website = d.Website; e.Address = d.Address; e.Logo = d.Logo; e.BrandColor = d.BrandColor; e.Location = d.Location;
             e.CountryId = d.CountryId; e.ProvinceId = d.ProvinceId; e.CityId = d.CityId;
             e.DefaultCurrencyId = d.DefaultCurrencyId; e.ParentCompanyId = d.ParentCompanyId;
             e.IsActive = d.IsActive;
@@ -110,8 +110,22 @@ namespace Dog.Application.Features.Companies.Handlers
             var repo = _uow.Repository<Company>();
             var e = await repo.GetByIdAsync(request.Id, ct);
             if (e == null) return ApiResponse<bool>.Fail("Company not found.");
-            await repo.DeleteAsync(e, ct);
-            return ApiResponse<bool>.Ok(true, "Company deleted.");
+
+            var branchCount = await repo.TableNoTracking.CountAsync(c => c.ParentCompanyId == request.Id, ct);
+            if (branchCount > 0)
+                return ApiResponse<bool>.Fail($"Can't delete this company — it still has {branchCount} branch(es). Delete or reassign them first.");
+
+            try
+            {
+                await repo.DeleteAsync(e, ct);
+                return ApiResponse<bool>.Ok(true, "Company deleted.");
+            }
+            catch (DbUpdateException)
+            {
+                // Previously bubbled up as an opaque 500 that looked like the delete silently did
+                // nothing — e.g. users/dogs/invoices still assigned to this company.
+                return ApiResponse<bool>.Fail("Can't delete this company — it still has related records (e.g. users, dogs, or invoices). Remove or reassign those first.");
+            }
         }
     }
 
@@ -131,13 +145,29 @@ namespace Dog.Application.Features.Companies.Handlers
         }
     }
 
+    public class UpdateCompanyBrandColorHandler : IRequestHandler<UpdateCompanyBrandColorCommand, ApiResponse<string?>>
+    {
+        private readonly IUnitOfWork _uow;
+        public UpdateCompanyBrandColorHandler(IUnitOfWork uow) => _uow = uow;
+
+        public async Task<ApiResponse<string?>> Handle(UpdateCompanyBrandColorCommand request, CancellationToken ct)
+        {
+            var repo = _uow.Repository<Company>();
+            var e = await repo.GetByIdAsync(request.Id, ct);
+            if (e == null) return ApiResponse<string?>.Fail("Company not found.");
+            e.BrandColor = request.BrandColor;
+            await repo.UpdateAsync(e, ct);
+            return ApiResponse<string?>.Ok(e.BrandColor, "Brand color updated.");
+        }
+    }
+
     internal static class CompanyMapper
     {
         public static CompanyDto Map(Company c) => new()
         {
             Id = c.Id, CompanyName = c.CompanyName, CompanyCode = c.CompanyCode,
             EmailAddress = c.EmailAddress, PhoneNumber = c.PhoneNumber,
-            Website = c.Website, Address = c.Address, Location = c.Location,
+            Website = c.Website, Address = c.Address, Logo = c.Logo, BrandColor = c.BrandColor, Location = c.Location,
             CountryId = c.CountryId, CountryName = c.Country?.Name,
             ProvinceId = c.ProvinceId, ProvinceName = c.Province?.Name,
             CityId = c.CityId, CityName = c.City?.Name,

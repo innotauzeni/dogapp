@@ -21,6 +21,7 @@ namespace Dog.Application.Features.Invoices.Handlers
                 .TableNoTracking
                 .Where(i => i.CompanyId == request.CompanyId)
                 .Include(i => i.Items)
+                .Include(i => i.Ledger)
                 .OrderByDescending(i => i.CreatedAt)
                 .ToListAsync(ct);
 
@@ -39,11 +40,74 @@ namespace Dog.Application.Features.Invoices.Handlers
             var inv = await _uow.Repository<Invoice>()
                 .TableNoTracking
                 .Include(i => i.Items)
+                .Include(i => i.Ledger)
                 .FirstOrDefaultAsync(i => i.Id == request.Id, ct);
+            if (inv == null) return ApiResponse<InvoiceDto>.Fail("Invoice not found.");
+            var dto = InvoiceMapper.Map(inv);
+            var banks = await Billing.InvoicePaymentSupport.BankAccountLabelsAsync(_uow, inv.Ledger.Where(p => p.DestinationBankAccountId != null).Select(p => p.DestinationBankAccountId!.Value), ct);
+            dto.Payments = inv.Ledger.OrderBy(p => p.CreatedAt).Select(p => Billing.InvoicePaymentSupport.Map(p, inv, banks)).ToList();
+            return ApiResponse<InvoiceDto>.Ok(dto);
+        }
+    }
 
-            return inv == null
-                ? ApiResponse<InvoiceDto>.Fail("Invoice not found.")
-                : ApiResponse<InvoiceDto>.Ok(InvoiceMapper.Map(inv));
+    internal static class InvoiceBuilder
+    {
+        public static List<InvoiceItem> BuildItems(IEnumerable<CreateInvoiceItemDto> src) => src.Where(i => !string.IsNullOrWhiteSpace(i.Description)).Select(i => new InvoiceItem
+        {
+            Description  = i.Description.Trim(),
+            Quantity     = i.Quantity,
+            UnitPrice    = i.UnitPrice,
+            TaxRate      = i.TaxRate,
+            DiscountRate = i.DiscountRate,
+            Amount       = Math.Round(i.Quantity * i.UnitPrice * (1 - i.DiscountRate / 100) * (1 + i.TaxRate / 100), 2)
+        }).ToList();
+
+        public static string? Validate(CreateInvoiceDto d)
+        {
+            if (d.Items == null || !d.Items.Any(i => !string.IsNullOrWhiteSpace(i.Description))) return "Add at least one line item.";
+            if (d.Items.Any(i => i.Quantity <= 0 || i.UnitPrice < 0 || i.TaxRate < 0 || i.TaxRate > 100 || i.DiscountRate < 0 || i.DiscountRate > 100))
+                return "Check the line items: quantity must be above 0, price cannot be negative, tax and discount must be 0-100%.";
+            if (d.DueDate.Date < d.InvoiceDate.Date) return "The due date cannot be before the invoice date.";
+            if (string.IsNullOrWhiteSpace(d.BillToName) && string.IsNullOrWhiteSpace(d.CustomerName) && d.CustomerCompanyId is not > 0) return "Choose the company to bill.";
+            return null;
+        }
+
+        /// <summary>Copies the billed company's details onto the invoice (a snapshot, so later edits never change an issued invoice).</summary>
+        public static async Task ApplyBillToAsync(IUnitOfWork uow, Invoice e, CreateInvoiceDto d, CancellationToken ct)
+        {
+            e.CustomerCompanyId = d.CustomerCompanyId is > 0 ? d.CustomerCompanyId : null;
+            CustomerCompany? co = null;
+            if (e.CustomerCompanyId != null)
+                co = await uow.Repository<CustomerCompany>().TableNoTracking.FirstOrDefaultAsync(c => c.Id == e.CustomerCompanyId, ct);
+            if (co != null)
+            {
+                e.BillToName = co.Name;
+                e.BillToAddress = string.Join(", ", new[] { co.Address, co.City, co.Country }.Where(x => !string.IsNullOrWhiteSpace(x)));
+                e.BillToTaxNumber = co.TaxNumber; e.BillToVatNumber = co.VatNumber;
+                e.BillToEmail = co.BillingEmail ?? co.Email; e.BillToPhone = co.Phone;
+                e.CustomerName = co.Name;
+                e.CustomerEmail = string.IsNullOrWhiteSpace(d.CustomerEmail) ? (co.BillingEmail ?? co.Email) : d.CustomerEmail;
+                e.CustomerPhone = string.IsNullOrWhiteSpace(d.CustomerPhone) ? co.Phone : d.CustomerPhone;
+            }
+            else
+            {
+                e.BillToName = string.IsNullOrWhiteSpace(d.BillToName) ? d.CustomerName : d.BillToName;
+                e.BillToAddress = d.BillToAddress; e.BillToTaxNumber = d.BillToTaxNumber; e.BillToVatNumber = d.BillToVatNumber;
+                e.BillToEmail = d.CustomerEmail; e.BillToPhone = d.CustomerPhone;
+                e.CustomerName = d.CustomerName ?? d.BillToName; e.CustomerEmail = d.CustomerEmail; e.CustomerPhone = d.CustomerPhone;
+            }
+            e.CustomerId = d.CustomerId;
+            e.ContactPerson = d.ContactPerson;
+            e.PurchaseOrderNumber = d.PurchaseOrderNumber;
+            e.CurrencyCode = string.IsNullOrWhiteSpace(d.CurrencyCode) ? "USD" : d.CurrencyCode.Trim().ToUpperInvariant();
+            e.IsFiscal = d.IsFiscal;
+            if (d.IsFiscal)
+            {
+                var me = await uow.Repository<Company>().TableNoTracking.FirstOrDefaultAsync(c => c.Id == e.CompanyId, ct);
+                e.FiscalInvoiceNumber = d.FiscalInvoiceNumber; e.FiscalVerificationCode = d.FiscalVerificationCode;
+                e.FiscalDate = d.FiscalDate; e.FiscalDeviceSerial = me?.FiscalDeviceSerial;
+            }
+            else { e.FiscalInvoiceNumber = null; e.FiscalVerificationCode = null; e.FiscalDate = null; e.FiscalDeviceSerial = null; }
         }
     }
 
@@ -56,53 +120,35 @@ namespace Dog.Application.Features.Invoices.Handlers
         public async Task<ApiResponse<InvoiceDto>> Handle(CreateInvoiceCommand request, CancellationToken ct)
         {
             var d = request.Dto;
+            var err = InvoiceBuilder.Validate(d);
+            if (err != null) return ApiResponse<InvoiceDto>.Fail(err);
 
-            // Generate invoice number: INV-YYYYMMDD-XXXX
-            var count = await _uow.Repository<Invoice>().TableNoTracking.CountAsync(ct);
-            var invoiceNumber = $"INV-{DateTime.UtcNow:yyyyMMdd}-{(count + 1):D4}";
+            // Generate invoice number: INV-YYYYMMDD-XXXX (never reuse a number, even of a deleted invoice)
+            var count = await _uow.Repository<Invoice>().TableNoTracking.IgnoreQueryFilters().CountAsync(ct);
+            string invoiceNumber;
+            do { count++; invoiceNumber = $"INV-{DateTime.UtcNow:yyyyMMdd}-{count:D4}"; }
+            while (await _uow.Repository<Invoice>().TableNoTracking.IgnoreQueryFilters().AnyAsync(i => i.InvoiceNumber == invoiceNumber, ct));
 
-            // Calculate totals
-            var items = d.Items.Select(i => new InvoiceItem
-            {
-                Description   = i.Description,
-                Quantity      = i.Quantity,
-                UnitPrice     = i.UnitPrice,
-                TaxRate       = i.TaxRate,
-                DiscountRate  = i.DiscountRate,
-                Amount        = i.Quantity * i.UnitPrice * (1 - i.DiscountRate / 100) * (1 + i.TaxRate / 100)
-            }).ToList();
-
+            var items = InvoiceBuilder.BuildItems(d.Items);
             var subTotal = items.Sum(i => i.Quantity * i.UnitPrice);
-            var total    = items.Sum(i => i.Amount) - d.DiscountAmount + d.TaxAmount;
+            var total    = Math.Max(0, items.Sum(i => i.Amount) - d.DiscountAmount + d.TaxAmount);
 
             var entity = new Invoice
             {
-                InvoiceNumber    = invoiceNumber,
-                CompanyId        = d.CompanyId,
-                CustomerId       = d.CustomerId,
-                CustomerName     = d.CustomerName,
-                CustomerEmail    = d.CustomerEmail,
-                CustomerPhone    = d.CustomerPhone,
-                InvoiceDate      = d.InvoiceDate,
-                DueDate          = d.DueDate,
-                SubTotal         = subTotal,
-                TaxAmount        = d.TaxAmount,
-                DiscountAmount   = d.DiscountAmount,
-                TotalAmount      = total,
-                PaidAmount       = 0,
-                BalanceAmount    = total,
-                Status           = "DRAFT",
-                Notes            = d.Notes,
-                Terms            = d.Terms,
-                Items            = items,
+                InvoiceNumber = invoiceNumber, CompanyId = d.CompanyId,
+                InvoiceDate = d.InvoiceDate, DueDate = d.DueDate,
+                SubTotal = subTotal, TaxAmount = d.TaxAmount, DiscountAmount = d.DiscountAmount,
+                TotalAmount = total, PaidAmount = 0, BalanceAmount = total, Status = "DRAFT",
+                Notes = d.Notes, Terms = d.Terms, Items = items,
             };
+            await InvoiceBuilder.ApplyBillToAsync(_uow, entity, d, ct);
 
             await _uow.Repository<Invoice>().AddAsync(entity, ct);
             return ApiResponse<InvoiceDto>.Ok(InvoiceMapper.Map(entity), $"Invoice {invoiceNumber} created.");
         }
     }
 
-    // ── UPDATE INVOICE ────────────────────────────────────────────────────────
+    // ── UPDATE INVOICE (a DRAFT can be fully re-built; an issued invoice only changes its notes, terms and due date) ──
     public class UpdateInvoiceHandler : IRequestHandler<UpdateInvoiceCommand, ApiResponse<InvoiceDto>>
     {
         private readonly IUnitOfWork _uow;
@@ -111,19 +157,35 @@ namespace Dog.Application.Features.Invoices.Handlers
         public async Task<ApiResponse<InvoiceDto>> Handle(UpdateInvoiceCommand request, CancellationToken ct)
         {
             var repo   = _uow.Repository<Invoice>();
-            var entity = await repo.GetByIdAsync(request.Dto.Id, ct);
+            var d = request.Dto;
+            var entity = await repo.Table.AsTracking().Include(i => i.Items).FirstOrDefaultAsync(i => i.Id == d.Id, ct);
             if (entity == null) return ApiResponse<InvoiceDto>.Fail("Invoice not found.");
             if (entity.Status == "PAID") return ApiResponse<InvoiceDto>.Fail("Cannot edit a paid invoice.");
+            if (entity.Status == "CANCELLED") return ApiResponse<InvoiceDto>.Fail("Cannot edit a cancelled invoice.");
 
-            var d = request.Dto;
-            entity.CustomerName   = d.CustomerName;
-            entity.CustomerEmail  = d.CustomerEmail;
-            entity.CustomerPhone  = d.CustomerPhone;
-            entity.DueDate        = d.DueDate;
-            entity.TaxAmount      = d.TaxAmount;
-            entity.DiscountAmount = d.DiscountAmount;
-            entity.Notes          = d.Notes;
-            entity.Terms          = d.Terms;
+            if (entity.Status == "DRAFT" && d.Items != null && d.Items.Count > 0)
+            {
+                var err = InvoiceBuilder.Validate(d);
+                if (err != null) return ApiResponse<InvoiceDto>.Fail(err);
+                foreach (var old in entity.Items.ToList()) await _uow.Repository<InvoiceItem>().DeleteAsync(old, ct);
+                entity.Items.Clear();
+                var items = InvoiceBuilder.BuildItems(d.Items);
+                foreach (var it in items) { it.InvoiceId = entity.Id; entity.Items.Add(it); }
+                entity.InvoiceDate = d.InvoiceDate;
+                entity.SubTotal = items.Sum(i => i.Quantity * i.UnitPrice);
+                entity.TaxAmount = d.TaxAmount; entity.DiscountAmount = d.DiscountAmount;
+                entity.TotalAmount = Math.Max(0, items.Sum(i => i.Amount) - d.DiscountAmount + d.TaxAmount);
+                entity.BalanceAmount = entity.TotalAmount - entity.PaidAmount;
+                await InvoiceBuilder.ApplyBillToAsync(_uow, entity, d, ct);
+            }
+            else
+            {
+                entity.PurchaseOrderNumber = d.PurchaseOrderNumber ?? entity.PurchaseOrderNumber;
+                entity.ContactPerson = d.ContactPerson ?? entity.ContactPerson;
+            }
+            entity.DueDate = d.DueDate;
+            entity.Notes   = d.Notes;
+            entity.Terms   = d.Terms;
 
             await repo.UpdateAsync(entity, ct);
             return ApiResponse<InvoiceDto>.Ok(InvoiceMapper.Map(entity), "Invoice updated.");
@@ -612,6 +674,13 @@ namespace Dog.Application.Features.Invoices.Handlers
             Notes           = i.Notes,
             Terms           = i.Terms,
             CreatedAt       = i.CreatedAt,
+            CustomerCompanyId = i.CustomerCompanyId, BillToName = i.BillToName, BillToAddress = i.BillToAddress, BillToTaxNumber = i.BillToTaxNumber,
+            BillToVatNumber = i.BillToVatNumber, BillToEmail = i.BillToEmail, BillToPhone = i.BillToPhone, ContactPerson = i.ContactPerson,
+            PurchaseOrderNumber = i.PurchaseOrderNumber, CurrencyCode = i.CurrencyCode, IsFiscal = i.IsFiscal, FiscalInvoiceNumber = i.FiscalInvoiceNumber,
+            FiscalDeviceSerial = i.FiscalDeviceSerial, FiscalVerificationCode = i.FiscalVerificationCode, FiscalDate = i.FiscalDate,
+            EmailedAt = i.EmailedAt, EmailedTo = i.EmailedTo,
+            PendingAmount = i.Ledger?.Where(p => p.Status == "PENDING").Sum(p => p.Amount) ?? 0,
+            Payments = i.Ledger?.OrderBy(p => p.CreatedAt).Select(p => Billing.InvoicePaymentSupport.Map(p, i)).ToList() ?? new(),
             Items           = i.Items?.Select(item => new InvoiceItemDto
             {
                 Id           = item.Id,

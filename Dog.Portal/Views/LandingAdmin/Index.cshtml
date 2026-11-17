@@ -1,0 +1,261 @@
+@{
+    ViewData["Title"] = "Landing Page";
+    Layout = "_AdminLayout";
+}
+<style>
+.page-hdr h4{font-size:1.15rem;font-weight:800;color:#0f172a;margin:0 0 .25rem}
+.page-hdr p{font-size:.845rem;color:#64748b;margin:0}
+.page-hdr-row{display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;flex-wrap:wrap;margin-bottom:1.5rem}
+.btn-add{display:inline-flex;align-items:center;gap:.4rem;padding:.6rem 1.25rem;background:linear-gradient(135deg,#667eea,#764ba2);color:#fff;border:none;border-radius:9px;font-size:.845rem;font-weight:600;cursor:pointer;transition:all .2s;text-decoration:none}
+.btn-add:hover{transform:translateY(-2px);box-shadow:0 4px 12px rgba(102,126,234,.3);text-decoration:none}
+.dc{background:#fff;border-radius:14px;border:1px solid #e9eef4;overflow:hidden}
+.editor-content{padding:2rem}
+.tabs{display:flex;gap:1rem;border-bottom:1.5px solid #e2e8f0;margin-bottom:2rem;flex-wrap:wrap}
+.tab-btn{background:none;border:none;padding:.75rem 1rem;font-weight:600;color:#64748b;cursor:pointer;position:relative;transition:color .3s;font-size:.845rem;display:flex;align-items:center;gap:.5rem}
+.tab-btn.active{color:#667eea}
+.tab-btn.active::after{content:'';position:absolute;bottom:-1.5px;left:0;right:0;height:2px;background:#667eea}
+.tab-content{display:none}
+.tab-content.active{display:block}
+.frow{margin-bottom:1.5rem}
+.frow label{display:block;font-size:.8rem;font-weight:600;color:#374151;margin-bottom:.5rem}
+.frow small{color:#64748b;font-size:.75rem;display:block;margin-top:.25rem}
+.finput{width:100%;padding:.65rem .875rem;border:1.5px solid #e2e8f0;border-radius:9px;font-size:.855rem;color:#1e293b;background:#fff;outline:none;font-family:inherit;transition:all .2s}
+.finput:focus{border-color:#667eea;box-shadow:0 0 0 3px rgba(102,126,234,.1)}
+.finput-color{width:100%;height:50px;padding:5px;border:1.5px solid #e2e8f0;border-radius:9px;cursor:pointer}
+.finput-color:focus{border-color:#667eea;box-shadow:0 0 0 3px rgba(102,126,234,.1)}
+.form-section{margin-bottom:2rem}
+.section-title{font-size:1rem;font-weight:700;color:#0f172a;margin-bottom:1.5rem;padding-bottom:1rem;border-bottom:1.5px solid #e2e8f0;display:flex;align-items:center;gap:.5rem}
+.actions{display:flex;gap:.75rem;margin-top:2.5rem;padding-top:1.5rem;border-top:1px solid #e2e8f0;flex-wrap:wrap}
+.btn-primary{padding:.65rem 1.5rem;background:linear-gradient(135deg,#667eea,#764ba2);color:#fff;border:none;border-radius:9px;font-size:.855rem;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:.4rem;min-width:130px;justify-content:center;transition:all .2s;text-decoration:none}
+.btn-primary:hover{transform:translateY(-2px);box-shadow:0 4px 12px rgba(102,126,234,.3);text-decoration:none}
+.btn-primary:disabled{opacity:.6;cursor:not-allowed;transform:none}
+.btn-cancel{padding:.65rem 1.25rem;background:#f1f5f9;color:#64748b;border:1.5px solid #e2e8f0;border-radius:9px;font-size:.855rem;font-weight:600;cursor:pointer;transition:all .2s;text-decoration:none}
+.btn-cancel:hover{background:#e2e8f0;border-color:#cbd5e1;text-decoration:none}
+.btn-small{padding:.4rem .8rem;background:#f1f5f9;color:#64748b;border:1.5px solid #e2e8f0;border-radius:7px;font-size:.75rem;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:.3rem;text-decoration:none}
+.btn-small:hover{background:#e2e8f0;text-decoration:none}
+.btn-small.danger{color:#dc2626;background:#fef2f2;border-color:#fecaca}
+.btn-small.danger:hover{background:#fee2e2;text-decoration:none}
+.spin{width:14px;height:14px;border:2px solid rgba(255,255,255,.35);border-top-color:#fff;border-radius:50%;animation:spin .65s linear infinite;flex-shrink:0}
+@@keyframes spin{to{transform:rotate(360deg)}}
+.frow-2{display:grid;grid-template-columns:1fr 1fr;gap:.875rem}
+.frow-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:.875rem}
+.apk-item{background:#f8fafc;border:1px solid #e2e8f0;border-radius:9px;padding:1rem;display:flex;align-items:center;justify-content:space-between;gap:1rem}
+.apk-info{flex:1}
+.apk-name{font-weight:600;color:#1e293b;margin-bottom:.25rem}
+.apk-url{font-size:.75rem;color:#64748b;word-break:break-all;margin-bottom:.5rem}
+.apk-btns{display:flex;gap:.5rem}
+.color-preview{display:inline-block;width:50px;height:50px;border-radius:9px;border:1px solid #e2e8f0;margin-left:.5rem}
+@@keyframes slideIn{from{transform:translateX(120%);opacity:0}to{transform:translateX(0);opacity:1}}
+@@keyframes slideOut{from{transform:translateX(0);opacity:1}to{transform:translateX(120%);opacity:0}}
+</style>
+<div class="page-hdr-row">
+  <div class="page-hdr"><h4>Landing Page</h4><p>Customize all content, colors, and links</p></div>
+  <div class="hdr-actions">
+    <a href="/" class="btn-add"><i class="bi bi-eye"></i> Preview</a>
+    <a href="/Dashboard" class="btn-add"><i class="bi bi-arrow-left"></i> Back</a>
+  </div>
+</div>
+<div id="alertBox"></div>
+<div class="dc">
+  <div class="editor-content">
+    <form id="landingForm">
+      <div class="tabs">
+        <button type="button" class="tab-btn active" onclick="showTab('branding',event)"><i class="bi bi-palette"></i> Branding</button>
+        <button type="button" class="tab-btn" onclick="showTab('hero',event)"><i class="bi bi-stars"></i> Hero</button>
+        <button type="button" class="tab-btn" onclick="showTab('features',event)"><i class="bi bi-list-check"></i> Features</button>
+        <button type="button" class="tab-btn" onclick="showTab('contact',event)"><i class="bi bi-envelope"></i> Contact</button>
+        <button type="button" class="tab-btn" onclick="showTab('apk',event)"><i class="bi bi-download"></i> APK</button>
+      </div>
+
+      <!-- Branding Tab -->
+      <div id="branding" class="tab-content active">
+        <div class="section-title"><i class="bi bi-palette"></i> Branding</div>
+        <div class="form-section">
+          <div class="frow"><label>Brand Name</label><input type="text" class="finput" name="brandName" placeholder="Dog Section"></div>
+          <div class="frow"><label>Logo Image</label><input type="file" class="finput" id="logoFile" name="file" accept="image/*"><small style="color:#64748b;margin-top:.25rem;display:block">Upload PNG, JPG, or SVG. Will be auto-uploaded.</small></div>
+          <div class="frow"><label>Logo URL (or uploaded path)</label><input type="text" class="finput" name="logoUrl" placeholder="/logo.png" id="logoUrlInput" readonly style="background:#f8fafc"></div>
+          <div class="frow"><label>Favicon Image</label><input type="file" class="finput" id="faviconFile" name="file" accept="image/*"><small style="color:#64748b;margin-top:.25rem;display:block">Upload ICO, PNG, or SVG. Will be auto-uploaded.</small></div>
+          <div class="frow"><label>Favicon URL (or uploaded path)</label><input type="text" class="finput" name="faviconUrl" placeholder="/favicon.ico" id="faviconUrlInput" readonly style="background:#f8fafc"></div>
+          <div class="frow-2">
+            <div class="frow"><label>Accent Color (Primary)</label><input type="color" class="finput-color" name="accent" value="#667eea"></div>
+            <div class="frow"><label>Accent Color (Secondary)</label><input type="color" class="finput-color" name="accent2" value="#059669"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Hero Tab -->
+      <div id="hero" class="tab-content">
+        <div class="section-title"><i class="bi bi-stars"></i> Hero Section</div>
+        <div class="form-section">
+          <div class="frow">
+            <label style="display:flex;align-items:center;gap:.5rem">
+              <input type="checkbox" class="finput" name="heroEnabled" id="heroEnabledCheck" style="width:auto;height:auto" onchange="updateHeroEnabled()">
+              <span>Enable Hero Section</span>
+            </label>
+          </div>
+
+          <div class="frow"><label>Hero Badge</label><input type="text" class="finput" name="heroBadge" placeholder="Professional Dog Breeding Management"></div>
+          <div class="frow"><label>Hero Title</label><textarea class="finput" name="heroTitle" rows="2" placeholder="Manage Your Dog Breeding Operation Smarter"></textarea></div>
+          <div class="frow"><label>Hero Subtitle</label><textarea class="finput" name="heroSubtitle" rows="3" placeholder="Full description..."></textarea></div>
+          <div class="frow-2">
+            <div class="frow"><label>Primary CTA Text</label><input type="text" class="finput" name="primaryCtaText" placeholder="Get Started"></div>
+            <div class="frow"><label>Secondary CTA Text</label><input type="text" class="finput" name="secondaryCtaText" placeholder="Learn More"></div>
+          </div>
+          <div class="frow"><label>Hero Secondary Text</label><input type="text" class="finput" name="heroSecondaryText" placeholder="See what's inside"></div>
+
+          <hr style="border:none;border-top:1px solid #e2e8f0;margin:2rem 0">
+          <div>
+            <h5 style="font-weight:700;color:#1e293b;margin-bottom:1rem">Hero Text Styling</h5>
+            <div class="frow-3">
+              <div class="frow"><label>Title Color</label><input type="color" class="finput-color" name="heroTitleColor" value="#1e293b"></div>
+              <div class="frow"><label>Subtitle Color</label><input type="color" class="finput-color" name="heroSubtitleColor" value="#64748b"></div>
+              <div class="frow"><label>Overlay Darkness (0-1)</label><input type="number" class="finput" name="heroOverlayOpacity" min="0" max="1" step="0.1" value="0.4" style="font-family:monospace"></div>
+            </div>
+          </div>
+
+          <hr style="border:none;border-top:1px solid #e2e8f0;margin:2rem 0">
+          <div>
+            <h5 style="font-weight:700;color:#1e293b;margin-bottom:1rem">Hero Carousel Images</h5>
+            <p style="font-size:.85rem;color:#64748b;margin-bottom:1.5rem">Upload images for hero carousel background. Images will rotate automatically.</p>
+
+            <div class="frow">
+              <label>Upload Hero Image</label>
+              <input type="file" class="finput" id="heroImageInput" name="file" accept="image/*" />
+              <small style="color:#64748b;margin-top:.25rem;display:block">PNG, JPG, SVG, or WebP. Recommended: 1920x600px or wider</small>
+            </div>
+
+            <div style="margin-top:1.5rem">
+              <label style="display:block;font-size:.8rem;font-weight:600;color:#374151;margin-bottom:1rem">Uploaded Images</label>
+              <div id="heroImageList" style="display:flex;flex-direction:column;gap:.75rem"></div>
+              <div id="heroImageEmpty" style="text-align:center;padding:2rem;background:#f8fafc;border-radius:9px;border:1px dashed #cbd5e1;color:#94a3b8">
+                No hero images uploaded yet. Upload images to create a carousel!
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Features Tab -->
+      <div id="features" class="tab-content">
+        <div class="section-title"><i class="bi bi-list-check"></i> Features & How It Works</div>
+        <div class="form-section">
+          <div class="frow"><label>Features Heading</label><input type="text" class="finput" name="featuresHeading" placeholder="Complete Dog Breeding Management"></div>
+          <div class="frow"><label>Features Subtitle</label><textarea class="finput" name="featuresSub" rows="2" placeholder="Subtitle..."></textarea></div>
+          <div class="frow"><label>How It Works Eyebrow</label><input type="text" class="finput" name="stepsEyebrow" placeholder="Getting Started"></div>
+          <div class="frow"><label>How It Works Heading</label><input type="text" class="finput" name="stepsHeading" placeholder="Set up your breeding operation in minutes"></div>
+          <div class="frow"><label>Industries Heading</label><input type="text" class="finput" name="industriesHeading" placeholder="Built for All Breeding Types"></div>
+          <div class="frow"><label>Industries Subtitle</label><textarea class="finput" name="industriesSub" rows="2" placeholder=""></textarea></div>
+          <div class="frow"><label>Testimonials Heading</label><input type="text" class="finput" name="testimonialsHeading" placeholder="Trusted by Professional Breeders"></div>
+        </div>
+      </div>
+
+      <!-- Contact Tab -->
+      <div id="contact" class="tab-content">
+        <div class="section-title"><i class="bi bi-envelope"></i> Contact & CTA</div>
+        <div class="form-section">
+          <div class="frow"><label>CTA Heading</label><textarea class="finput" name="ctaHeading" rows="2" placeholder="Ready to Transform Your Breeding Operation?"></textarea></div>
+          <div class="frow"><label>CTA Subheading</label><textarea class="finput" name="ctaSub" rows="2" placeholder="Subheading..."></textarea></div>
+          <div class="frow-2">
+            <div class="frow"><label>Phone</label><input type="text" class="finput" name="phone" placeholder="+1 (555) 123-4567"></div>
+            <div class="frow"><label>Email</label><input type="email" class="finput" name="email" placeholder="support@dogsection.com"></div>
+          </div>
+          <div class="frow"><label>Address</label><input type="text" class="finput" name="address" placeholder="Harare, Zimbabwe"></div>
+          <div class="frow"><label>Footer Tagline</label><input type="text" class="finput" name="footerTagline" placeholder="Professional Dog Breeding Management 🐾"></div>
+        </div>
+      </div>
+
+      <!-- APK Tab -->
+      <div id="apk" class="tab-content">
+        <div class="section-title"><i class="bi bi-download"></i> Mobile App Downloads</div>
+        <div class="form-section">
+          <div class="frow"><label>APK Heading</label><input type="text" class="finput" name="apkHeading" placeholder="Download the Mobile App"></div>
+          <div class="frow"><label>APK Subheading</label><input type="text" class="finput" name="apkSubheading" placeholder="Available for iOS and Android"></div>
+
+          <hr style="border:none;border-top:1px solid #e2e8f0;margin:2rem 0">
+          <div style="margin-bottom:1.5rem">
+            <h5 style="font-weight:700;color:#1e293b;margin-bottom:1rem">Store Links</h5>
+            <div class="frow-2">
+              <div class="frow"><label>iOS App Store URL</label><input type="text" class="finput" name="iosUrl" placeholder="https://apps.apple.com/..."></div>
+              <div class="frow"><label>Android Play Store URL</label><input type="text" class="finput" name="androidUrl" placeholder="https://play.google.com/..."></div>
+            </div>
+          </div>
+
+          <hr style="border:none;border-top:1px solid #e2e8f0;margin:2rem 0">
+          <div>
+            <h5 style="font-weight:700;color:#1e293b;margin-bottom:1rem">Direct Downloads</h5>
+            <p style="font-size:.85rem;color:#64748b;margin-bottom:1.5rem">Upload APK, IPA, or other files for direct download</p>
+
+            <div class="frow">
+              <label>Upload File</label>
+              <input type="file" class="finput" id="apkFileInput" name="file" accept=".apk,.ipa,.exe,.dmg" />
+              <small style="color:#64748b;margin-top:.25rem;display:block">Android (.apk), iOS (.ipa), or other formats</small>
+            </div>
+
+            <div style="margin-top:1.5rem">
+              <label style="display:block;font-size:.8rem;font-weight:600;color:#374151;margin-bottom:1rem">Downloaded Files</label>
+              <div id="apkList" style="display:flex;flex-direction:column;gap:.75rem"></div>
+              <div id="apkEmpty" style="text-align:center;padding:2rem;background:#f8fafc;border-radius:9px;border:1px dashed #cbd5e1;color:#94a3b8">
+                No files uploaded yet. Upload your first APK!
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Actions -->
+      <div class="actions">
+        <button type="button" class="btn-primary" onclick="saveLanding()"><i class="bi bi-check-circle"></i> Save Changes</button>
+        <button type="button" class="btn-cancel" onclick="resetLanding()"><i class="bi bi-arrow-clockwise"></i> Reset</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+let model = {};
+let apkFiles = [];
+let heroImages = [];
+
+try {
+  const jsonStr = '@Html.Raw(ViewBag.Json ?? "{}")';
+  model = JSON.parse(jsonStr);
+  if(model.ApkFiles) apkFiles = model.ApkFiles;
+  if(model.HeroImages) heroImages = model.HeroImages;
+} catch(e) {
+  console.error('Failed to parse model JSON:', e);
+  model = {};
+}
+
+function showTab(tabName,e){e.preventDefault();document.querySelectorAll('.tab-content').forEach(el=>el.classList.remove('active'));document.querySelectorAll('.tab-btn').forEach(el=>el.classList.remove('active'));document.getElementById(tabName).classList.add('active');e.target.closest('.tab-btn').classList.add('active');}
+
+function populateForm(){console.log('Populating form with model:',model);Object.keys(model).forEach(key=>{const camelKey=key.charAt(0).toLowerCase()+key.slice(1);const input=document.querySelector(`[name="${camelKey}"]`);if(input){if(input.type==='checkbox'){input.checked=model[key]===true;}else if(typeof model[key]==='string'){input.value=model[key];}}});if(model.LogoUrl){document.getElementById('logoUrlInput').value=model.LogoUrl;}if(model.FaviconUrl){document.getElementById('faviconUrlInput').value=model.FaviconUrl;}renderApkList();renderHeroImageList();console.log('Form populated successfully');}
+
+function renderHeroImageList(){const list=document.getElementById('heroImageList');const empty=document.getElementById('heroImageEmpty');if(!heroImages||heroImages.length===0){list.innerHTML='';empty.style.display='block';return;}empty.style.display='none';list.innerHTML=heroImages.map((img,i)=>`<div class="apk-item"><div class="apk-info"><div class="apk-name">Hero Image ${i+1}</div><div class="apk-url">${img.Url||img.url}</div></div><div class="apk-btns"><button type="button" class="btn-small danger" onclick="removeHeroImage(${i})"><i class="bi bi-trash"></i> Delete</button></div></div>`).join('');}
+
+function removeHeroImage(i){heroImages.splice(i,1);renderHeroImageList();}
+
+function updateHeroEnabled(){const check=document.getElementById('heroEnabledCheck');model.HeroEnabled=check.checked;}
+
+function renderApkList(){const list=document.getElementById('apkList');const empty=document.getElementById('apkEmpty');if(!apkFiles||apkFiles.length===0){list.innerHTML='';empty.style.display='block';return;}empty.style.display='none';list.innerHTML=apkFiles.map((f,i)=>`<div class="apk-item"><div class="apk-info"><div class="apk-name">${f.name||'App File'}</div><div class="apk-url">${f.url}</div></div><div class="apk-btns"><button type="button" class="btn-small danger" onclick="removeApk(${i})"><i class="bi bi-trash"></i> Delete</button></div></div>`).join('');}
+
+function removeApk(i){apkFiles.splice(i,1);renderApkList();}
+
+function getFormData(){const result={...model};console.log('Starting getFormData, base model:',result);document.querySelectorAll('[name]').forEach(input=>{if(input.id==='apkFileInput'||input.id==='logoFile'||input.id==='faviconFile'||input.id==='heroImageInput')return;const camelKey=input.name;const key=camelKey.charAt(0).toUpperCase()+camelKey.slice(1);const oldVal=result[key];if(input.type==='checkbox'){result[key]=input.checked;}else if(input.type==='number'){result[key]=input.value;}else if(input.type==='color'){result[key]=input.value;}else if(input.type==='text'||input.type==='email'||input.tagName==='TEXTAREA'){result[key]=input.value;}if(oldVal!==result[key]){console.log(`Updated ${key}: "${oldVal}" -> "${result[key]}"`)}});result.ApkFiles=apkFiles;result.HeroImages=heroImages;console.log('Final form data:',result);return result;}
+
+function showNotification(msg,type){var bg=type==='success'?'#10b981':'#ef4444';var icon=type==='success'?'✓':'✕';var toast=document.createElement('div');toast.innerHTML=`<div style="background:${bg};color:white;padding:1rem 1.5rem;border-radius:8px;box-shadow:0 4px 12px rgba(0,0,0,.2);font-weight:600;display:flex;align-items:center;gap:.5rem;font-size:.9rem;margin-bottom:.5rem;animation:slideIn .3s ease;"><span style="font-size:1.2rem;font-weight:700">${icon}</span> ${msg}</div>`;toast.style.animation='slideIn 0.3s ease';var wrap=document.getElementById('toastWrap');if(!wrap){wrap=document.createElement('div');wrap.id='toastWrap';wrap.style.cssText='position:fixed;bottom:1.5rem;right:1.5rem;z-index:9999;max-width:400px;';document.body.appendChild(wrap);}wrap.appendChild(toast);setTimeout(()=>{toast.style.animation='slideOut 0.3s ease';setTimeout(()=>toast.remove(),300);},4000);}
+
+function setupFileUpload(inputId, urlInputId, endpoint, label){document.getElementById(inputId).addEventListener('change',async function(e){var file=e.target.files[0];if(!file)return;var fd=new FormData();fd.append('file',file);var btn=document.querySelector('.btn-primary');var html=btn.innerHTML;btn.disabled=true;btn.innerHTML='<span class="spin"></span> Uploading '+label+'...';try{var res=await fetch(endpoint,{method:'POST',body:fd});var data=await res.json();if(data.success){document.getElementById(urlInputId).value=data.data;showNotification(label+' uploaded successfully!', 'success');}else{showNotification(data.message||'Upload failed', 'error');}}catch(e){showNotification('Upload failed: '+e.message, 'error');console.error(e);}finally{btn.disabled=false;btn.innerHTML=html;}});}
+
+var apkInput=document.getElementById('apkFileInput');if(apkInput){apkInput.addEventListener('change',async function(e){console.log('=== APK Upload Started ===');console.log('Files in input:',e.target.files.length);var file=e.target.files[0];if(!file){console.warn('No file selected');showNotification('No file selected', 'error');return;}console.log('File object:',{name:file.name,size:file.size,type:file.type});var fd=new FormData();fd.append('file',file);console.log('FormData created and file appended');for(var pair of fd.entries()){console.log('FormData entry:',pair[0],'=',pair[1].name||pair[1]);}var saveBtn=document.querySelector('.btn-primary');var html=saveBtn.innerHTML;saveBtn.disabled=true;saveBtn.innerHTML='<span class="spin"></span> Uploading '+Math.round(file.size/1024)+'KB...';try{console.log('Fetching /LandingAdmin/UploadApk');var res=await fetch('/LandingAdmin/UploadApk',{method:'POST',body:fd});console.log('Response received, status:',res.status);var data=await res.json();console.log('API response:',data);if(data.success){apkFiles.push({name:file.name,url:data.data});renderApkList();e.target.value='';showNotification('✓ APK uploaded! Click Save to persist.', 'success');}else{showNotification(data.message||'Upload failed', 'error');}}catch(e){console.error('Fetch error:',e);showNotification('Upload error: '+e.message, 'error');}finally{saveBtn.disabled=false;saveBtn.innerHTML=html;}});}else{console.error('apkFileInput element not found');}
+
+document.getElementById('heroImageInput').addEventListener('change',async function(e){var file=e.target.files[0];if(!file)return;var fd=new FormData();fd.append('file',file);var saveBtn=document.querySelector('.btn-primary');var html=saveBtn.innerHTML;saveBtn.disabled=true;saveBtn.innerHTML='<span class="spin"></span> Uploading...';try{var res=await fetch('/LandingAdmin/UploadHeroImage',{method:'POST',body:fd});var data=await res.json();if(data.success){heroImages.push({Url:data.data,Title:file.name});renderHeroImageList();document.getElementById('heroImageInput').value='';showNotification('✓ Hero image uploaded! Click Save to persist.', 'success');}else{showNotification(data.message||'Upload failed', 'error');}}catch(e){showNotification('Upload failed: '+e.message, 'error');console.error(e);}finally{saveBtn.disabled=false;saveBtn.innerHTML=html;}});
+
+setupFileUpload('logoFile','logoUrlInput','/LandingAdmin/UploadLogo','Logo');
+setupFileUpload('faviconFile','faviconUrlInput','/LandingAdmin/UploadFavicon','Favicon');
+
+async function saveLanding(){var btn=event.target;var html=btn.innerHTML;btn.disabled=true;btn.innerHTML='<span class="spin"></span> Saving...';try{console.log('Starting save...');const data=getFormData();console.log('Form data collected:',data);const payload=JSON.stringify({json:JSON.stringify(data)});console.log('Payload size:',payload.length);console.log('Sending to /LandingAdmin/Save...');var res=await fetch('/LandingAdmin/Save',{method:'POST',headers:{'Content-Type':'application/json'},body:payload});console.log('Response status:',res.status);if(!res.ok){var errText=await res.text();console.error('Error response:',errText);showNotification('HTTP '+res.status+': '+res.statusText, 'error');return;}var result=await res.json();console.log('Result:',result);if(result.success){console.log('Save successful!');showNotification('✓ Landing page saved successfully!', 'success');setTimeout(()=>{console.log('Redirecting to landing page...');window.location.href='/';},1500);}else{console.error('Save failed:',result.message);showNotification(result.message||'Save failed', 'error');}}catch(e){console.error('Exception in saveLanding:',e);showNotification('Error: '+e.message, 'error');}finally{btn.disabled=false;btn.innerHTML=html;}}
+
+async function resetLanding(){if(!confirm('Reset to defaults? This cannot be undone.'))return;var btn=event.target;btn.disabled=true;btn.innerHTML='<span class="spin"></span> Resetting...';try{var res=await fetch('/LandingAdmin/Reset',{method:'POST'});if(!res.ok){showNotification('HTTP '+res.status+': '+res.statusText, 'error');return;}var result=await res.json();if(result.success){showNotification('Landing page reset to defaults', 'success');setTimeout(()=>location.reload(),1500);}else{showNotification(result.message||'Reset failed', 'error');}}catch(e){showNotification('Error: '+e.message, 'error');console.error(e);}finally{btn.disabled=false;btn.innerHTML='<i class="bi bi-arrow-clockwise"></i> Reset';}}
+
+populateForm();
+</script>

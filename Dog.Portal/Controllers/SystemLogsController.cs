@@ -18,21 +18,42 @@ namespace Dog.Portal.Controllers
         private bool IsAuthenticated() =>
             !string.IsNullOrEmpty(HttpContext.Session.GetString("UserSession"));
 
-        public async Task<IActionResult> Index(string? severity, bool? resolved, string? search, int page = 1, int pageSize = 15)
+        /// Turns a raw (never-swallowed) API response into an honest success/message pair —
+        /// distinguishes "you don't have permission" (401/403) from "the server errored" (5xx)
+        /// instead of collapsing every failure into the same generic text.
+        private static object BuildResult(ApiRawResult raw, string successFallback)
+        {
+            ApiResponse<bool>? parsed = null;
+            try { parsed = JsonSerializer.Deserialize<ApiResponse<bool>>(raw.Body, new JsonSerializerOptions { PropertyNameCaseInsensitive = true }); }
+            catch { /* body wasn't the expected envelope shape — fall through */ }
+
+            if (raw.IsSuccessStatusCode && parsed?.Success == true)
+                return new { success = true, message = parsed.Message ?? successFallback };
+
+            if (raw.StatusCode == 401 || raw.StatusCode == 403)
+                return new { success = false, message = "You don't have permission to do this. Your role is missing the required permission — check Roles & Permissions." };
+
+            var bodySnippet = raw.Body.Length > 200 ? raw.Body[..200] + "…" : raw.Body;
+            return new { success = false, message = parsed?.Message ?? $"Request failed ({raw.StatusCode}): {bodySnippet}" };
+        }
+
+        public async Task<IActionResult> Index(string? severity, bool? resolved, string? search, bool deleted = false, int page = 1, int pageSize = 15)
         {
             if (!IsAuthenticated()) return RedirectToAction("Login", "Auth");
-            
-            var vm = new SystemLogsListViewModel { SearchTerm = search, Page = page, PageSize = pageSize };
+
+            var vm = new SystemLogsListViewModel { SearchTerm = search, Page = page, PageSize = pageSize, ShowDeleted = deleted };
 
             // Pass filter values to ViewBag for form state
             ViewBag.SeverityFilter = severity;
             ViewBag.ResolvedFilter = resolved;
+            ViewBag.ShowDeleted = deleted;
 
             try
             {
                 var queryParams = new List<string>();
                 if (!string.IsNullOrEmpty(severity)) queryParams.Add($"severity={severity}");
                 if (resolved.HasValue) queryParams.Add($"resolved={resolved.Value}");
+                if (deleted) queryParams.Add("deleted=true");
                 queryParams.Add($"page={page}");
                 queryParams.Add($"pageSize={pageSize}");
 
@@ -56,6 +77,7 @@ namespace Dog.Portal.Controllers
                         if (errorLogPage != null)
                         {
                             vm.TotalCount = errorLogPage.Total;
+                            vm.TotalDeleted = errorLogPage.TotalDeleted;
                             vm.ErrorLogList = errorLogPage.Data ?? new List<PortalModels.ErrorLogItemDto>();
                             
                             Console.WriteLine($"SystemLogs ViewModel - TotalCount: {vm.TotalCount}, ErrorLogList Count: {vm.ErrorLogList.Count}");
@@ -107,8 +129,8 @@ namespace Dog.Portal.Controllers
             
             try
             {
-                var resp = await _apiClient.PostAsync<ApiResponse<bool>>($"api/SystemLogs/errors/{id}/resolve", req.Resolution);
-                return Json(new { success = resp?.Success ?? false, message = resp?.Message ?? "Resolved." });
+                var raw = await _apiClient.PostRawAsync($"api/SystemLogs/errors/{id}/resolve", req.Resolution);
+                return Json(BuildResult(raw, "Marked as resolved."));
             }
             catch (Exception ex) { return Json(new { success = false, message = ex.Message }); }
         }
@@ -120,8 +142,80 @@ namespace Dog.Portal.Controllers
             if (!IsAuthenticated()) return Json(new { success = false, message = "Session expired." });
             try
             {
-                var resp = await _apiClient.DeleteAsync<ApiResponse<bool>>($"api/SystemLogs/errors/{id}");
-                return Json(new { success = resp?.Success ?? false, message = resp?.Message ?? "Deleted." });
+                var raw = await _apiClient.DeleteRawAsync($"api/SystemLogs/errors/{id}");
+                return Json(BuildResult(raw, "Deleted."));
+            }
+            catch (Exception ex) { return Json(new { success = false, message = ex.Message }); }
+        }
+
+        // POST /SystemLogs/ResolveAll — marks every currently-unresolved error (matching
+        // the active severity filter, if any) as resolved.
+        [HttpPost]
+        public async Task<IActionResult> ResolveAll(string? severity)
+        {
+            if (!IsAuthenticated()) return Json(new { success = false, message = "Session expired." });
+            try
+            {
+                var qs = string.IsNullOrWhiteSpace(severity) ? "" : $"?severity={severity}";
+                var raw = await _apiClient.PostRawAsync($"api/SystemLogs/errors/resolve-all{qs}", new { });
+                return Json(BuildResult(raw, "All resolved!"));
+            }
+            catch (Exception ex) { return Json(new { success = false, message = ex.Message }); }
+        }
+
+        // POST /SystemLogs/DeleteAll — deletes every log matching the active filters
+        // (or literally everything if no filter is applied).
+        [HttpPost]
+        public async Task<IActionResult> DeleteAll(string? severity, bool? resolved)
+        {
+            if (!IsAuthenticated()) return Json(new { success = false, message = "Session expired." });
+            try
+            {
+                var qs = new List<string>();
+                if (!string.IsNullOrWhiteSpace(severity)) qs.Add($"severity={severity}");
+                if (resolved.HasValue) qs.Add($"resolved={resolved.Value}");
+                var url = "api/SystemLogs/errors/all" + (qs.Count > 0 ? "?" + string.Join("&", qs) : "");
+                var raw = await _apiClient.DeleteRawAsync(url);
+                return Json(BuildResult(raw, "All deleted!"));
+            }
+            catch (Exception ex) { return Json(new { success = false, message = ex.Message }); }
+        }
+
+        // POST /SystemLogs/Restore/{id} — brings a soft-deleted log back out of the trash.
+        [HttpPost]
+        public async Task<IActionResult> Restore(int id)
+        {
+            if (!IsAuthenticated()) return Json(new { success = false, message = "Session expired." });
+            try
+            {
+                var raw = await _apiClient.PostRawAsync($"api/SystemLogs/errors/{id}/restore", new { });
+                return Json(BuildResult(raw, "Restored."));
+            }
+            catch (Exception ex) { return Json(new { success = false, message = ex.Message }); }
+        }
+
+        // POST /SystemLogs/PermanentDelete/{id} — truly removes a trashed log, no undo.
+        [HttpPost]
+        public async Task<IActionResult> PermanentDelete(int id)
+        {
+            if (!IsAuthenticated()) return Json(new { success = false, message = "Session expired." });
+            try
+            {
+                var raw = await _apiClient.DeleteRawAsync($"api/SystemLogs/errors/{id}/permanent");
+                return Json(BuildResult(raw, "Permanently deleted."));
+            }
+            catch (Exception ex) { return Json(new { success = false, message = ex.Message }); }
+        }
+
+        // POST /SystemLogs/EmptyTrash — permanently removes every soft-deleted log at once.
+        [HttpPost]
+        public async Task<IActionResult> EmptyTrash()
+        {
+            if (!IsAuthenticated()) return Json(new { success = false, message = "Session expired." });
+            try
+            {
+                var raw = await _apiClient.DeleteRawAsync("api/SystemLogs/errors/trash");
+                return Json(BuildResult(raw, "Trash emptied."));
             }
             catch (Exception ex) { return Json(new { success = false, message = ex.Message }); }
         }

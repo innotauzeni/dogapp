@@ -17,9 +17,14 @@ public class GetDeploymentsByCompanyHandler : IRequestHandler<GetDeploymentByCom
 
     public async Task<ApiResponse<List<DeploymentDto>>> Handle(GetDeploymentByCompanyQuery request, CancellationToken ct)
     {
+        var companyIds = await CompanyScopeResolver.ResolveAsync(_uow, request.CompanyId, ct);
+
         var list = await _uow.Repository<Deployment>()
             .TableNoTracking
-            .Where(p => p.CompanyId == request.CompanyId)
+            .Include(d => d.Dog)
+            .Include(d => d.Customer)
+            .Include(d => d.CustomerSite)
+            .Where(p => companyIds.Contains(p.CompanyId))
             .OrderBy(p => p.SecurityGuardAssigned)
             .ToListAsync(ct);
 
@@ -51,6 +56,8 @@ public class CreateDeploymentHandler : IRequestHandler<CreateDeploymentCommand, 
             Notes = d.Notes,
             IsActive = d.IsActive,
             CompanyId = d.CompanyId,
+            CustomerId = d.CustomerId,
+            CustomerSiteId = d.CustomerSiteId,
         };
         await _uow.Repository<Deployment>().AddAsync(entity, ct);
         return ApiResponse<DeploymentDto>.Ok(DeploymentMapper.MapDeployment(entity), "Deployment method created.");
@@ -76,6 +83,8 @@ public class UpdateDeploymentHandler : IRequestHandler<UpdateDeploymentCommand, 
         entity.EndDate = request.Dto.EndDate;
         entity.Notes = request.Dto.Notes;
         entity.IsActive = request.Dto.IsActive;
+        entity.CustomerId = request.Dto.CustomerId;
+        entity.CustomerSiteId = request.Dto.CustomerSiteId;
         await repo.UpdateAsync(entity, ct);
         return ApiResponse<DeploymentDto>.Ok(DeploymentMapper.MapDeployment(entity), "Deployment method updated.");
     }
@@ -96,6 +105,25 @@ public class DeleteDeploymentHandler : IRequestHandler<DeleteDeploymentCommand, 
     }
 }
 
+public class EndDeploymentHandler : IRequestHandler<EndDeploymentCommand, ApiResponse<bool>>
+{
+    private readonly IUnitOfWork _uow;
+    public EndDeploymentHandler(IUnitOfWork uow) => _uow = uow;
+
+    public async Task<ApiResponse<bool>> Handle(EndDeploymentCommand request, CancellationToken ct)
+    {
+        var repo = _uow.Repository<Deployment>();
+        var entity = await repo.GetByIdAsync(request.Id, ct);
+        if (entity == null) return ApiResponse<bool>.Fail("Deployment not found.");
+        if (!entity.IsActive) return ApiResponse<bool>.Fail("This dog has already been returned.");
+
+        entity.IsActive = false;
+        entity.EndDate = DateTime.UtcNow;
+        await repo.UpdateAsync(entity, ct);
+        return ApiResponse<bool>.Ok(true, "Dog returned to branch.");
+    }
+}
+
 
 
 internal static class DeploymentMapper
@@ -104,6 +132,7 @@ internal static class DeploymentMapper
     {
         Id = d.Id,
         DogId = d.DogId,
+        DogName = d.Dog?.Name,
         CompanyDeployedTo = d.CompanyDeployedTo,
         SecurityGuardAssigned = d.SecurityGuardAssigned,
         Location = d.Location,
@@ -112,6 +141,11 @@ internal static class DeploymentMapper
         Notes = d.Notes,
         IsActive = d.IsActive,
         CompanyId = d.CompanyId,
+        CustomerId = d.CustomerId,
+        CustomerName = d.Customer?.FullName ?? (d.Customer == null ? null : $"{d.Customer.FirstName} {d.Customer.LastName}".Trim()),
+        CustomerSiteId = d.CustomerSiteId,
+        CustomerSiteName = d.CustomerSite?.SiteName,
+        CustomerSiteAddress = d.CustomerSite?.Address,
     };
 }
 

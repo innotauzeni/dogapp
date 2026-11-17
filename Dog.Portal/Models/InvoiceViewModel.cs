@@ -23,6 +23,7 @@ namespace Dog.Portal.Models
 
         // Dropdowns
         public List<CustomerDropdown> Customers { get; set; } = new();
+        public List<AnimalListDto> Dogs { get; set; } = new();
         public List<SuspenseDropdown> PendingSuspense { get; set; } = new();
         public List<BankTxDropdown> UnclaimedBankTx { get; set; } = new();
         public List<CurrencyDropdown> Currencies { get; set; } = new();
@@ -36,6 +37,12 @@ namespace Dog.Portal.Models
         public string InvoiceNumber { get; set; } = string.Empty;
         public string? CustomerName { get; set; }
         public string? CustomerEmail { get; set; }
+        public string? BillToName { get; set; }
+        public string? ContactPerson { get; set; }
+        public string? CurrencyCode { get; set; }
+        public decimal PendingAmount { get; set; }
+        public bool IsFiscal { get; set; }
+        public DateTime? EmailedAt { get; set; }
         public DateTime InvoiceDate { get; set; }
         public DateTime DueDate { get; set; }
         public decimal TotalAmount { get; set; }
@@ -44,6 +51,41 @@ namespace Dog.Portal.Models
         public string Status { get; set; } = "DRAFT";
         public string? Notes { get; set; }
         public List<InvoiceLineItem> Items { get; set; } = new();
+    }
+
+    // Mirrors the API InvoiceDto returned by GET api/Invoice/{id} — used for PDF generation.
+    public class InvoiceDetailDto
+    {
+        public int Id { get; set; }
+        public string InvoiceNumber { get; set; } = string.Empty;
+        public int CompanyId { get; set; }
+        public string? CustomerId { get; set; }
+        public string? CustomerName { get; set; }
+        public string? CustomerEmail { get; set; }
+        public string? CustomerPhone { get; set; }
+        public DateTime InvoiceDate { get; set; }
+        public DateTime DueDate { get; set; }
+        public decimal SubTotal { get; set; }
+        public decimal TaxAmount { get; set; }
+        public decimal DiscountAmount { get; set; }
+        public decimal TotalAmount { get; set; }
+        public decimal PaidAmount { get; set; }
+        public decimal BalanceAmount { get; set; }
+        public string Status { get; set; } = "DRAFT";
+        public string? Notes { get; set; }
+        public string? Terms { get; set; }
+        public List<InvoiceDetailItemDto> Items { get; set; } = new();
+    }
+
+    public class InvoiceDetailItemDto
+    {
+        public int Id { get; set; }
+        public string Description { get; set; } = string.Empty;
+        public int Quantity { get; set; }
+        public decimal UnitPrice { get; set; }
+        public decimal TaxRate { get; set; }
+        public decimal DiscountRate { get; set; }
+        public decimal Amount { get; set; }
     }
 
     public class InvoiceLineItem
@@ -111,7 +153,7 @@ namespace Dog.Portal.Models
     }
 
     // ── Dropdown helpers ──────────────────────────────────────────────────────
-    public class CustomerDropdown { public int Id { get; set; } public string? FullName { get; set; } public string? Email { get; set; } }
+    public class CustomerDropdown { public int Id { get; set; } public string? FullName { get; set; } public string? Email { get; set; } public string? Cellphone { get; set; } public int? CustomerCompanyId { get; set; } public string? CustomerCompanyName { get; set; } }
     public class SuspenseDropdown { public int Id { get; set; } public string? CustomerName { get; set; } public decimal Amount { get; set; } public string? CurrencyCode { get; set; } }
     public class BankTxDropdown { public int Id { get; set; } public string? Name { get; set; } public string? Amount { get; set; } public string? BankName { get; set; } public string? CustomerName { get; set; } }
     public class InvoiceDropdown { public int Id { get; set; } public string? InvoiceNumber { get; set; } public decimal BalanceAmount { get; set; } public string? CustomerName { get; set; } }

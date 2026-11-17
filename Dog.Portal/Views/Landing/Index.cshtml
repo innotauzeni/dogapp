@@ -1,0 +1,825 @@
+@model Dog.Portal.Models.LandingViewModel
+@{
+    ViewData["Title"] = $"{Model.BrandName} - Professional Dog Breeding Management";
+    Layout = null;
+}
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>@ViewData["Title"]</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    <style>
+        :root {
+            --accent: @Model.Accent;
+            --accent2: @Model.Accent2;
+            --light: #f8fafc;
+            --dark: #1e293b;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            color: var(--dark);
+            background: #fff;
+        }
+
+        /* ── Navigation ────────────────────────────────────────────────────── */
+        nav {
+            background: #fff;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            padding: 1rem 0;
+        }
+        nav .navbar-brand {
+            font-weight: 700;
+            font-size: 1.5rem;
+            color: var(--accent) !important;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            text-decoration: none;
+        }
+        nav .navbar-brand:hover {
+            text-decoration: none;
+            color: var(--accent) !important;
+        }
+        nav .navbar-brand i { font-size: 1.8rem; }
+        nav .navbar-brand img { height: 50px; width: auto; object-fit: contain; }
+        nav .nav-link {
+            font-weight: 500;
+            color: var(--dark) !important;
+            transition: color 0.3s;
+            text-decoration: none !important;
+        }
+        nav .nav-link:hover {
+            color: var(--accent) !important;
+            text-decoration: none !important;
+        }
+        .nav-btn {
+            background: var(--accent) !important;
+            color: white !important;
+            border-radius: 6px;
+            padding: 0.5rem 1.5rem !important;
+            font-weight: 600;
+            margin-left: 1rem;
+            border: none !important;
+            transition: all 0.3s;
+            display: inline-flex !important;
+            align-items: center;
+            gap: 0.4rem;
+            text-decoration: none !important;
+        }
+        .nav-btn:hover {
+            color: white !important;
+            background: var(--accent2) !important;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(220, 38, 38, 0.3);
+            text-decoration: none !important;
+        }
+        .nav-btn:active, .nav-btn:visited {
+            color: white !important;
+            text-decoration: none !important;
+        }
+
+        /* ── Hero ────────────────────────────────────────────────────────────── */
+        .hero {
+            background: linear-gradient(135deg, #fafafa 0%, #f3f4f6 100%);
+            padding: 6rem 0;
+            text-align: center;
+            border-bottom: 1px solid #e5e7eb;
+        }
+        .hero-badge {
+            display: inline-block;
+            background: rgba(220, 38, 38, 0.1);
+            color: var(--accent);
+            padding: 0.5rem 1rem;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            margin-bottom: 1.5rem;
+            border: 1px solid rgba(220, 38, 38, 0.2);
+        }
+        .hero h1 {
+            font-size: 3.5rem;
+            font-weight: 800;
+            margin-bottom: 1rem;
+            line-height: 1.2;
+            max-width: 900px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+        .hero .subtitle {
+            font-size: 1.2rem;
+            color: #64748b;
+            margin-bottom: 2rem;
+            max-width: 700px;
+            margin-left: auto;
+            margin-right: auto;
+            line-height: 1.6;
+        }
+        .hero-cta {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+            flex-wrap: wrap;
+            margin-bottom: 3rem;
+        }
+        .btn-primary-cta {
+            background: var(--accent);
+            color: white;
+            border: none;
+            padding: 0.75rem 2.5rem;
+            font-size: 1.1rem;
+            font-weight: 600;
+            border-radius: 8px;
+            transition: all 0.3s;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-block;
+        }
+        .btn-primary-cta:hover {
+            background: #b91c1c;
+            transform: translateY(-3px);
+            box-shadow: 0 8px 24px rgba(220, 38, 38, 0.3);
+            color: white;
+            text-decoration: none;
+        }
+        .btn-secondary-cta {
+            background: white;
+            color: var(--accent);
+            border: 2px solid var(--accent);
+            padding: 0.75rem 2.5rem;
+            font-size: 1.1rem;
+            font-weight: 600;
+            border-radius: 8px;
+            transition: all 0.3s;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-block;
+        }
+        .btn-secondary-cta:hover {
+            background: var(--accent);
+            color: white;
+            transform: translateY(-3px);
+            text-decoration: none;
+        }
+
+        /* ── Trust Strip ────────────────────────────────────────────────────── */
+        .trust-strip {
+            background: #f8fafc;
+            padding: 2rem 0;
+            border-top: 1px solid #e5e7eb;
+            border-bottom: 1px solid #e5e7eb;
+        }
+        .trust-item {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            justify-content: center;
+            color: #475569;
+            font-weight: 500;
+        }
+        .trust-item i { color: var(--accent); font-size: 1.5rem; }
+
+        /* ── Features ────────────────────────────────────────────────────────── */
+        .features-section {
+            padding: 6rem 0;
+        }
+        .section-heading {
+            text-align: center;
+            margin-bottom: 4rem;
+        }
+        .section-heading h2 {
+            font-size: 2.5rem;
+            font-weight: 800;
+            margin-bottom: 1rem;
+        }
+        .section-heading .subtitle {
+            font-size: 1.1rem;
+            color: #64748b;
+            max-width: 600px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+        .feature-card {
+            padding: 2rem;
+            border-radius: 12px;
+            border: 1px solid #e5e7eb;
+            transition: all 0.3s;
+            text-align: center;
+            height: 100%;
+            background: #fff;
+        }
+        .feature-card:hover {
+            border-color: var(--accent);
+            box-shadow: 0 12px 24px rgba(220, 38, 38, 0.1);
+            transform: translateY(-4px);
+        }
+        .feature-card i {
+            font-size: 3rem;
+            color: var(--accent);
+            margin-bottom: 1rem;
+        }
+        .feature-card h5 {
+            font-weight: 700;
+            margin-bottom: 0.75rem;
+        }
+        .feature-card p {
+            color: #64748b;
+            font-size: 0.95rem;
+            line-height: 1.6;
+        }
+
+        /* ── Stats ────────────────────────────────────────────────────────────── */
+        .stats-section {
+            background: linear-gradient(135deg, var(--accent) 0%, #b91c1c 100%);
+            color: white;
+            padding: 4rem 0;
+            margin: 3rem 0;
+        }
+        .stat-box {
+            text-align: center;
+            padding: 2rem;
+        }
+        .stat-value {
+            font-size: 2.5rem;
+            font-weight: 800;
+            margin-bottom: 0.5rem;
+        }
+        .stat-label {
+            font-size: 0.95rem;
+            opacity: 0.9;
+        }
+
+        /* ── Steps ────────────────────────────────────────────────────────────── */
+        .steps-section {
+            padding: 6rem 0;
+            background: var(--light);
+        }
+        .step-card {
+            padding: 2rem;
+            text-align: center;
+            position: relative;
+        }
+        .step-number {
+            width: 60px;
+            height: 60px;
+            background: var(--accent);
+            color: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.8rem;
+            font-weight: 700;
+            margin-bottom: 1rem;
+            margin-left: auto;
+            margin-right: auto;
+        }
+        .step-card h5 { font-weight: 700; margin: 1rem 0; }
+        .step-card p { color: #64748b; line-height: 1.6; }
+
+        /* ── Industries ────────────────────────────────────────────────────────── */
+        .industries-section { padding: 6rem 0; }
+        .industry-tag {
+            display: inline-block;
+            background: #f1f5f9;
+            color: var(--dark);
+            padding: 0.75rem 1.5rem;
+            border-radius: 20px;
+            margin: 0.5rem;
+            font-weight: 500;
+            border: 1px solid #e2e8f0;
+            transition: all 0.3s;
+        }
+        .industry-tag:hover {
+            border-color: var(--accent);
+            background: rgba(220, 38, 38, 0.05);
+            color: var(--accent);
+        }
+
+        /* ── Testimonials ────────────────────────────────────────────────────── */
+        .testimonials-section { padding: 6rem 0; background: var(--light); }
+        .testimonial-card {
+            padding: 2rem;
+            background: white;
+            border-radius: 12px;
+            border: 1px solid #e5e7eb;
+            text-align: center;
+            transition: all 0.3s;
+        }
+        .testimonial-card:hover {
+            box-shadow: 0 12px 24px rgba(0,0,0,0.1);
+            transform: translateY(-4px);
+        }
+        .testimonial-quote {
+            font-size: 1rem;
+            color: #475569;
+            font-style: italic;
+            margin-bottom: 1.5rem;
+            line-height: 1.6;
+        }
+        .testimonial-author {
+            font-weight: 700;
+            color: var(--dark);
+            margin-bottom: 0.25rem;
+        }
+        .testimonial-role {
+            font-size: 0.9rem;
+            color: #64748b;
+        }
+
+        /* ── Quick Links ────────────────────────────────────────────────────── */
+        .quick-links { padding: 3rem 0; }
+        .quick-link-card {
+            padding: 2rem;
+            background: white;
+            border-radius: 12px;
+            border: 1px solid #e5e7eb;
+            text-align: center;
+            text-decoration: none;
+            color: var(--dark);
+            transition: all 0.3s;
+            display: block;
+        }
+        .quick-link-card:hover {
+            border-color: var(--accent);
+            color: var(--accent);
+            transform: translateY(-4px);
+            box-shadow: 0 12px 24px rgba(220, 38, 38, 0.1);
+        }
+        .quick-link-card i {
+            font-size: 2rem;
+            color: var(--accent);
+            margin-bottom: 1rem;
+            display: block;
+        }
+
+        /* ── CTA Section ────────────────────────────────────────────────────── */
+        .cta-section {
+            background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+            color: white;
+            padding: 6rem 0;
+            text-align: center;
+        }
+        .cta-section h2 { font-size: 2.5rem; margin-bottom: 1rem; font-weight: 800; }
+        .cta-section p { font-size: 1.1rem; margin-bottom: 2rem; opacity: 0.9; }
+        .contact-info {
+            display: flex;
+            gap: 3rem;
+            justify-content: center;
+            flex-wrap: wrap;
+            margin: 2rem 0;
+        }
+        .contact-item {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+        .contact-item i { font-size: 1.5rem; }
+        .contact-item div {
+            text-align: left;
+        }
+        .contact-item .label {
+            font-size: 0.9rem;
+            opacity: 0.7;
+        }
+        .contact-item .value {
+            font-weight: 600;
+            font-size: 1rem;
+        }
+
+        /* ── APK Download ────────────────────────────────────────────────────– */
+        .apk-section {
+            padding: 6rem 0;
+            background: var(--light);
+        }
+        .apk-card {
+            background: white;
+            border-radius: 12px;
+            padding: 3rem;
+            text-align: center;
+            border: 2px solid #e5e7eb;
+        }
+        .apk-card h3 { font-size: 2rem; font-weight: 800; margin-bottom: 0.5rem; }
+        .apk-card p { color: #64748b; margin-bottom: 2rem; font-size: 1.1rem; }
+        .apk-buttons {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+        .apk-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.75rem;
+            background: white;
+            color: var(--accent);
+            border: 2px solid var(--accent);
+            padding: 0.75rem 2rem;
+            border-radius: 8px;
+            font-weight: 600;
+            text-decoration: none;
+            transition: all 0.3s;
+            cursor: pointer;
+        }
+        .apk-btn:hover {
+            background: var(--accent);
+            color: white;
+            transform: translateY(-2px);
+        }
+        .apk-btn i { font-size: 1.2rem; }
+
+        /* ── Footer ────────────────────────────────────────────────────────── */
+        footer {
+            background: #1e293b;
+            color: #cbd5e1;
+            padding: 3rem 0 1rem;
+            border-top: 1px solid #334155;
+        }
+        footer h5 { color: white; font-weight: 700; margin-bottom: 1rem; }
+        footer a { color: #cbd5e1; text-decoration: none; transition: color 0.3s; }
+        footer a:hover { color: var(--accent); }
+        footer ul { list-style: none; }
+        footer li { margin-bottom: 0.75rem; }
+        .footer-bottom { border-top: 1px solid #334155; padding-top: 2rem; margin-top: 2rem; text-align: center; opacity: 0.8; }
+
+        /* ── Responsive ────────────────────────────────────────────────────── */
+        @@media (max-width: 768px) {
+            .hero h1 { font-size: 2rem; }
+            .section-heading h2 { font-size: 1.75rem; }
+            .feature-card { padding: 1.5rem; }
+            .contact-info { gap: 1rem; }
+            .stat-value { font-size: 1.75rem; }
+        }
+    </style>
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar navbar-expand-lg navbar-light sticky-top">
+        <div class="container-lg">
+            <a class="navbar-brand" href="/" title="@Model.BrandName">
+                @if (!string.IsNullOrEmpty(Model.LogoUrl))
+                {
+                    <img src="@Model.LogoUrl" alt="@Model.BrandName" />
+                }
+                else
+                {
+                    <i class="bi bi-paw-fill"></i>
+                    <span>@Model.BrandName</span>
+                }
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navMenu">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navMenu">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item"><a class="nav-link" href="#features">Features</a></li>
+                    <li class="nav-item"><a class="nav-link" href="#howitworks">How It Works</a></li>
+                    <li class="nav-item"><a class="nav-link" href="#downloads">Download</a></li>
+                    <li class="nav-item"><a class="nav-link" href="#contact">Contact</a></li>
+                    <li class="nav-item">
+                        <a href="/Auth/Login" class="nav-link nav-btn"><i class="bi bi-box-arrow-in-right"></i> Sign In</a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    @if (Model.HeroEnabled)
+    {
+    <section class="hero" style="@(Model.HeroImages != null && Model.HeroImages.Count > 0 ? "position: relative; overflow: hidden;" : "")">
+        @if (Model.HeroImages != null && Model.HeroImages.Count > 0)
+        {
+            <style>
+                .hero-carousel-container { position: absolute; inset: 0; }
+                .hero-carousel { position: absolute; inset: 0; background-size: cover; background-position: center; opacity: 0; transition: opacity 1s ease-in-out; }
+                .hero-carousel.active { opacity: 1; }
+                .hero-overlay { position: absolute; inset: 0; background: rgba(0,0,0,@(double.TryParse(Model.HeroOverlayOpacity, out var opacity) ? opacity : 0.4)); z-index: 1; }
+                .hero-content { position: relative; z-index: 10; }
+            </style>
+            <div class="hero-carousel-container">
+                @foreach (var img in Model.HeroImages)
+                {
+                    <div class="hero-carousel" style="background-image: url('@img.Url');"></div>
+                }
+                <div class="hero-overlay"></div>
+            </div>
+            <script>
+                (function() {
+                    const images = document.querySelectorAll('.hero-carousel');
+                    if (images.length === 0) return;
+
+                    let currentIndex = 0;
+
+                    function showImage(index) {
+                        images.forEach((img, i) => {
+                            img.classList.toggle('active', i === index);
+                        });
+                    }
+
+                    function nextImage() {
+                        currentIndex = (currentIndex + 1) % images.length;
+                        showImage(currentIndex);
+                    }
+
+                    showImage(0);
+                    setInterval(nextImage, 6000);
+                })();
+            </script>
+        }
+        <div class="container-lg hero-content" style="@(Model.HeroImages != null && Model.HeroImages.Count > 0 ? "position: relative; z-index: 20;" : "")">
+            <div class="hero-badge">
+                <i class="bi bi-star-fill"></i> @Model.HeroBadge
+            </div>
+            <h1 style="color: @Model.HeroTitleColor;">@Model.HeroTitle</h1>
+            <p class="subtitle" style="color: @Model.HeroSubtitleColor;">@Model.HeroSubtitle</p>
+            <div class="hero-cta">
+                <a href="/Auth/Login" class="btn-primary-cta">
+                    <i class="bi bi-rocket-fill"></i> @Model.PrimaryCtaText
+                </a>
+                <a href="#features" class="btn-secondary-cta">
+                    <i class="bi bi-play-circle"></i> @Model.HeroSecondaryText
+                </a>
+            </div>
+        </div>
+    </section>
+    }
+    else
+    {
+    <section class="hero">
+        <div class="container-lg">
+            <div class="hero-badge">
+                <i class="bi bi-star-fill"></i> @Model.HeroBadge
+            </div>
+            <h1>@Model.HeroTitle</h1>
+            <p class="subtitle">@Model.HeroSubtitle</p>
+            <div class="hero-cta">
+                <a href="/Auth/Login" class="btn-primary-cta">
+                    <i class="bi bi-rocket-fill"></i> @Model.PrimaryCtaText
+                </a>
+                <a href="#features" class="btn-secondary-cta">
+                    <i class="bi bi-play-circle"></i> @Model.HeroSecondaryText
+                </a>
+            </div>
+        </div>
+    </section>
+    }
+
+    <!-- Trust Strip -->
+    <section class="trust-strip">
+        <div class="container-lg">
+            <div class="row">
+                @foreach (var item in Model.TrustStrip)
+                {
+                    <div class="col-md-6 col-lg-3 mb-3 mb-lg-0">
+                        <div class="trust-item">
+                            <i class="bi @item.Icon"></i>
+                            <span>@item.Text</span>
+                        </div>
+                    </div>
+                }
+            </div>
+        </div>
+    </section>
+
+    <!-- Stats -->
+    <section class="stats-section">
+        <div class="container-lg">
+            <div class="row">
+                @foreach (var stat in Model.Stats)
+                {
+                    <div class="col-sm-6 col-lg-3">
+                        <div class="stat-box">
+                            <div class="stat-value">@stat.Value</div>
+                            <div class="stat-label">@stat.Label</div>
+                        </div>
+                    </div>
+                }
+            </div>
+        </div>
+    </section>
+
+    <!-- Features -->
+    <section id="features" class="features-section">
+        <div class="container-lg">
+            <div class="section-heading">
+                <h2>@Model.FeaturesHeading</h2>
+                <p class="subtitle">@Model.FeaturesSub</p>
+            </div>
+            <div class="row g-4">
+                @foreach (var feature in Model.Features)
+                {
+                    <div class="col-md-6 col-lg-4">
+                        <div class="feature-card">
+                            <i class="bi @feature.Icon"></i>
+                            <h5>@feature.Title</h5>
+                            <p>@feature.Description</p>
+                        </div>
+                    </div>
+                }
+            </div>
+        </div>
+    </section>
+
+    <!-- How It Works -->
+    <section id="howitworks" class="steps-section">
+        <div class="container-lg">
+            <div class="section-heading">
+                <span style="color: var(--accent); font-weight: 600; font-size: 0.95rem;">@Model.StepsEyebrow</span>
+                <h2>@Model.StepsHeading</h2>
+            </div>
+            <div class="row g-4">
+                @foreach (var step in Model.Steps)
+                {
+                    <div class="col-md-6 col-lg-3">
+                        <div class="step-card">
+                            <div class="step-number">@step.Number</div>
+                            <h5>@step.Title</h5>
+                            <p>@step.Description</p>
+                        </div>
+                    </div>
+                }
+            </div>
+        </div>
+    </section>
+
+    <!-- Industries -->
+    <section id="industries" class="industries-section">
+        <div class="container-lg">
+            <div class="section-heading">
+                <h2>@Model.IndustriesHeading</h2>
+                <p class="subtitle">@Model.IndustriesSub</p>
+            </div>
+            <div style="text-align: center;">
+                @foreach (var industry in Model.Industries)
+                {
+                    <span class="industry-tag">@industry</span>
+                }
+            </div>
+        </div>
+    </section>
+
+    <!-- Testimonials -->
+    <section class="testimonials-section">
+        <div class="container-lg">
+            <div class="section-heading">
+                <h2>@Model.TestimonialsHeading</h2>
+            </div>
+            <div class="row g-4">
+                @foreach (var testimonial in Model.Testimonials)
+                {
+                    <div class="col-md-4">
+                        <div class="testimonial-card">
+                            <div class="testimonial-quote">
+                                <i class="bi bi-quote"></i> @testimonial.Quote
+                            </div>
+                            <div class="testimonial-author">@testimonial.Name</div>
+                            <div class="testimonial-role">@testimonial.Company</div>
+                        </div>
+                    </div>
+                }
+            </div>
+        </div>
+    </section>
+
+    <!-- Quick Links -->
+    <section class="quick-links">
+        <div class="container-lg">
+            <div class="section-heading">
+                <h2>Quick Access</h2>
+            </div>
+            <div class="row g-4">
+                @foreach (var link in Model.QuickLinks)
+                {
+                    <div class="col-sm-6 col-lg-3">
+                        <a href="@link.Url" class="quick-link-card">
+                            <i class="bi @link.Icon"></i>
+                            <strong>@link.Label</strong>
+                        </a>
+                    </div>
+                }
+            </div>
+        </div>
+    </section>
+
+    <!-- APK Download -->
+    <section id="downloads" class="apk-section">
+        <div class="container-lg">
+            <div class="apk-card">
+                <h3>@Model.ApkHeading</h3>
+                <p>@Model.ApkSubheading</p>
+
+                <!-- Store Links -->
+                <div class="apk-buttons">
+                    @if (!string.IsNullOrEmpty(Model.IosUrl))
+                    {
+                        <a href="@Model.IosUrl" class="apk-btn" target="_blank">
+                            <i class="bi bi-apple"></i> iOS App
+                        </a>
+                    }
+                    @if (!string.IsNullOrEmpty(Model.AndroidUrl))
+                    {
+                        <a href="@Model.AndroidUrl" class="apk-btn" target="_blank">
+                            <i class="bi bi-google-play"></i> Play Store
+                        </a>
+                    }
+                </div>
+
+                <!-- Uploaded Files -->
+                @if (Model.ApkFiles != null && Model.ApkFiles.Count > 0)
+                {
+                    <div style="margin-top: 3rem; padding-top: 2rem; border-top: 1px solid rgba(0,0,0,.1)">
+                        <h5 style="font-size: 1rem; font-weight: 600; margin-bottom: 1.5rem; color: var(--dark);">Direct Downloads</h5>
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem;">
+                            @foreach (var apk in Model.ApkFiles)
+                            {
+                                <a href="@apk.Url" download class="apk-file-btn" style="text-decoration: none; display: flex; align-items: center; justify-content: center; padding: 1.5rem; background: linear-gradient(135deg, var(--accent), var(--accent2)); color: white; border-radius: 12px; font-weight: 600; transition: all .3s; box-shadow: 0 4px 12px rgba(0,0,0,.1);">
+                                    <span style="display: flex; align-items: center; gap: .5rem;">
+                                        <i class="bi bi-download" style="font-size: 1.2rem;"></i>
+                                        <span>@(apk.Name?.Split('\\', '/').Last() ?? "Download")</span>
+                                    </span>
+                                </a>
+                            }
+                        </div>
+                    </div>
+                }
+            </div>
+        </div>
+    </section>
+
+    <!-- CTA & Contact -->
+    <section id="contact" class="cta-section">
+        <div class="container-lg">
+            <h2>@Model.CtaHeading</h2>
+            <p>@Model.CtaSub</p>
+            <div class="contact-info">
+                <div class="contact-item">
+                    <i class="bi bi-telephone"></i>
+                    <div>
+                        <div class="label">Phone</div>
+                        <div class="value">@Model.Phone</div>
+                    </div>
+                </div>
+                <div class="contact-item">
+                    <i class="bi bi-envelope"></i>
+                    <div>
+                        <div class="label">Email</div>
+                        <div class="value">@Model.Email</div>
+                    </div>
+                </div>
+                <div class="contact-item">
+                    <i class="bi bi-geo-alt"></i>
+                    <div>
+                        <div class="label">Location</div>
+                        <div class="value">@Model.Address</div>
+                    </div>
+                </div>
+            </div>
+            <a href="/Auth/Login" class="btn-primary-cta" style="margin-top: 2rem;">
+                <i class="bi bi-rocket-fill"></i> Start Free Today
+            </a>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer>
+        <div class="container-lg">
+            <div class="row">
+                <div class="col-md-4">
+                    <h5>@Model.BrandName</h5>
+                    <p>Professional dog breeding management for modern breeders.</p>
+                </div>
+                <div class="col-md-4">
+                    <h5>@Model.FooterLinksHeading</h5>
+                    <ul>
+                        <li><a href="/">Home</a></li>
+                        <li><a href="#features">Features</a></li>
+                        <li><a href="/Auth/Login">Sign In</a></li>
+                    </ul>
+                </div>
+                <div class="col-md-4">
+                    <h5>@Model.FooterContactHeading</h5>
+                    <ul>
+                        <li><a href="mailto:@Model.Email">Email: @Model.Email</a></li>
+                        <li><a href="tel:@Model.Phone">Phone: @Model.Phone</a></li>
+                        <li>@Model.Address</li>
+                    </ul>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <p>&copy; 2026 @Model.BrandName. @Model.FooterTagline</p>
+            </div>
+        </div>
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

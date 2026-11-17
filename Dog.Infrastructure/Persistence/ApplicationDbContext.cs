@@ -59,9 +59,12 @@ namespace Dog.Infrastructure.Persistence
         public DbSet<SystemErrorLog> ka_sytemerrorlogs { get; set; }
         public DbSet<Webhook> ka_webhooks { get; set; }
         public DbSet<WebhookLog> ka_webhooklogs { get; set; }
+        public DbSet<KaAppSetting> ka_appsettings { get; set; }
 
 
         public DbSet<Dogtbl> ka_dogs { get; set; }
+        public DbSet<DogAssignment> ka_dogassignments { get; set; }
+        public DbSet<DogCareRecord> ka_dogcarerecords { get; set; }
         public DbSet<ShowDogInfo> ka_showdoginfos { get; set; }
         public DbSet<MatingRecord> ka_matingrecords { get; set; }
         public DbSet<Litter> ka_litters { get; set; }
@@ -70,6 +73,40 @@ namespace Dog.Infrastructure.Persistence
         public DbSet<Deployment> ka_deployments { get; set; }
         public DbSet<BreedGroup> ka_breedgroups { get; set; }
         public DbSet<Breed> ka_breeds { get; set; }
+        public DbSet<Accident> ka_accidents { get; set; }
+        public DbSet<CustomerSite> ka_customersites { get; set; }
+        public DbSet<CustomerContract> ka_customercontracts { get; set; }
+        public DbSet<Expense> ka_expenses { get; set; }
+        public DbSet<DogCertification> ka_dogcertifications { get; set; }
+        public DbSet<DocumentAttachment> ka_documentattachments { get; set; }
+        public DbSet<NotificationLog> ka_notificationlogs { get; set; }
+
+        // ── Dog Training ──────────────────────────────────────────────────────
+        public DbSet<DogTrainingProgramme> ka_dogtrainingprogrammes { get; set; }
+        public DbSet<DogTrainingProgrammeWeek> ka_dogtrainingprogrammeweeks { get; set; }
+        public DbSet<DogTrainingProgrammeActivity> ka_dogtrainingprogrammeactivities { get; set; }
+        public DbSet<DogHealthAssessment> ka_doghealthassessments { get; set; }
+        public DbSet<DogHealthAssessmentItem> ka_doghealthassessmentitems { get; set; }
+        public DbSet<DogTrainingEnrollment> ka_dogtrainingenrollments { get; set; }
+        public DbSet<DogTrainingHandlerProfile> ka_dogtraininghandlerprofiles { get; set; }
+        public DbSet<DogHandlerAssignment> ka_doghandlerassignments { get; set; }
+        public DbSet<DogTrainingWeeklyPlan> ka_dogtrainingweeklyplans { get; set; }
+        public DbSet<DogTrainingDailyLog> ka_dogtrainingdailylogs { get; set; }
+        public DbSet<DogTrainingProgressReport> ka_dogtrainingprogressreports { get; set; }
+        public DbSet<DogTrainingFinalAssessment> ka_dogtrainingfinalassessments { get; set; }
+        public DbSet<DogTrainingCertificate> ka_dogtrainingcertificates { get; set; }
+        public DbSet<DogTrainingCustomer> ka_dogtrainingcustomers { get; set; }
+        public DbSet<DogTrainingDog> ka_dogtrainingdogs { get; set; }
+        public DbSet<DogTrainingInvoice> ka_dogtraininginvoices { get; set; }
+        public DbSet<DogTrainingInvoiceItem> ka_dogtraininginvoiceitems { get; set; }
+        public DbSet<DogTrainingPayment> ka_dogtrainingpayments { get; set; }
+
+        // ── Billing upgrade: client companies, payment ledger, email, invoice catalogue ──
+        public DbSet<CustomerCompany> ka_customercompanies { get; set; }
+        public DbSet<InvoicePayment> ka_invoicepayments { get; set; }
+        public DbSet<EmailSetting> ka_emailsettings { get; set; }
+        public DbSet<EmailLog> ka_emaillogs { get; set; }
+        public DbSet<InvoiceCatalogItem> ka_invoicecatalog { get; set; }
 
         protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
         {
@@ -128,6 +165,12 @@ namespace Dog.Infrastructure.Persistence
                     .WithMany(d => d.DamOffspring)
                     .HasForeignKey(d => d.DamId)
                     .OnDelete(DeleteBehavior.Restrict);
+
+                // Owner (customer); detaching the customer clears the link.
+                b.HasOne(d => d.Customer)
+                    .WithMany()
+                    .HasForeignKey(d => d.CustomerId)
+                    .OnDelete(DeleteBehavior.SetNull);
             });
 
             // Configure MatingRecord relationships
@@ -144,6 +187,106 @@ namespace Dog.Infrastructure.Persistence
                     .OnDelete(DeleteBehavior.Restrict);
             });
 
+            builder.Entity<DogAssignment>(b =>
+            {
+                b.HasOne(a => a.Dog).WithMany(d => d.Assignments).HasForeignKey(a => a.DogId).OnDelete(DeleteBehavior.Restrict);
+                b.HasOne(a => a.HandlerUser).WithMany().HasForeignKey(a => a.HandlerUserId).OnDelete(DeleteBehavior.Restrict);
+                b.HasOne(a => a.Branch).WithMany().HasForeignKey(a => a.BranchId).OnDelete(DeleteBehavior.Restrict);
+            });
+
+            builder.Entity<DogCareRecord>(b =>
+            {
+                b.HasOne(r => r.Dog).WithMany(d => d.CareRecords).HasForeignKey(r => r.DogId).OnDelete(DeleteBehavior.Restrict);
+                b.HasOne(r => r.RecordedByUser).WithMany().HasForeignKey(r => r.RecordedByUserId).OnDelete(DeleteBehavior.Restrict);
+            });
+
+            // A vaccination is linked to a registered dog OR an unregistered puppy (both optional).
+            builder.Entity<VaccinationRecord>(b =>
+            {
+                // Must pair with Dogtbl.VaccinationRecords explicitly — an anonymous
+                // .WithMany() left that collection unpaired, so EF Core additionally
+                // invented a second, navigation-less relationship (and a phantom
+                // "DogtblId" shadow column that was never actually migrated) to
+                // represent it.
+                b.HasOne(v => v.Dog).WithMany(d => d.VaccinationRecords).HasForeignKey(v => v.DogId).OnDelete(DeleteBehavior.Restrict);
+                b.HasOne(v => v.Puppy).WithMany().HasForeignKey(v => v.PuppyId).OnDelete(DeleteBehavior.Restrict);
+            });
+
+            // Configure Accident relationships
+            builder.Entity<Accident>(b =>
+            {
+                b.HasOne(a => a.Dog)
+                    .WithMany()
+                    .HasForeignKey(a => a.DogId)
+                    .OnDelete(DeleteBehavior.Restrict);
+            });
+
+            // Customer sites (premises) — must pair with Customer.Sites explicitly;
+            // leaving it anonymous is what caused the VaccinationRecord/Dogtbl
+            // phantom-shadow-column bug elsewhere in this model.
+            builder.Entity<CustomerSite>(b =>
+            {
+                b.HasOne(s => s.Customer)
+                    .WithMany(c => c.Sites)
+                    .HasForeignKey(s => s.CustomerId)
+                    .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            // Customer contracts — same pairing rule as Sites above.
+            builder.Entity<CustomerContract>(b =>
+            {
+                b.HasOne(c => c.Customer)
+                    .WithMany(c => c.Contracts)
+                    .HasForeignKey(c => c.CustomerId)
+                    .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            // Expenses — optional dog link. Dogtbl has no inverse "Expenses" collection,
+            // so anonymous .WithMany() is safe (same reasoning as Deployment->Customer below).
+            builder.Entity<Expense>(b =>
+            {
+                b.HasOne(e => e.Dog)
+                    .WithMany()
+                    .HasForeignKey(e => e.DogId)
+                    .OnDelete(DeleteBehavior.SetNull);
+            });
+
+            // Dog certifications — Dogtbl has no inverse collection here either.
+            builder.Entity<DogCertification>(b =>
+            {
+                b.HasOne(c => c.Dog)
+                    .WithMany()
+                    .HasForeignKey(c => c.DogId)
+                    .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            // Document attachments and notification logs reference their owner loosely
+            // (EntityType/EntityId, not a typed FK) so they need no relationship config.
+
+            // Deployment — who/where a dog currently is. Customer/CustomerSite have
+            // no inverse collection back to Deployment, so anonymous .WithMany() is
+            // safe here (nothing left unpaired for EF to invent a second relationship for).
+            builder.Entity<Deployment>(b =>
+            {
+                b.HasOne(d => d.Dog)
+                    .WithMany(d => d.Deployments)
+                    .HasForeignKey(d => d.DogId)
+                    .OnDelete(DeleteBehavior.Cascade);
+
+                b.HasOne(d => d.Customer)
+                    .WithMany()
+                    .HasForeignKey(d => d.CustomerId)
+                    .OnDelete(DeleteBehavior.SetNull);
+
+                b.HasOne(d => d.CustomerSite)
+                    .WithMany()
+                    .HasForeignKey(d => d.CustomerSiteId)
+                    .OnDelete(DeleteBehavior.SetNull);
+            });
+
+            ConfigureDogTraining(builder);
+            ConfigureBilling(builder);
+
             // Global soft-delete query filters
             foreach (var entityType in builder.Model.GetEntityTypes())
             {
@@ -158,6 +301,121 @@ namespace Dog.Infrastructure.Persistence
             }
         }
 
+        /// <summary>Relationships for the Dog Training module. Parent→child (programme, enrolment) cascade;
+        /// everything pointing at shared records (dogs, customers, invoices, users) is Restrict/SetNull so
+        /// training data can never delete or be tangled into the existing modules.</summary>
+        private static void ConfigureDogTraining(ModelBuilder builder)
+        {
+            builder.Entity<DogTrainingProgrammeWeek>(b =>
+            {
+                b.HasOne(w => w.Programme).WithMany(p => p.Weeks).HasForeignKey(w => w.ProgrammeId).OnDelete(DeleteBehavior.Cascade);
+                b.HasIndex(w => new { w.ProgrammeId, w.WeekNumber });
+            });
+            builder.Entity<DogTrainingProgrammeActivity>(b =>
+            {
+                b.HasOne(a => a.Programme).WithMany(p => p.Activities).HasForeignKey(a => a.ProgrammeId).OnDelete(DeleteBehavior.Cascade);
+                b.Property(a => a.TimeOfDay).HasMaxLength(10);
+            });
+
+
+            // Training customers / dogs / invoices / payments — a separate set from the company's own dogs & invoices.
+            builder.Entity<DogTrainingDog>(b =>
+                b.HasOne(d => d.Customer).WithMany(c => c.Dogs).HasForeignKey(d => d.CustomerId).OnDelete(DeleteBehavior.Restrict));
+            builder.Entity<DogTrainingInvoice>(b =>
+            {
+                b.Property(i => i.InvoiceNumber).HasMaxLength(40);
+                b.Property(i => i.Status).HasMaxLength(20);
+                b.HasIndex(i => i.InvoiceNumber).IsUnique();
+                b.HasOne(i => i.Customer).WithMany().HasForeignKey(i => i.CustomerId).OnDelete(DeleteBehavior.Restrict);
+            });
+            builder.Entity<DogTrainingInvoiceItem>(b =>
+                b.HasOne(i => i.Invoice).WithMany(v => v.Items).HasForeignKey(i => i.InvoiceId).OnDelete(DeleteBehavior.Cascade));
+            builder.Entity<DogTrainingPayment>(b =>
+            {
+                b.Property(p => p.PaymentNumber).HasMaxLength(40);
+                b.HasIndex(p => p.PaymentNumber).IsUnique();
+                b.HasOne(p => p.Invoice).WithMany(v => v.Payments).HasForeignKey(p => p.InvoiceId).OnDelete(DeleteBehavior.Restrict);
+            });
+
+            builder.Entity<DogTrainingEnrollment>(b =>
+            {
+                b.Property(e => e.EnrollmentNumber).HasMaxLength(40);
+                b.Property(e => e.Status).HasMaxLength(40);
+                b.HasIndex(e => e.EnrollmentNumber).IsUnique();
+                b.HasIndex(e => e.Status);
+                b.HasOne(e => e.Dog).WithMany().HasForeignKey(e => e.DogId).OnDelete(DeleteBehavior.Restrict);
+                b.HasOne(e => e.Customer).WithMany().HasForeignKey(e => e.CustomerId).OnDelete(DeleteBehavior.Restrict);
+                b.HasOne(e => e.Programme).WithMany().HasForeignKey(e => e.ProgrammeId).OnDelete(DeleteBehavior.Restrict);
+                b.HasOne(e => e.Invoice).WithMany().HasForeignKey(e => e.InvoiceId).OnDelete(DeleteBehavior.SetNull);
+                b.HasOne(e => e.Handler).WithMany().HasForeignKey(e => e.HandlerUserId).OnDelete(DeleteBehavior.Restrict);
+            });
+
+            builder.Entity<DogHealthAssessment>(b =>
+            {
+                b.Property(a => a.Result).HasMaxLength(40);
+                b.HasOne(a => a.Enrollment).WithMany(e => e.HealthAssessments).HasForeignKey(a => a.EnrollmentId).OnDelete(DeleteBehavior.Cascade);
+                b.HasOne(a => a.Dog).WithMany().HasForeignKey(a => a.DogId).OnDelete(DeleteBehavior.Restrict);
+            });
+            builder.Entity<DogHealthAssessmentItem>(b =>
+                b.HasOne(i => i.Assessment).WithMany(a => a.Items).HasForeignKey(i => i.AssessmentId).OnDelete(DeleteBehavior.Cascade));
+
+            builder.Entity<DogTrainingHandlerProfile>(b =>
+            {
+                b.HasIndex(h => h.UserId).IsUnique();
+                b.HasOne(h => h.User).WithMany().HasForeignKey(h => h.UserId).OnDelete(DeleteBehavior.Restrict);
+            });
+            builder.Entity<DogHandlerAssignment>(b =>
+            {
+                b.HasOne(a => a.Enrollment).WithMany(e => e.HandlerAssignments).HasForeignKey(a => a.EnrollmentId).OnDelete(DeleteBehavior.Cascade);
+                b.HasOne(a => a.HandlerUser).WithMany().HasForeignKey(a => a.HandlerUserId).OnDelete(DeleteBehavior.Restrict);
+            });
+
+            builder.Entity<DogTrainingWeeklyPlan>(b =>
+            {
+                b.HasOne(p => p.Enrollment).WithMany(e => e.WeeklyPlans).HasForeignKey(p => p.EnrollmentId).OnDelete(DeleteBehavior.Cascade);
+                b.HasIndex(p => new { p.EnrollmentId, p.WeekNumber });
+            });
+            builder.Entity<DogTrainingDailyLog>(b =>
+            {
+                b.HasOne(l => l.Enrollment).WithMany(e => e.DailyLogs).HasForeignKey(l => l.EnrollmentId).OnDelete(DeleteBehavior.Cascade);
+                b.HasOne(l => l.Handler).WithMany().HasForeignKey(l => l.HandlerUserId).OnDelete(DeleteBehavior.Restrict);
+                b.HasIndex(l => new { l.EnrollmentId, l.TrainingDate });
+            });
+            builder.Entity<DogTrainingProgressReport>(b =>
+            {
+                b.HasOne(r => r.Enrollment).WithMany(e => e.ProgressReports).HasForeignKey(r => r.EnrollmentId).OnDelete(DeleteBehavior.Cascade);
+                b.HasOne(r => r.Handler).WithMany().HasForeignKey(r => r.HandlerUserId).OnDelete(DeleteBehavior.Restrict);
+                b.HasIndex(r => new { r.EnrollmentId, r.WeekNumber });
+            });
+
+            builder.Entity<DogTrainingFinalAssessment>(b =>
+                b.HasOne(f => f.Enrollment).WithMany(e => e.FinalAssessments).HasForeignKey(f => f.EnrollmentId).OnDelete(DeleteBehavior.Cascade));
+
+            builder.Entity<DogTrainingCertificate>(b =>
+            {
+                b.Property(c => c.CertificateNumber).HasMaxLength(40);
+                b.Property(c => c.VerificationToken).HasMaxLength(64);
+                b.HasIndex(c => c.CertificateNumber).IsUnique();
+                b.HasIndex(c => c.VerificationToken).IsUnique();
+                b.HasOne(c => c.Enrollment).WithMany().HasForeignKey(c => c.EnrollmentId).OnDelete(DeleteBehavior.Restrict);
+                b.HasOne(c => c.FinalAssessment).WithOne(f => f.Certificate).HasForeignKey<DogTrainingCertificate>(c => c.FinalAssessmentId).OnDelete(DeleteBehavior.Restrict);
+            });
+        }
+
+        private static void ConfigureBilling(ModelBuilder builder)
+        {
+            builder.Entity<Customer>(b =>
+                b.HasOne(c => c.CustomerCompany).WithMany(cc => cc.Contacts).HasForeignKey(c => c.CustomerCompanyId).OnDelete(DeleteBehavior.SetNull));
+            builder.Entity<InvoicePayment>(b =>
+            {
+                b.Property(p => p.PaymentNumber).HasMaxLength(40);
+                b.Property(p => p.Method).HasMaxLength(20);
+                b.Property(p => p.Status).HasMaxLength(20);
+                b.HasIndex(p => p.PaymentNumber).IsUnique();
+                b.HasOne(p => p.Invoice).WithMany(i => i.Ledger).HasForeignKey(p => p.InvoiceId).OnDelete(DeleteBehavior.Restrict);
+            });
+        }
+
         private static void SetSoftDeleteFilter<TEntity>(ModelBuilder builder) where TEntity : AuditableBaseEntity
         {
             builder.Entity<TEntity>().HasQueryFilter(e => !e.IsDeleted);
@@ -165,19 +423,19 @@ namespace Dog.Infrastructure.Persistence
 
         public override async Task<int> SaveChangesAsync(bool acceptAllChangesOnSuccess, CancellationToken cancellationToken = default)
         {
-            var auditEntries = BeforeSaveChanges();
+            var auditEntries = await BeforeSaveChangesAsync(cancellationToken);
             var result = await base.SaveChangesAsync(acceptAllChangesOnSuccess, cancellationToken);
             await OnAfterSaveChangesAsync(auditEntries);
             return result;
         }
 
-        private List<AuditEntry> BeforeSaveChanges()
+        private async Task<List<AuditEntry>> BeforeSaveChangesAsync(CancellationToken cancellationToken)
         {
             ChangeTracker.DetectChanges();
             var entries = new List<AuditEntry>();
             var currentUserId = GetCurrentUserId();
 
-            foreach (var entry in ChangeTracker.Entries())
+            foreach (var entry in ChangeTracker.Entries().ToList())
             {
                 if (entry.State == EntityState.Detached || entry.State == EntityState.Unchanged)
                     continue;
@@ -248,6 +506,32 @@ namespace Dog.Infrastructure.Persistence
                         catch { }
                     }
 
+                    var changes = entry.Properties
+                                            .Where(p => !p.IsTemporary)
+                                            .ToDictionary(p => p.Metadata.Name, p => p.CurrentValue as object ?? DBNull.Value);
+
+                    // UPDATE (and soft-DELETE): keep the record as it was BEFORE this save. It is read
+                    // straight from the database because entities loaded without tracking have no
+                    // usable "original values". Stored under a reserved key so no schema change is needed.
+                    if (entry.State == EntityState.Modified)
+                    {
+                        try
+                        {
+                            var dbValues = await entry.GetDatabaseValuesAsync(cancellationToken);
+                            if (dbValues != null)
+                            {
+                                var previous = new Dictionary<string, object>();
+                                foreach (var p in entry.Properties.Where(p => !p.IsTemporary))
+                                    previous[p.Metadata.Name] = dbValues[p.Metadata.Name] ?? DBNull.Value;
+                                changes[PreviousKey] = previous;
+                            }
+                        }
+                        catch { /* never block a save because the previous record could not be read */ }
+                    }
+
+                    // Who did it and from where (full user details are resolved from the user id when read).
+                    changes[ActorKey] = BuildActorInfo(currentUserId);
+
                     entries.Add(new AuditEntry
                     {
                         ActionType = actionType,
@@ -255,9 +539,7 @@ namespace Dog.Infrastructure.Persistence
                         EntityName = entry.Metadata.ClrType.Name,
                         Username = currentUserId,
                         TimeStamp = DateTime.UtcNow,
-                        Changes = entry.Properties
-                                            .Where(p => !p.IsTemporary)
-                                            .ToDictionary(p => p.Metadata.Name, p => p.CurrentValue as object ?? DBNull.Value),
+                        Changes = changes,
                         TempProperties = entry.Properties.Where(p => p.IsTemporary).ToList(),
                     });
                 }
@@ -291,6 +573,35 @@ namespace Dog.Infrastructure.Persistence
 
             // Call base directly to avoid re-entering our override (prevents infinite recursion)
             await base.SaveChangesAsync(acceptAllChangesOnSuccess: true, CancellationToken.None);
+        }
+
+        /// <summary>Reserved keys inside <see cref="AuditEntry.Changes"/> (the column is JSON, so no migration).</summary>
+        public const string PreviousKey = "__previous";
+        public const string ActorKey = "__actor";
+
+        private Dictionary<string, object> BuildActorInfo(string userId)
+        {
+            var info = new Dictionary<string, object> { ["userId"] = userId };
+            var http = _context.HttpContext;
+            if (http == null) return info;
+
+            var user = http.User;
+            void Put(string key, string? value) { if (!string.IsNullOrWhiteSpace(value)) info[key] = value!; }
+
+            Put("userName", user?.Identity?.Name ?? user?.FindFirstValue(ClaimTypes.Name));
+            Put("email", user?.FindFirstValue(ClaimTypes.Email) ?? user?.FindFirstValue("email"));
+            var roles = user?.FindAll(ClaimTypes.Role).Select(c => c.Value).Distinct().ToList();
+            if (roles is { Count: > 0 }) info["role"] = string.Join(", ", roles);
+
+            // Behind a proxy/Cloudflare the real client address is in a forwarded header.
+            var ip = http.Request.Headers["CF-Connecting-IP"].FirstOrDefault()
+                     ?? http.Request.Headers["X-Forwarded-For"].FirstOrDefault()?.Split(',')[0].Trim()
+                     ?? http.Connection.RemoteIpAddress?.ToString();
+            Put("ip", ip);
+            Put("userAgent", http.Request.Headers.UserAgent.ToString());
+            Put("method", http.Request.Method);
+            Put("path", http.Request.Path.Value);
+            return info;
         }
 
         private string GetCurrentUserId()

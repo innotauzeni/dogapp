@@ -11,6 +11,10 @@ public class Puppy : AuditableEntity
     public DateTime DateOfBirth { get; set; }
     public DateTime? DateOfDeath { get; set; }
 
+    // Set when the puppy has been promoted to a full registered dog (at 6 weeks).
+    // Null = still tracked under the mother's litter.
+    public int? RegisteredDogId { get; set; }
+
     // Navigation
     public virtual Litter Litter { get; set; } = null!;
 }

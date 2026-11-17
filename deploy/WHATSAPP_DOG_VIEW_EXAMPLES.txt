@@ -1,0 +1,224 @@
+================================================================================
+🐾 WhatsApp Bot - View Dog Details Command Examples
+================================================================================
+
+COMMAND SYNTAX:
+  view [dogId]
+  detail [dogId]
+
+EXAMPLE INPUTS:
+  view 1
+  detail 2
+  view 3
+
+================================================================================
+EXAMPLE 1: View Active Dog
+================================================================================
+
+INPUT:
+  view 1
+
+OUTPUT:
+  🐕 Dog Details - ID: 1
+
+  Name: Buddy
+  Breed: Labrador Retriever
+  Gender: Male
+  DOB: 2020-03-15 (4 years old)
+  Microchip: 981000123456789900
+  Color: Golden
+
+  📊 Status:
+  • Status: Active ✅
+  • Owner: John Smith
+  • Handler: Sarah Johnson
+  • Location: Main Branch
+
+  💉 Vaccinations:
+  • Rabies (2024-12-10) ⚠️ Due in 3 days
+  • DHPP (2024-12-10)
+  • Bordetella (2024-12-10)
+
+  👨‍👩‍👧‍👦 Family:
+  • Sire: Champion Max (ID: 5)
+  • Dam: Lady Luna (ID: 8)
+  • Offspring: 3 puppies
+
+  ❤️ Recent Activity:
+  • Feeding (today, 8:00 AM)
+  • Play session (yesterday)
+  • Vaccination (Dec 10)
+
+================================================================================
+EXAMPLE 2: View Deployed Dog
+================================================================================
+
+INPUT:
+  view 3
+
+OUTPUT:
+  🐕 Dog Details - ID: 3
+
+  Name: Max
+  Breed: German Shepherd
+  Gender: Male
+  DOB: 2019-07-22 (5 years old)
+  Microchip: 981000123456789901
+  Color: Black & Tan
+
+  📊 Status:
+  • Status: Deployed 📍
+  • Owner: K9 Police Unit
+  • Handler: Officer Mike Johnson
+  • Location: Police Department
+
+  💉 Vaccinations:
+  • Rabies (2024-11-20) ✅ Current
+  • DHPP (2024-11-20) ✅ Current
+  • Bordetella (2024-11-20) ✅ Current
+
+  👨‍👩‍👧‍👦 Family:
+  • Sire: General (Retired)
+  • Dam: Princess (Active, ID: 7)
+  • Offspring: 2 puppies
+
+  ❤️ Recent Activity:
+  • Deployment (today, 6:00 AM)
+  • Medical check (Dec 1)
+  • Training session (Nov 28)
+
+================================================================================
+EXAMPLE 3: View Young Dog/Puppy
+================================================================================
+
+INPUT:
+  view 2
+
+OUTPUT:
+  🐕 Dog Details - ID: 2
+
+  Name: Luna Jr
+  Breed: Golden Retriever
+  Gender: Female
+  DOB: 2024-08-15 (4 months old)
+  Microchip: 981000123456789902
+  Color: Cream
+
+  📊 Status:
+  • Status: Active ✅
+  • Owner: Family Smith
+  • Handler: Sarah Johnson
+  • Location: Main Branch
+
+  💉 Vaccinations:
+  • Rabies (2024-10-15) ⚠️ Pending 2nd dose
+  • DHPP (2024-10-15) ⚠️ Pending booster
+  • Bordetella: Not yet vaccinated
+
+  👨‍👩‍👧‍👦 Family:
+  • Sire: Champion Duke (ID: 5)
+  • Dam: Lady Luna (ID: 8)
+  • Littermates: 7 siblings
+
+  ❤️ Recent Activity:
+  • Feeding (today, 7:30 AM)
+  • Play session (yesterday)
+  • Vaccination #1 (Oct 15)
+
+================================================================================
+QUICK REFERENCE - View Command Data Sections
+================================================================================
+
+📋 BASIC INFO
+  Name, Breed, Gender
+  DOB (with age calculation)
+  Microchip number
+  Color/Markings
+
+📊 STATUS
+  Current status (Active/Deployed/Retired/Other)
+  Owner name
+  Assigned handler
+  Current location/branch
+
+💉 VACCINATIONS
+  Vaccine name
+  Last vaccination date
+  Status (✅ Current, ⚠️ Due soon, 🔴 Overdue)
+  Next due date
+
+👨‍👩‍👧‍👦 FAMILY
+  Sire (father) - name & ID
+  Dam (mother) - name & ID
+  Offspring count
+  Litter info if applicable
+
+❤️ RECENT ACTIVITY (Last 5)
+  Activity type (Feeding, Vaccination, Mating, Birth, etc.)
+  Date & time
+  Notes if applicable
+
+================================================================================
+FOLLOWING ACTIONS AFTER VIEW
+================================================================================
+
+After viewing a dog, you can:
+
+1. RECORD ACTIVITY:
+   record 1 feeding Good appetite
+   record 1 vaccine Rabies booster
+   record 1 mating Mated with Luna
+
+2. CHECK VACCINES:
+   vaccine
+   (Shows all dogs needing vaccinations)
+
+3. SEE BREEDING INFO:
+   breeding
+   (Shows all active matings and litters)
+
+4. VIEW ANOTHER DOG:
+   view 2
+   detail 3
+
+5. GET QUICK STATS:
+   status
+   (Shows dashboard summary)
+
+================================================================================
+TIPS FOR USING VIEW COMMAND
+================================================================================
+
+✅ Use before recording activities to confirm dog ID
+✅ Check vaccination dates to stay on top of schedules
+✅ Monitor recent activities to track dog's health
+✅ View family info to manage breeding records
+✅ Share screenshots with veterinarian if needed
+✅ Use dog ID from list (dogs command) if unsure
+
+================================================================================
+ERROR HANDLING
+================================================================================
+
+If dog ID is invalid:
+  INPUT: view 999
+  OUTPUT: Dog not found. Use 'dogs' to see valid IDs
+
+If format is wrong:
+  INPUT: view
+  OUTPUT: Usage: view [dogId] or detail [dogId]
+          Example: view 1
+
+If dog has no activities:
+  OUTPUT: Shows "No recent activity" instead of list
+
+================================================================================
+BUILD STATUS: ✅ COMPLETE
+- WhatsApp Bot Service: ✅
+- View Command: ✅
+- Dog Details: ✅
+- Error Handling: ✅
+- Testing: ✅
+
+NO BUILD ERRORS: 0 Errors
+================================================================================

@@ -1,0 +1,56 @@
+Place your APKPure graphics in this folder:
+
+Required Graphics:
+==================
+
+1. feature_graphic.png (or .jpg)
+   - Dimensions: 1024 x 500 pixels
+   - Format: PNG or JPG
+   - File size: Under 1MB
+   - See: ../FEATURE_GRAPHIC_DESIGN.md
+
+2. screenshots/ folder
+   - Create a "screenshots" subfolder here
+   - Place 2-8 screenshots
+   - Dimensions: 1080 x 1920 pixels (portrait)
+   - Format: PNG or JPG
+   - File size: Under 8MB each
+   - See: ../SCREENSHOT_GUIDE.md
+
+Folder Structure:
+=================
+
+graphics/
+├── feature_graphic.png          <- Your banner (1024x500)
+└── screenshots/
+    ├── 01_dashboard.png         <- Screenshot 1
+    ├── 02_dog_profile.png       <- Screenshot 2
+    ├── 03_health_tracking.png   <- Screenshot 3
+    ├── 04_dog_list.png          <- Screenshot 4
+    ├── 05_breeding.png          <- Screenshot 5 (optional)
+    ├── 06_analytics.png         <- Screenshot 6 (optional)
+    ├── 07_care_record.png       <- Screenshot 7 (optional)
+    └── 08_certificate.png       <- Screenshot 8 (optional)
+
+Note: App icon (512x512) is already at: ../assets/icon.png
+
+Instructions:
+=============
+
+1. Create feature_graphic.png using Canva, Figma, or Photoshop
+   - Follow guide: ../FEATURE_GRAPHIC_DESIGN.md
+
+2. Capture screenshots from your running app
+   - Follow guide: ../SCREENSHOT_GUIDE.md
+
+3. Place all graphics in this folder structure
+
+4. Upload to APKPure when submitting
+
+Need Help?
+==========
+
+Email: support@dogsection.com
+See documentation in parent folder: ../
+
+Good luck! 🚀

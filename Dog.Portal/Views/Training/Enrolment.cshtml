@@ -1,0 +1,250 @@
+@{
+    Layout = "_AdminLayout";
+    ViewData["Title"] = "Training Enrolment";
+    int enrollmentId = (int)ViewBag.EnrollmentId;
+}
+<partial name="_TrainingShared" />
+<div class="tr">
+    <div style="margin-bottom:.6rem"><a href="/Training/Enrolments" style="font-size:.82rem;color:#667eea;text-decoration:none"><i class="bi bi-arrow-left"></i> All enrolments</a></div>
+    <div id="trTop"><div class="tr-empty">Loading…</div></div>
+</div>
+
+<!-- Generate invoice -->
+<div class="tr-modal" id="mInv"><div class="tr-box"><div class="tr-box-h"><h5>Generate training invoice</h5><button class="tr-x" onclick="T.close('mInv')"><i class="bi bi-x-lg"></i></button></div>
+<div class="tr-box-b">
+    <div id="invSummary" class="tr-kv" style="margin-bottom:.9rem"></div>
+    <div class="tr-field"><label>Payment due in (days)</label><input type="number" min="0" class="tr-in" id="invDays" value="7"></div>
+    <div class="tr-field"><label>Note on invoice (optional)</label><textarea class="tr-in" id="invNote"></textarea></div>
+    <div class="tr-note">The invoice is created in the Invoices module. Record payment there as usual; training can start only once it is paid in full.</div>
+</div>
+<div class="tr-box-f"><button class="tr-btn btn-ghost-t" onclick="T.close('mInv')">Cancel</button><button class="tr-btn btn-primary-t" id="invGo">Create invoice</button></div></div></div>
+
+<!-- Allocate handler -->
+<div class="tr-modal" id="mHandler"><div class="tr-box"><div class="tr-box-h"><h5>Allocate a handler</h5><button class="tr-x" onclick="T.close('mHandler')"><i class="bi bi-x-lg"></i></button></div>
+<div class="tr-box-b"><div id="handlerList"></div><div class="tr-field" style="margin-top:.8rem"><label>Allocation notes</label><textarea class="tr-in" id="hNotes"></textarea></div></div>
+<div class="tr-box-f"><button class="tr-btn btn-ghost-t" onclick="T.close('mHandler')">Cancel</button><button class="tr-btn btn-primary-t" id="hGo">Allocate</button></div></div></div>
+
+<!-- Activate -->
+<div class="tr-modal" id="mAct"><div class="tr-box"><div class="tr-box-h"><h5>Activate training</h5><button class="tr-x" onclick="T.close('mAct')"><i class="bi bi-x-lg"></i></button></div>
+<div class="tr-box-b"><div class="tr-alert al-ok"><i class="bi bi-check-circle-fill"></i><span>Payment confirmed and a handler is allocated.</span></div>
+<div class="tr-field"><label>Start date</label><input type="date" class="tr-in" id="actDate"></div>
+<div class="tr-note" id="actNote"></div></div>
+<div class="tr-box-f"><button class="tr-btn btn-ghost-t" onclick="T.close('mAct')">Cancel</button><button class="tr-btn btn-success-t" id="actGo"><i class="bi bi-play-fill"></i> Start training</button></div></div></div>
+
+<!-- Extend -->
+<div class="tr-modal" id="mExt"><div class="tr-box"><div class="tr-box-h"><h5>Extend training</h5><button class="tr-x" onclick="T.close('mExt')"><i class="bi bi-x-lg"></i></button></div>
+<div class="tr-box-b"><div class="tr-field"><label>Extra days *</label><input type="number" min="1" max="90" class="tr-in" id="extDays" value="7"></div>
+<div class="tr-field"><label>Additional activities</label><textarea class="tr-in" id="extActs" placeholder="One per line – these are added to the dog's plan"></textarea></div></div>
+<div class="tr-box-f"><button class="tr-btn btn-ghost-t" onclick="T.close('mExt')">Cancel</button><button class="tr-btn btn-warn-t" id="extGo">Extend training</button></div></div></div>
+
+<!-- Cancel -->
+<div class="tr-modal" id="mCancel"><div class="tr-box"><div class="tr-box-h"><h5>Cancel enrolment</h5><button class="tr-x" onclick="T.close('mCancel')"><i class="bi bi-x-lg"></i></button></div>
+<div class="tr-box-b"><div class="tr-field"><label>Reason</label><textarea class="tr-in" id="cancelReason"></textarea></div></div>
+<div class="tr-box-f"><button class="tr-btn btn-ghost-t" onclick="T.close('mCancel')">Keep</button><button class="tr-btn btn-danger-t" id="cancelGo">Cancel enrolment</button></div></div></div>
+
+<!-- Edit weekly plan -->
+<div class="tr-modal" id="mPlan"><div class="tr-box wide"><div class="tr-box-h"><h5 id="planTitle">Weekly plan</h5><button class="tr-x" onclick="T.close('mPlan')"><i class="bi bi-x-lg"></i></button></div>
+<div class="tr-box-b">
+    <div class="tr-row"><div class="tr-field"><label>Title *</label><input class="tr-in" id="pTitle"></div><div class="tr-field"><label>Focus</label><input class="tr-in" id="pFocus"></div></div>
+    <div class="tr-field"><label>Weekly targets (one per line, "Name: description")</label><textarea class="tr-in" id="pTargets" style="min-height:130px"></textarea></div>
+    <div class="tr-field"><label>Daily schedule</label><div id="pSlots"></div><button class="tr-btn btn-ghost-t btn-sm-t" id="pAdd" style="margin-top:.4rem"><i class="bi bi-plus"></i> Add time slot</button></div>
+</div>
+<div class="tr-box-f"><button class="tr-btn btn-ghost-t" onclick="T.close('mPlan')">Cancel</button><button class="tr-btn btn-primary-t" id="pSave">Save this dog's plan</button></div></div></div>
+
+<script>
+(function () {
+    var ID = @enrollmentId, E = null, tab = 'overview', handlers = [], pickHandler = null, editingPlan = null;
+
+    var STEPS = [['Health assessment', 'bi-heart-pulse-fill'], ['Invoice', 'bi-receipt'], ['Payment', 'bi-cash-coin'], ['Handler', 'bi-person-check-fill'], ['Training', 'bi-activity'], ['Final assessment', 'bi-clipboard2-pulse-fill'], ['Approval', 'bi-patch-check'], ['Certificate', 'bi-award-fill']];
+    function stepState(s, hasCert) {
+        var cur = {AwaitingHealthAssessment:0, HealthFailed:0, HealthPassed:1, AwaitingPayment:2, AwaitingHandler:3, Ready:4, InTraining:4, AwaitingFinalAssessment:5, AwaitingApproval:6, Completed: hasCert ? 8 : 7}[s];
+        return { cur: cur, bad: s === 'HealthFailed', cancelled: s === 'Cancelled' };
+    }
+
+    async function load(keepTab) {
+        var r = await T.api('GET', 'enrollments/' + ID);
+        if (!r.success) { trTop.innerHTML = '<div class="tr-card"><div class="tr-empty"><i class="bi bi-exclamation-circle"></i>' + T.esc(r.message || 'Could not load this enrolment.') + '</div></div>'; return; }
+        E = r.data; if (!keepTab) tab = 'overview'; render();
+    }
+
+    function actions() {
+        var a = [], s = E.status, id = E.id;
+        if ((s === 'AwaitingHealthAssessment' || s === 'HealthFailed') && T.can('training.health.create'))
+            a.push('<a class="tr-btn btn-primary-t" href="/Training/HealthAssessments?enrollment=' + id + '&new=1"><i class="bi bi-heart-pulse-fill"></i> ' + (s === 'HealthFailed' ? 'Re-assess health' : 'Record health assessment') + '</a>');
+        if (E.canInvoice && T.can('training.invoice.generate')) a.push('<button class="tr-btn btn-primary-t" id="aInv"><i class="bi bi-receipt"></i> Generate invoice</button>');
+        if (E.invoiceId) a.push('<a class="tr-btn btn-ghost-t" target="_blank" href="/Training/InvoicePdf/' + E.invoiceId + '"><i class="bi bi-file-earmark-pdf"></i> Invoice ' + T.esc(E.invoiceNumber || '') + '</a>');
+        if (E.invoiceId && s === 'AwaitingPayment' && T.canAny('training.payment.record', 'training.invoice.view')) a.push('<a class="tr-btn btn-success-t" href="/Training/Invoices?open=' + E.invoiceId + '"><i class="bi bi-cash-coin"></i> ' + (T.can('training.payment.record') ? 'Record payment' : 'View invoice') + '</a>');
+        if (E.canAssignHandler && T.can('training.handler.assign')) a.push('<button class="tr-btn btn-ghost-t" id="aHandler"><i class="bi bi-person-check-fill"></i> ' + (E.handlerUserId ? 'Change handler' : 'Allocate handler') + '</button>');
+        if (E.canActivate && T.can('training.handler.assign')) a.push('<button class="tr-btn btn-success-t" id="aAct"><i class="bi bi-play-fill"></i> Activate training</button>');
+        if ((s === 'InTraining' || s === 'AwaitingFinalAssessment') && T.canAny('training.log.record', 'training.log.view')) a.push('<a class="tr-btn btn-primary-t" href="/Training/Log/' + id + '"><i class="bi bi-journal-plus"></i> Log today\'s training</a>');
+        if (s === 'AwaitingFinalAssessment' && T.can('training.assessment.conduct')) a.push('<a class="tr-btn btn-primary-t" href="/Training/FinalAssessment?enrollmentId=' + id + '"><i class="bi bi-clipboard2-pulse-fill"></i> Final assessment</a>');
+        if ((s === 'AwaitingFinalAssessment' || s === 'InTraining') && T.can('training.assessment.approve')) a.push('<button class="tr-btn btn-ghost-t" id="aExt"><i class="bi bi-arrow-repeat"></i> Extend training</button>');
+        if (s === 'AwaitingApproval' && T.can('training.assessment.approve')) a.push('<a class="tr-btn btn-warn-t" href="/Training/FinalAssessments?status=Pending"><i class="bi bi-patch-check"></i> Review &amp; approve</a>');
+        if (s === 'Completed') {
+            if (E.certificate) a.push('<a class="tr-btn btn-success-t" target="_blank" href="/Training/CertificatePdf/' + E.certificate.id + '"><i class="bi bi-award-fill"></i> Download certificate</a>');
+            else if (T.can('training.certificate.issue')) a.push('<button class="tr-btn btn-success-t" id="aCert"><i class="bi bi-award-fill"></i> Issue certificate</button>');
+        }
+        if (s !== 'Completed' && s !== 'Cancelled' && T.can('training.enrolment.create')) a.push('<button class="tr-btn btn-ghost-t" id="aCancel" style="color:#dc2626"><i class="bi bi-x-circle"></i> Cancel</button>');
+        return a.join('');
+    }
+
+    function render() {
+        var st = stepState(E.status, !!E.certificate), steps = '';
+        STEPS.forEach(function (s, i) {
+            var cls = st.cancelled ? '' : (st.bad && i === 0) ? 'bad' : (i < st.cur ? 'done' : (i === st.cur ? 'cur' : ''));
+            steps += '<div class="tr-step ' + cls + '"><i class="bi ' + (cls === 'done' ? 'bi-check-circle-fill' : s[1]) + '"></i>' + s[0] + '</div>';
+        });
+
+        var msg = '';
+        if (E.status === 'HealthFailed') msg = '<div class="tr-alert al-bad"><i class="bi bi-x-octagon-fill"></i><span>This dog did not pass its health assessment and cannot start training. It can be re-assessed.</span></div>';
+        else if (E.status === 'AwaitingPayment') msg = '<div class="tr-alert al-warn"><i class="bi bi-cash-coin"></i><span>Invoice ' + T.esc(E.invoiceNumber) + ' is ' + T.esc((E.invoiceStatus || '').toLowerCase()) + (E.invoiceBalance > 0 ? ' — balance due ' + T.money(E.invoiceBalance) : '') + '. Training cannot start until it is paid in full.</span></div>';
+        else if (E.status === 'Cancelled') msg = '<div class="tr-alert al-bad"><i class="bi bi-x-circle-fill"></i><span>Cancelled' + (E.cancelReason ? ': ' + T.esc(E.cancelReason) : '') + '</span></div>';
+
+        trTop.innerHTML =
+            '<div class="tr-card"><div style="display:flex;justify-content:space-between;gap:1rem;flex-wrap:wrap;align-items:center">' + T.dog(E.dogName, (E.dogBreed || '') + (E.customerName ? ' · Owner: ' + E.customerName : ''), E.dogPhotoUrl) +
+            '<div style="text-align:right"><div style="font-weight:800;color:#0f172a">' + T.esc(E.enrollmentNumber) + '</div>' + T.badge(E.status) + '</div></div></div>' +
+            '<div class="tr-steps">' + steps + '</div>' + msg +
+            '<div class="tr-actions" style="margin-bottom:1rem">' + actions() + '</div>' +
+            '<div class="tr-tabs">' + [['overview', 'Overview'], ['health', 'Health (' + E.healthAssessments.length + ')'], ['handler', 'Handler'], ['plan', 'Weekly plan'], ['logs', 'Daily logs (' + E.dailyLogCount + ')'], ['reports', 'Reports (' + E.reportCount + ')'], ['final', 'Assessments (' + E.finalAssessments.length + ')']]
+                .map(function (t) { return '<button class="tr-tab' + (tab === t[0] ? ' on' : '') + '" data-tab="' + t[0] + '">' + t[1] + '</button>'; }).join('') + '</div>' +
+            '<div id="tabBody"></div>';
+
+        trTop.querySelectorAll('.tr-tab').forEach(function (b) { b.onclick = function () { tab = b.dataset.tab; render(); }; });
+        wire(); renderTab();
+    }
+
+    function wire() {
+        var $ = function (id) { return document.getElementById(id); };
+        if ($('aInv')) $('aInv').onclick = function () {
+            invSummary.innerHTML = kv('Programme', E.programmeName) + kv('Duration', E.durationDays + ' days') + kv('Fee', T.money(E.fee)) + kv('Additional charges', T.money(E.additionalCharges)) + kv('Total', T.money(E.total));
+            T.open('mInv');
+        };
+        if ($('aHandler')) $('aHandler').onclick = openHandlers;
+        if ($('aAct')) $('aAct').onclick = function () { actDate.value = T.isoDate(); actNote.textContent = 'Runs for ' + E.durationDays + ' days. Weekly plans are copied from the "' + E.programmeName + '" programme for this dog.'; T.open('mAct'); };
+        if ($('aExt')) $('aExt').onclick = function () { T.open('mExt'); };
+        if ($('aCancel')) $('aCancel').onclick = function () { T.open('mCancel'); };
+        if ($('aCert')) $('aCert').onclick = async function () {
+            var fa = E.finalAssessments.filter(function (f) { return f.approvalStatus === 'Approved'; })[0];
+            if (!fa) { T.toast('No approved assessment found.', 'error'); return; }
+            T.busy($('aCert'), true, 'Issuing…'); var r = await T.api('POST', 'certificates/issue/' + fa.id, {}); T.busy($('aCert'), false);
+            if (r.success) { T.toast(r.message); load(true); } else T.toast(r.message || 'Could not issue the certificate.', 'error');
+        };
+    }
+    function kv(k, v) { return '<div><div class="k">' + T.esc(k) + '</div><div class="v">' + T.esc(v == null || v === '' ? '—' : v) + '</div></div>'; }
+
+    // ── Tabs ──
+    async function renderTab() {
+        var el = document.getElementById('tabBody');
+        if (tab === 'overview') {
+            el.innerHTML = '<div class="tr-card"><div class="tr-kv">' + kv('Programme', E.programmeName) + kv('Duration', E.durationDays + ' days' + (E.extensionDays ? ' (+' + E.extensionDays + ' extension)' : '')) +
+                kv('Fee', T.money(E.fee)) + kv('Additional charges', T.money(E.additionalCharges) + (E.additionalChargesNote ? ' – ' + E.additionalChargesNote : '')) + kv('Total', T.money(E.total)) +
+                kv('Customer', E.customerName) + kv('Handler', E.handlerName) + kv('Started', E.startDate ? T.date(E.startDate) : '—') + kv('Planned end', E.plannedEndDate ? T.date(E.plannedEndDate) : '—') +
+                kv('Current position', E.currentWeek ? 'Week ' + E.currentWeek + ', day ' + E.dayNumber : '—') + kv('Created', T.date(E.createdAt)) + '</div>' +
+                (E.notes ? '<div class="tr-note" style="margin-top:.8rem">Notes: ' + T.esc(E.notes) + '</div>' : '') + '</div>';
+        } else if (tab === 'health') {
+            el.innerHTML = E.healthAssessments.length === 0 ? '<div class="tr-card"><div class="tr-empty"><i class="bi bi-heart-pulse"></i>No health assessment recorded yet.</div></div>' :
+                '<div class="tr-tablewrap"><table class="tr-table"><thead><tr><th>Date</th><th>Examiner</th><th>Weight</th><th>Result</th><th>Files</th><th></th></tr></thead><tbody>' + E.healthAssessments.map(function (h) {
+                    return '<tr><td>' + T.date(h.assessmentDate) + '</td><td>' + T.esc(h.examinerName || '—') + '</td><td>' + (h.weightKg ? h.weightKg + ' kg' : '—') + '</td><td>' + T.resultBadge(h.result) + '</td><td>' + h.documentCount + '</td><td style="text-align:right"><a class="tr-btn btn-ghost-t btn-sm-t" href="/Training/HealthAssessments?open=' + h.id + '">Open</a> <a class="tr-btn btn-ghost-t btn-sm-t" target="_blank" href="/Training/HealthFormPdf/' + h.id + '"><i class="bi bi-printer"></i></a></td></tr>';
+                }).join('') + '</tbody></table></div>';
+        } else if (tab === 'handler') {
+            el.innerHTML = E.assignments.length === 0 ? '<div class="tr-card"><div class="tr-empty"><i class="bi bi-person"></i>No handler allocated yet.</div></div>' :
+                '<div class="tr-tablewrap"><table class="tr-table"><thead><tr><th>Handler</th><th>Allocated</th><th>By</th><th>Until</th><th>Notes</th></tr></thead><tbody>' + E.assignments.map(function (a) {
+                    return '<tr><td><b>' + T.esc(a.handlerName || '—') + '</b> ' + (a.isCurrent ? '<span class="tr-badge b-green">Current</span>' : '') + '</td><td>' + T.date(a.assignedOn, true) + '</td><td>' + T.esc(a.assignedByName || '—') + '</td><td>' + (a.endedOn ? T.date(a.endedOn) : '—') + '</td><td>' + T.esc(a.notes || '') + '</td></tr>';
+                }).join('') + '</tbody></table></div>';
+        } else if (tab === 'plan') {
+            if (E.weeklyPlans.length === 0) { el.innerHTML = '<div class="tr-card"><div class="tr-empty"><i class="bi bi-calendar-week"></i>This dog\'s weekly plan is created when training is activated.</div></div>'; return; }
+            el.innerHTML = E.weeklyPlans.map(function (p) {
+                var targets = (p.targets || '').split('\n').filter(Boolean).map(function (t) { var i = t.indexOf(':'); return '<li>' + (i > 0 ? '<b>' + T.esc(t.slice(0, i)) + '</b>' + T.esc(t.slice(i)) : T.esc(t)) + '</li>'; }).join('');
+                var sched = (p.schedule || []).map(function (s) { return '<tr><td style="white-space:nowrap"><b>' + T.esc(s.time) + '</b></td><td>' + T.esc(s.title) + '</td><td style="color:#64748b">' + T.esc(s.purpose || '') + '</td></tr>'; }).join('');
+                return '<div class="tr-card"><div style="display:flex;justify-content:space-between;gap:.5rem;flex-wrap:wrap"><h5>Week ' + p.weekNumber + ': ' + T.esc(p.title) + (p.focus ? ' <span class="tr-badge b-purple">' + T.esc(p.focus) + '</span>' : '') + '</h5>' +
+                    (T.can('training.programme.manage') ? '<button class="tr-btn btn-ghost-t btn-sm-t" data-edit="' + p.id + '"><i class="bi bi-pencil"></i> Edit</button>' : '') + '</div>' +
+                    '<div class="tr-note" style="margin:-.4rem 0 .6rem">' + T.date(p.startDate) + ' – ' + T.date(p.endDate) + '</div>' +
+                    (targets ? '<div class="k" style="font-size:.7rem;font-weight:700;color:#94a3b8;text-transform:uppercase">Target</div><ul style="font-size:.86rem;margin:.3rem 0 .8rem;padding-left:1.1rem">' + targets + '</ul>' : '') +
+                    (sched ? '<div class="tr-tablewrap"><table class="tr-table"><thead><tr><th>Time</th><th>Activity</th><th>Purpose &amp; execution</th></tr></thead><tbody>' + sched + '</tbody></table></div>' : '') + '</div>';
+            }).join('');
+            el.querySelectorAll('[data-edit]').forEach(function (b) { b.onclick = function () { openPlan(+b.dataset.edit); }; });
+        } else if (tab === 'logs') {
+            el.innerHTML = '<div class="tr-card"><div class="tr-empty">Loading…</div></div>';
+            var r = await T.api('GET', 'logs?enrollmentId=' + ID);
+            if (!r.success) { el.innerHTML = '<div class="tr-card"><div class="tr-empty">' + T.esc(r.message || 'Not available.') + '</div></div>'; return; }
+            el.innerHTML = r.data.length === 0 ? '<div class="tr-card"><div class="tr-empty"><i class="bi bi-journal"></i>No daily records yet.</div></div>' :
+                '<div class="tr-tablewrap"><table class="tr-table"><thead><tr><th>Date</th><th>Week/Day</th><th>Handler</th><th>Minutes</th><th>Avg rating</th><th>Performance</th><th></th></tr></thead><tbody>' + r.data.map(function (l) {
+                    return '<tr><td>' + T.date(l.trainingDate) + '</td><td>W' + l.weekNumber + ' · D' + l.dayNumber + '</td><td>' + T.esc(l.handlerName || '—') + '</td><td>' + l.durationMinutes + '</td><td>' + (l.averageSlotRating != null ? l.averageSlotRating + '/10' : '—') + '</td><td><span class="tr-badge b-blue">' + T.esc(l.performance) + '</span></td><td style="text-align:right"><a class="tr-btn btn-ghost-t btn-sm-t" href="/Training/Log/' + ID + '?date=' + T.isoDate(l.trainingDate) + '">Open</a></td></tr>';
+                }).join('') + '</tbody></table></div>';
+        } else if (tab === 'reports') {
+            el.innerHTML = '<div class="tr-card"><div class="tr-empty">Loading…</div></div>';
+            var rr = await T.api('GET', 'progress-reports?enrollmentId=' + ID);
+            var weeks = (E.weeklyPlans || []).map(function (p) { return p.weekNumber; });
+            var existing = rr.success ? rr.data : [];
+            var html = '<div class="tr-tablewrap"><table class="tr-table"><thead><tr><th>Week</th><th>Status</th><th>Handler</th><th>Submitted</th><th></th></tr></thead><tbody>' + weeks.map(function (w) {
+                var rep = existing.filter(function (x) { return x.weekNumber === w; })[0];
+                return '<tr><td><b>Week ' + w + '</b></td><td>' + (rep ? T.resultBadge(rep.status) : '<span class="tr-note">Not started</span>') + '</td><td>' + T.esc(rep ? rep.handlerName || '—' : '—') + '</td><td>' + (rep && rep.submittedOn ? T.date(rep.submittedOn) : '—') + '</td><td style="text-align:right"><a class="tr-btn btn-ghost-t btn-sm-t" href="/Training/ProgressReport?enrollmentId=' + ID + '&week=' + w + '">' + (rep ? 'Open' : (T.can('training.progress.submit') ? 'Write report' : 'View')) + '</a></td></tr>';
+            }).join('') + '</tbody></table></div>';
+            el.innerHTML = weeks.length ? html : '<div class="tr-card"><div class="tr-empty"><i class="bi bi-journal-check"></i>Reports appear once training is active.</div></div>';
+        } else if (tab === 'final') {
+            el.innerHTML = E.finalAssessments.length === 0 ? '<div class="tr-card"><div class="tr-empty"><i class="bi bi-clipboard2-pulse"></i>No final assessment yet.</div></div>' :
+                '<div class="tr-tablewrap"><table class="tr-table"><thead><tr><th>Attempt</th><th>Date</th><th>Assessor</th><th>Score</th><th>Result</th><th>Approval</th><th>Certificate</th></tr></thead><tbody>' + E.finalAssessments.map(function (f) {
+                    return '<tr><td>#' + f.attemptNumber + '</td><td>' + T.date(f.assessmentDate) + '</td><td>' + T.esc(f.assessorName || '—') + '</td><td>' + (f.overallScore != null ? f.overallScore + '/10' : '—') + '</td><td>' + T.resultBadge(f.result) + '</td><td>' + T.resultBadge(f.approvalStatus) + '</td><td>' + T.esc(f.certificateNumber || '—') + '</td></tr>';
+                }).join('') + '</tbody></table></div>';
+        }
+    }
+
+    // ── Handler allocation ──
+    async function openHandlers() {
+        handlerList.innerHTML = '<div class="tr-empty">Loading…</div>'; T.open('mHandler'); pickHandler = E.handlerUserId || null;
+        var r = await T.api('GET', 'handlers');
+        if (!r.success) { handlerList.innerHTML = '<div class="tr-empty">' + T.esc(r.message || 'Could not load handlers.') + '</div>'; return; }
+        handlers = r.data;
+        handlerList.innerHTML = handlers.length === 0 ? '<div class="tr-empty"><i class="bi bi-person-x"></i>No users with the "Dog Handler" role were found.</div>' : handlers.map(function (h) {
+            var pct = Math.min(100, Math.round(h.currentDogs * 100 / Math.max(1, h.maxDogs))), disabled = !h.canAccept && h.userId !== E.handlerUserId;
+            return '<label class="tr-card" style="display:block;cursor:' + (disabled ? 'not-allowed' : 'pointer') + ';opacity:' + (disabled ? .55 : 1) + ';margin-bottom:.6rem"><div style="display:flex;gap:.7rem;align-items:flex-start"><input type="radio" name="hsel" value="' + T.esc(h.userId) + '" ' + (disabled ? 'disabled' : '') + (h.userId === pickHandler ? ' checked' : '') + ' style="margin-top:.3rem">' +
+                '<div style="flex:1"><div style="display:flex;justify-content:space-between;gap:.5rem;flex-wrap:wrap"><b>' + T.esc(h.name) + '</b><span>' + (h.isAvailable ? '<span class="tr-badge b-green">Available</span>' : '<span class="tr-badge b-gray">Unavailable</span>') + '</span></div>' +
+                '<div class="tr-note" style="margin:.1rem 0 .4rem">' + T.esc(h.specialisation || 'No specialisation set') + ' · ' + h.currentDogs + ' / ' + h.maxDogs + ' dogs</div><div class="tr-bar"><div style="width:' + pct + '%"></div></div>' +
+                (!h.canAccept && h.userId !== E.handlerUserId ? '<div class="tr-note" style="color:#b45309">' + (h.isAvailable ? 'At full capacity' : 'Marked unavailable') + '</div>' : '') + '</div></div></label>';
+        }).join('');
+        handlerList.querySelectorAll('input[name=hsel]').forEach(function (i) { i.onchange = function () { pickHandler = i.value; }; });
+    }
+    hGo.onclick = async function () {
+        if (!pickHandler) { T.toast('Choose a handler.', 'error'); return; }
+        T.busy(hGo, true, 'Allocating…'); var r = await T.api('POST', 'enrollments/' + ID + '/assign-handler', { handlerUserId: pickHandler, notes: hNotes.value }); T.busy(hGo, false);
+        if (r.success) { T.close('mHandler'); T.toast(r.message); E = r.data; load(true); } else T.toast(r.message || 'Could not allocate.', 'error');
+    };
+
+    // ── Other actions ──
+    invGo.onclick = async function () {
+        T.busy(invGo, true, 'Creating…'); var r = await T.api('POST', 'enrollments/' + ID + '/invoice', { dueInDays: +invDays.value || 0, notes: invNote.value }); T.busy(invGo, false);
+        if (r.success) { T.close('mInv'); T.toast(r.message); load(true); } else T.toast(r.message || 'Could not create the invoice.', 'error');
+    };
+    actGo.onclick = async function () {
+        T.busy(actGo, true, 'Starting…'); var r = await T.api('POST', 'enrollments/' + ID + '/activate', { startDate: actDate.value || null }); T.busy(actGo, false);
+        if (r.success) { T.close('mAct'); T.toast(r.message); load(true); } else T.toast(r.message || 'Could not start training.', 'error');
+    };
+    extGo.onclick = async function () {
+        T.busy(extGo, true, 'Extending…'); var r = await T.api('POST', 'enrollments/' + ID + '/extend', { days: +extDays.value || 0, additionalActivities: extActs.value }); T.busy(extGo, false);
+        if (r.success) { T.close('mExt'); T.toast(r.message); load(true); } else T.toast(r.message || 'Could not extend training.', 'error');
+    };
+    cancelGo.onclick = async function () {
+        T.busy(cancelGo, true, 'Cancelling…'); var r = await T.api('POST', 'enrollments/' + ID + '/cancel', { reason: cancelReason.value }); T.busy(cancelGo, false);
+        if (r.success) { T.close('mCancel'); T.toast(r.message); load(true); } else T.toast(r.message || 'Could not cancel.', 'error');
+    };
+
+    // ── Weekly plan editor ──
+    function slotRow(s) {
+        return '<div class="tr-row" style="grid-template-columns:90px 1fr 2fr 38px;margin-bottom:.4rem;align-items:start"><input class="tr-in" data-f="time" placeholder="07:00" value="' + T.esc(s.time || '') + '"><input class="tr-in" data-f="title" placeholder="Activity" value="' + T.esc(s.title || '') + '"><input class="tr-in" data-f="purpose" placeholder="Purpose &amp; execution" value="' + T.esc(s.purpose || '') + '"><button class="tr-btn btn-ghost-t btn-sm-t" data-rm style="min-height:38px">&times;</button></div>';
+    }
+    function openPlan(planId) {
+        editingPlan = E.weeklyPlans.filter(function (p) { return p.id === planId; })[0]; if (!editingPlan) return;
+        planTitle.textContent = 'Week ' + editingPlan.weekNumber + ' – ' + E.dogName; pTitle.value = editingPlan.title; pFocus.value = editingPlan.focus || ''; pTargets.value = editingPlan.targets || '';
+        pSlots.innerHTML = (editingPlan.schedule || []).map(slotRow).join(''); T.open('mPlan');
+    }
+    pSlots.addEventListener('click', function (e) { var b = e.target.closest('[data-rm]'); if (b) b.parentElement.remove(); });
+    pAdd.onclick = function () { pSlots.insertAdjacentHTML('beforeend', slotRow({})); };
+    pSave.onclick = async function () {
+        var schedule = Array.prototype.map.call(pSlots.children, function (row) { var g = function (f) { return row.querySelector('[data-f=' + f + ']').value.trim(); }; return { time: g('time'), title: g('title'), purpose: g('purpose') }; }).filter(function (s) { return s.title; });
+        T.busy(pSave, true, 'Saving…'); var r = await T.api('PUT', 'plans', { id: editingPlan.id, title: pTitle.value, focus: pFocus.value, targets: pTargets.value, schedule: schedule }); T.busy(pSave, false);
+        if (r.success) { T.close('mPlan'); T.toast(r.message); load(true); } else T.toast(r.message || 'Could not save the plan.', 'error');
+    };
+
+    load();
+})();
+</script>

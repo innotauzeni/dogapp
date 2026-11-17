@@ -1,10 +1,11 @@
-﻿@model Dog.Portal.Models.BankListViewModel
+@model Dog.Portal.Models.BankListViewModel
 @{
     Layout = "_AdminLayout";
     ViewData["Title"] = "Banks";
     var totalAll = Model.TotalCount;
     var activeCount = Model.BankList.Count(b => b.IsActive);
     var inactiveCount = Model.BankList.Count(b => !b.IsActive);
+    var P = PermHelper.For(Context);
 }
 <style>
 .page-hdr h4{font-size:1.15rem;font-weight:800;color:#0f172a;margin:0 0 .25rem;letter-spacing:-.02em}
@@ -74,7 +75,7 @@
 .bank-cell{display:flex;align-items:center;gap:.625rem}
 .modal-backdrop-custom{position:fixed;inset:0;background:rgba(15,23,42,.45);backdrop-filter:blur(3px);z-index:1050;display:none;align-items:center;justify-content:center;padding:1rem}
 .modal-backdrop-custom.open{display:flex}
-.modal-box{background:#fff;border-radius:16px;box-shadow:0 20px 60px rgba(0,0,0,.2);width:100%;max-width:480px;max-height:90vh;overflow-y:auto;animation:mslide .22s ease}
+.modal-box{background:#fff;border-radius:16px;box-shadow:0 20px 60px rgba(0,0,0,.2);width:100%;max-width:640px;max-height:90vh;overflow-y:auto;animation:mslide .22s ease}
 @@keyframes mslide{from{opacity:0;transform:translateY(-16px)}to{opacity:1;transform:translateY(0)}}
 .modal-hdr{display:flex;align-items:center;justify-content:space-between;padding:1.25rem 1.5rem;border-bottom:1px solid #f1f5f9}
 .modal-hdr h5{font-size:1rem;font-weight:800;color:#0f172a;margin:0;display:flex;align-items:center;gap:.5rem}
@@ -112,9 +113,11 @@
         <a href="@Url.Action("Accounts")" class="btn-accounts">
             <i class="bi bi-credit-card"></i> Bank Accounts
         </a>
+        @if (P.Can("bank.create")) {
         <button type="button" class="btn-add" onclick="openCreateModal()">
             <i class="bi bi-plus-lg"></i> Add Bank
         </button>
+        }
     </div>
 </div>
 
@@ -193,20 +196,26 @@
                                          data-name="@item.Name"
                                          data-accountname="@item.AccountName"
                                          data-isactive="@item.IsActive.ToString().ToLower()">
+                                        @if (P.Can("bank.edit")) {
                                         <button class="act-item" onclick="openEdit(this.closest('.act-menu'))">
                                             <i class="bi bi-pencil-fill" style="color:#667eea"></i> Edit
                                         </button>
+                                        }
                                         <a href="@Url.Action("Accounts", new { bankId = item.Id })" class="act-item">
                                             <i class="bi bi-credit-card" style="color:#667eea"></i> View Accounts
                                         </a>
+                                        @if (P.Can("bank.edit")) {
                                         <button class="act-item" onclick="toggleBank(this.closest('.act-menu'))">
                                             <i class="bi @(item.IsActive ? "bi-toggle-off" : "bi-toggle-on")"></i>
                                             @(item.IsActive ? "Deactivate" : "Activate")
                                         </button>
+                                        }
+                                        @if (P.Can("bank.delete")) {
                                         <div class="act-divider"></div>
                                         <button class="act-item danger" onclick="openDelete(this.closest('.act-menu'))">
                                             <i class="bi bi-trash3-fill"></i> Delete
                                         </button>
+                                        }
                                     </div>
                                 </div>
                             </td>

@@ -5,7 +5,7 @@
     var totalAll      = Model.TotalCount;
     var activeCount   = Model.Doglist.Count(u => bool.Equals(u.IsActive,true));
     var inactiveCount = Model.Doglist.Count(u => bool.Equals(u.IsActive,false));
-   
+    var P = PermHelper.For(Context);
 }
 <style>
 .page-hdr h4{font-size:1.15rem;font-weight:800;color:#0f172a;margin:0 0 .25rem;letter-spacing:-.02em}
@@ -109,8 +109,8 @@
 /* -- Modals ---------------------------------------- */
 .modal-backdrop-custom{position:fixed;inset:0;background:rgba(15,23,42,.45);backdrop-filter:blur(3px);z-index:1050;display:none;align-items:center;justify-content:center;padding:1rem}
 .modal-backdrop-custom.open{display:flex}
-.modal-box{background:#fff;border-radius:16px;box-shadow:0 20px 60px rgba(0,0,0,.2);width:100%;max-width:480px;max-height:90vh;overflow-y:auto;animation:mslide .22s ease}
-.modal-box.wide{max-width:560px}
+.modal-box{background:#fff;border-radius:16px;box-shadow:0 20px 60px rgba(0,0,0,.2);width:100%;max-width:640px;max-height:90vh;overflow-y:auto;animation:mslide .22s ease}
+.modal-box.wide{max-width:780px}
 @@keyframes mslide{from{opacity:0;transform:translateY(-16px)}to{opacity:1;transform:translateY(0)}}
 .modal-hdr{display:flex;align-items:center;justify-content:space-between;padding:1.25rem 1.5rem;border-bottom:1px solid #f1f5f9}
 .modal-hdr h5{font-size:1rem;font-weight:800;color:#0f172a;margin:0;display:flex;align-items:center;gap:.5rem}
@@ -178,15 +178,23 @@
         {
             <span class="total-chip"><i class="bi bi-people"></i> @Model.TotalCount Dogs@(Model.TotalCount != 1 ? "s" : "")</span>
         }
+        <a href="/DogHandler" class="btn-clr"><i class="bi bi-person-lines-fill"></i> Dog Handler Reports</a>
+        <a href="/Dogs/Assigned" class="btn-clr"><i class="bi bi-person-check-fill"></i> My Assigned Dogs</a>
+        @if (P.Can("pet.create")) {
         <button class="btn-add" onclick="openCreateModal()">
             <i class="bi bi-person-plus-fill"></i> Add Dog
         </button>
+        }
     </div>
 </div>
 
 @if (!string.IsNullOrEmpty(ViewBag.FetchError as string))
 {
     <div class="alert-err"><i class="bi bi-exclamation-circle-fill"></i>@ViewBag.FetchError</div>
+}
+@if (TempData["Error"] != null)
+{
+    <div class="alert-err"><i class="bi bi-exclamation-circle-fill"></i>@TempData["Error"]</div>
 }
 
 <!-- Stat cards -->
@@ -254,7 +262,7 @@
                         <th style="min-width:80px;max-width:100px;">Gender</th>
                         <th style="min-width:100px;max-width:120px;">Father</th>
                         <th style="min-width:100px;max-width:120px;">Mother</th>
-                        <th style="min-width:140px;max-width:160px;">Microchip</th>
+                        <th style="min-width:80px;max-width:100px;">Age</th>
                         <th style="min-width:80px;max-width:100px;">Status</th>
                         <th style="width:50px;text-align:center;">Actions</th>
                     </tr>
@@ -282,14 +290,32 @@
                                     </div>
                                 }
                             </td>
-                            <td style="color:#64748b;font-size:.835rem;max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="@(u.Name ?? "—")">@(u.Name ?? "—")</td>
+                            <td style="color:#64748b;font-size:.835rem;max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="@(u.Name ?? "—")">
+                                <div style="font-weight:600;color:#1e293b">@(u.Name ?? "—")</div>
+                                @if (u.IsAssignedToBranch) {
+                                    <div style="margin-top:.2rem;display:flex;align-items:center;gap:.25rem;flex-wrap:wrap">
+                                        <span style="font-size:.65rem;font-weight:700;background:#ede9fe;color:#7c3aed;padding:.1rem .4rem;border-radius:10px;white-space:nowrap">
+                                            <i class="bi bi-arrow-down-left-circle-fill"></i> Assigned
+                                        </span>
+                                        @if (!string.IsNullOrEmpty(u.AssignedHandlerName)) {
+                                            <span style="font-size:.7rem;color:#64748b">@u.AssignedHandlerName</span>
+                                        }
+                                    </div>
+                                }
+                                @if (!string.IsNullOrEmpty(u.CompanyName) && u.IsAssignedToBranch) {
+                                    <div style="font-size:.7rem;color:#94a3b8">from @u.CompanyName</div>
+                                }
+                            </td>
                             <td style="color:#64748b;font-size:.835rem;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="@(u.Breed ?? "—")">@(u.Breed ?? "—")</td>
                             <td style="color:#64748b;font-size:.835rem;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="@(u.Color ?? "—")">@(u.Color ?? "—")</td>
                             <td style="color:#64748b;font-size:.835rem;max-width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">@(u.DateOfBirth.ToString("yyyy-MM-dd"))</td>
                             <td style="color:#64748b;font-size:.835rem;max-width:100px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="@(u.Gender ?? "—")">@(u.Gender ?? "—")</td>
                             <td style="color:#64748b;font-size:.835rem;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="@(u.SireName ?? "—")">@(u.SireName ?? "—")</td>
                             <td style="color:#64748b;font-size:.835rem;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="@(u.DamName ?? "—")">@(u.DamName ?? "—")</td>
-                            <td style="color:#64748b;font-size:.75rem;font-family:monospace;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="@(u.MicrochipNumber ?? "—")">@(u.MicrochipNumber ?? "—")</td>
+                            <td style="color:#64748b;font-size:.835rem;max-width:100px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">@{
+                                var age = (int)((DateTime.Now - u.DateOfBirth).TotalDays / 365.25);
+                                @age
+                            }</td>
                             <td>
                                 <span class="s-badge @statusClass">
                                     <i class="bi @statusDot" style="font-size:.5rem;"></i>
@@ -318,10 +344,13 @@
                                               <i class="bi bi-eye-fill" style="color:#667eea;"></i> View Details
                                           </a>
 
+                                          @if (P.Can("pet.edit")) {
                                           <button class="act-item" onclick="openEdit(this.closest('.act-menu'))">
                                               <i class="bi bi-pencil-fill" style="color:#667eea;"></i> Edit Dog
                                           </button>
+                                          }
 
+                                          @if (P.Can("pet.edit")) {
                                           <div class="act-divider"></div>
 
                                           <button class="act-item" onclick="openVaccineModal(this.closest('.act-menu'))">
@@ -339,6 +368,7 @@
                                           <button class="act-item" onclick="openPuppyModal(this.closest('.act-menu'))">
                                               <i class="bi bi-heart-eyes-fill" style="color:#f59e0b;"></i> Add Puppy
                                           </button>
+                                          }
 
                                           <div class="act-divider"></div>
 
@@ -346,14 +376,18 @@
                                               <i class="bi bi-award-fill" style="color:#f59e0b;"></i> Print Certificate
                                           </button>
 
+                                          @if (P.Can("pet.edit")) {
                                           <button class="act-item" onclick="toggleStatus(this.closest('.act-menu'))">
                                               <i class="bi bi-toggle-on" style="color:#059669;"></i> @(u.IsActive == true ? "Deactivate" : "Activate")
                                           </button>
+                                          }
 
+                                          @if (P.Can("pet.delete")) {
                                           <div class="act-divider"></div>
                                           <button class="act-item danger" onclick="openDelete(this.closest('.act-menu'))">
                                               <i class="bi bi-trash3-fill"></i> Delete Dog
                                           </button>
+                                          }
                                      </div>
                                  </div>
                             </td>
@@ -640,6 +674,7 @@
                         <option>Shetland Sheepdog</option>
                         <option>Spanish Water Dog</option>
                         <option>Swedish Vallhund</option>
+                        <option>White Swiss Shepherd Dog</option>
                     </optgroup>
                     <optgroup label="Miscellaneous / Other">
                         <option>Mixed Breed</option>
@@ -1005,6 +1040,7 @@
                         <option>Shetland Sheepdog</option>
                         <option>Spanish Water Dog</option>
                         <option>Swedish Vallhund</option>
+                        <option>White Swiss Shepherd Dog</option>
                     </optgroup>
                     <optgroup label="Miscellaneous / Other">
                         <option>Mixed Breed</option>
@@ -1045,8 +1081,9 @@
             <div class="frow">
                 <label> Photo</label>
                 <input class="finput" id="e_photoUrl" type="file" accept="image/*" />
+                <input type="hidden" id="e_currentPhotoUrl" />
                 <div class="ferr" id="e_photoUrl_err"></div>
-                <div class="fhint">Allowed formats: JPG, PNG, GIF (max 5MB)</div>
+                <div class="fhint">Allowed formats: JPG, PNG, GIF (max 5MB). Leave empty to keep the current photo.</div>
             </div>
             <div class="frow">
                 <label> Sire ID (Father)</label>
@@ -1170,21 +1207,31 @@
             <button class="modal-close" onclick="closeModal('matingModal')"><i class="bi bi-x-lg"></i></button>
         </div>
         <div class="modal-body">
-            <input type="hidden" id="m_sireId" />
-            <input type="hidden" id="m_damId" />
             <div class="frow">
                 <label>Sire (Father) <span class="req">*</span></label>
                 <select class="finput" id="m_sire">
                     <option value="">-- Select Sire --</option>
+                    <option value="__other__">-- Other (outside dog) --</option>
                 </select>
                 <div class="ferr" id="m_sire_err"></div>
+            </div>
+            <div class="frow" id="m_sireName_row" style="display:none;">
+                <label>Outside Sire's Name <span class="req">*</span></label>
+                <input class="finput" id="m_sireName" type="text" placeholder="Name of the outside dog" />
+                <div class="ferr" id="m_sireName_err"></div>
             </div>
             <div class="frow">
                 <label>Dam (Mother) <span class="req">*</span></label>
                 <select class="finput" id="m_dam">
                     <option value="">-- Select Dam --</option>
+                    <option value="__other__">-- Other (outside dog) --</option>
                 </select>
                 <div class="ferr" id="m_dam_err"></div>
+            </div>
+            <div class="frow" id="m_damName_row" style="display:none;">
+                <label>Outside Dam's Name <span class="req">*</span></label>
+                <input class="finput" id="m_damName" type="text" placeholder="Name of the outside dog" />
+                <div class="ferr" id="m_damName_err"></div>
             </div>
             <div class="frow">
                 <label>Mating Date <span class="req">*</span></label>
@@ -1349,6 +1396,70 @@
             <button class="btn-cancel" onclick="closeModal('puppyModal')">Cancel</button>
             <button class="btn-primary" id="puppyBtn" onclick="submitPuppy()">
                 <i class="bi bi-heart-eyes-fill"></i> Add Puppy
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- -- PUPPY VACCINATION MODAL ------------------------------------------ -->
+<div class="modal-backdrop-custom" id="puppyVaccineModal">
+    <div class="modal-box">
+        <div class="modal-hdr">
+            <h5><i class="bi bi-shield-fill-check" style="color:#059669;"></i> Record Puppy Vaccination</h5>
+            <button class="modal-close" onclick="closeModal('puppyVaccineModal')"><i class="bi bi-x-lg"></i></button>
+        </div>
+        <div class="modal-body">
+            <input type="hidden" id="pv_puppyId" />
+            <input type="hidden" id="pv_puppyName" />
+            <div class="frow">
+                <label>Puppy</label>
+                <input class="finput" id="pv_displayName" type="text" disabled style="background:#f1f5f9;cursor:not-allowed;" />
+            </div>
+            <div class="frow">
+                <label>Vaccine Name <span class="req">*</span></label>
+                <input class="finput" id="pv_name" type="text" placeholder="e.g., Rabies, DHPP, Bordetella" />
+                <div class="ferr" id="pv_name_err"></div>
+            </div>
+            <div class="frow">
+                <label>Vaccine Type</label>
+                <select class="finput" id="pv_vaccType">
+                    <option value="">-- Select Type --</option>
+                    <option>Core Vaccine</option>
+                    <option>Non-Core Vaccine</option>
+                    <option>Rabies</option>
+                    <option>DHPP (Distemper, Hepatitis, Parvovirus, Parainfluenza)</option>
+                    <option>Bordetella</option>
+                    <option>Lyme Disease</option>
+                    <option>Canine Influenza</option>
+                    <option>Other</option>
+                </select>
+            </div>
+            <div class="frow">
+                <label>Vaccination Date <span class="req">*</span></label>
+                <input class="finput" id="pv_vaccinationDate" type="date" />
+                <div class="ferr" id="pv_vaccinationDate_err"></div>
+            </div>
+            <div class="frow">
+                <label>Next Due Date</label>
+                <input class="finput" id="pv_nextVaccinationDate" type="date" />
+            </div>
+            <div class="frow">
+                <label>Veterinary Clinic</label>
+                <input class="finput" id="pv_vetclinicName" type="text" placeholder="Clinic name" />
+            </div>
+            <div class="frow">
+                <label>Batch Number</label>
+                <input class="finput" id="pv_batchNumber" type="text" placeholder="Vaccine batch number" />
+            </div>
+            <div class="frow">
+                <label>Notes</label>
+                <textarea class="finput" id="pv_notes" rows="3" placeholder="Additional notes..."></textarea>
+            </div>
+        </div>
+        <div class="modal-foot">
+            <button class="btn-cancel" onclick="closeModal('puppyVaccineModal')">Cancel</button>
+            <button class="btn-primary" id="puppyVaccineBtn" onclick="submitPuppyVaccination()">
+                <i class="bi bi-shield-fill-check"></i> Record Vaccination
             </button>
         </div>
     </div>
@@ -1521,6 +1632,7 @@
          // If there's an existing photo, it will be displayed elsewhere
          document.getElementById('e_sireId').value        = menu.dataset.sireid  || '';
          document.getElementById('e_damId').value         = menu.dataset.damid  || '';
+         document.getElementById('e_currentPhotoUrl').value = menu.dataset.photourl || '';
 
          console.log('Edit modal opened for dog ID:', menu.dataset.id);
          console.log('Form data:', {
@@ -1675,13 +1787,17 @@
          const microchipNumber = document.getElementById('e_microchipNumber').value.trim();
          const sireId = document.getElementById('e_sireId').value;
          const damId = document.getElementById('e_damId').value;
+         const currentPhotoUrl = document.getElementById('e_currentPhotoUrl').value;
          const photoFile = document.getElementById('e_photoUrl').files[0];
 
          // if (!fn || !ln) { showToast('First and last name are required.', 'error'); return; }
 
          setLoading('editBtn', true);
          try {
-             let photoUrl = null;
+             // Keep the existing photo unless a new one was picked — previously this
+             // defaulted to null and every edit without a new upload silently wiped
+             // the dog's photo.
+             let photoUrl = currentPhotoUrl || null;
 
              // Upload photo first if provided
              if (photoFile) {
@@ -1699,7 +1815,11 @@
                  photoUrl = uploadData.url;
              }
 
-             // Now update the dog with the photo URL
+             // Now update the dog with the photo URL. SireId/DamId/DateOfDeath must be
+             // real null (not "") when unset — the API binds these as int?/DateTime?
+             // and System.Text.Json throws converting "" to those types, which
+             // previously made most edits fail outright (any dog missing a recorded
+             // sire/dam, or any living dog).
              const res  = await fetch(`/Dogs/Update/${id}`, {
                  method: 'POST',
                  headers: { 'Content-Type': 'application/json' },
@@ -1708,13 +1828,13 @@
                      Name: name,
                      Breed: breed,
                      Color: color,
-                     DateOfBirth: dateOfBirth,
-                     DateOfDeath: dateOfDeath,
-                     Gender: gender,
-                     MicrochipNumber: microchipNumber,
+                     DateOfBirth: dateOfBirth || null,
+                     DateOfDeath: dateOfDeath || null,
+                     Gender: gender || null,
+                     MicrochipNumber: microchipNumber || null,
                      PhotoUrl: photoUrl,
-                     SireId: sireId,
-                     DamId: damId
+                     SireId: sireId ? parseInt(sireId, 10) : null,
+                     DamId: damId ? parseInt(damId, 10) : null
                  })
              });
              const data = await res.json();
@@ -1771,37 +1891,49 @@
         
         // Populate Sire dropdown
         const sireSelect = document.getElementById('m_sire');
-        sireSelect.innerHTML = '<option value="">-- Select Sire --</option>';
+        sireSelect.innerHTML = '<option value="">-- Select Sire --</option><option value="__other__">-- Other (outside dog) --</option>';
         animals.forEach(animal => {
             const option = document.createElement('option');
             option.value = animal.id;
             option.textContent = animal.name;
-            sireSelect.appendChild(option);
+            sireSelect.insertBefore(option, sireSelect.lastElementChild);
         });
 
         // Populate Dam dropdown
         const damSelect = document.getElementById('m_dam');
-        damSelect.innerHTML = '<option value="">-- Select Dam --</option>';
+        damSelect.innerHTML = '<option value="">-- Select Dam --</option><option value="__other__">-- Other (outside dog) --</option>';
         animals.forEach(animal => {
             const option = document.createElement('option');
             option.value = animal.id;
             option.textContent = animal.name;
-            damSelect.appendChild(option);
+            damSelect.insertBefore(option, damSelect.lastElementChild);
         });
+
+        // Reset "outside dog" name fields
+        document.getElementById('m_sireName_row').style.display = 'none';
+        document.getElementById('m_damName_row').style.display = 'none';
+        document.getElementById('m_sireName').value = '';
+        document.getElementById('m_damName').value = '';
+        sireSelect.onchange = () => {
+            document.getElementById('m_sireName_row').style.display = sireSelect.value === '__other__' ? 'flex' : 'none';
+        };
+        damSelect.onchange = () => {
+            document.getElementById('m_damName_row').style.display = damSelect.value === '__other__' ? 'flex' : 'none';
+        };
 
         // Pre-select current dog if it matches gender
         const currentDogId = menu.dataset.id;
         const currentDogGender = menu.dataset.gender;
-        
+
         if (currentDogGender === 'Male') {
             document.getElementById('m_sire').value = currentDogId;
         } else if (currentDogGender === 'Female') {
             document.getElementById('m_dam').value = currentDogId;
         }
-        
+
         // Set default mating date to today
         document.getElementById('m_matingDate').value = new Date().toISOString().split('T')[0];
-        
+
         openModal('matingModal');
     }
 
@@ -1886,17 +2018,23 @@
 
     // -- Submit Mating -----------------------------------------
     async function submitMating() {
-        clearErrs('m_sire_err', 'm_dam_err', 'm_matingDate_err', 'm_location_err', 'm_notes_err');
-        
+        clearErrs('m_sire_err', 'm_dam_err', 'm_sireName_err', 'm_damName_err', 'm_matingDate_err', 'm_location_err', 'm_notes_err');
+
         const sireId = document.getElementById('m_sire').value;
         const damId = document.getElementById('m_dam').value;
+        const sireIsOther = sireId === '__other__';
+        const damIsOther = damId === '__other__';
+        const sireName = document.getElementById('m_sireName').value.trim();
+        const damName = document.getElementById('m_damName').value.trim();
         const matingDate = document.getElementById('m_matingDate').value;
         const location = document.getElementById('m_location').value.trim();
         const notes = document.getElementById('m_notes').value.trim();
 
         let valid = true;
         if (!sireId) { showErr('m_sire_err', 'Sire is required'); valid = false; }
+        else if (sireIsOther && !sireName) { showErr('m_sireName_err', "Outside sire's name is required"); valid = false; }
         if (!damId) { showErr('m_dam_err', 'Dam is required'); valid = false; }
+        else if (damIsOther && !damName) { showErr('m_damName_err', "Outside dam's name is required"); valid = false; }
         if (!matingDate) { showErr('m_matingDate_err', 'Mating date is required'); valid = false; }
 
         if (!valid) return;
@@ -1907,8 +2045,10 @@
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    SireId: parseInt(sireId),
-                    DamId: parseInt(damId),
+                    SireId: sireIsOther ? null : parseInt(sireId),
+                    SireName: sireIsOther ? sireName : null,
+                    DamId: damIsOther ? null : parseInt(damId),
+                    DamName: damIsOther ? damName : null,
                     MatingDate: matingDate,
                     Location: location || null,
                     Notes: notes || null
@@ -2051,6 +2191,68 @@
             showToast(error.message || 'Network error. Please try again.', 'error');
         } finally {
             setLoading('puppyBtn', false, '<i class="bi bi-heart-eyes-fill"></i> Add Puppy');
+        }
+    }
+
+    // -- Open Puppy Vaccination Modal ----------------------------------------
+    async function openPuppyVaccineModal(puppyId, puppyName) {
+        document.getElementById('pv_puppyId').value = puppyId;
+        document.getElementById('pv_puppyName').value = puppyName;
+        document.getElementById('pv_displayName').value = puppyName;
+
+        // Set default vaccination date to today
+        document.getElementById('pv_vaccinationDate').value = new Date().toISOString().split('T')[0];
+
+        openModal('puppyVaccineModal');
+    }
+
+    // -- Submit Puppy Vaccination ----------------------------------------
+    async function submitPuppyVaccination() {
+        clearErrs('pv_name_err', 'pv_vaccinationDate_err');
+
+        const puppyId = document.getElementById('pv_puppyId').value;
+        const name = document.getElementById('pv_name').value.trim();
+        const vaccType = document.getElementById('pv_vaccType').value;
+        const vaccinationDate = document.getElementById('pv_vaccinationDate').value;
+        const nextVaccinationDate = document.getElementById('pv_nextVaccinationDate').value;
+        const vetclinicName = document.getElementById('pv_vetclinicName').value.trim();
+        const batchNumber = document.getElementById('pv_batchNumber').value.trim();
+        const notes = document.getElementById('pv_notes').value.trim();
+
+        let valid = true;
+        if (!name) { showErr('pv_name_err', 'Vaccine name is required'); valid = false; }
+        if (!vaccinationDate) { showErr('pv_vaccinationDate_err', 'Vaccination date is required'); valid = false; }
+
+        if (!valid) return;
+
+        setLoading('puppyVaccineBtn', true);
+        try {
+            const res = await fetch('/Dogs/AddVaccination', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    PuppyId: parseInt(puppyId),
+                    Name: name,
+                    VaccType: vaccType || null,
+                    VaccinationDate: vaccinationDate,
+                    NextVaccinationDate: nextVaccinationDate || null,
+                    VetclinicName: vetclinicName || null,
+                    BatchNumber: batchNumber || null,
+                    Notes: notes || null
+                })
+            });
+            const data = await res.json();
+            if (data.success) {
+                showToast(data.message || 'Puppy vaccination recorded successfully!', 'success');
+                closeModal('puppyVaccineModal');
+                setTimeout(() => location.reload(), 900);
+            } else {
+                showToast(data.message || 'Failed to record vaccination.', 'error');
+            }
+        } catch (error) {
+            showToast(error.message || 'Network error. Please try again.', 'error');
+        } finally {
+            setLoading('puppyVaccineBtn', false, '<i class="bi bi-shield-fill-check"></i> Record Vaccination');
         }
     }
 

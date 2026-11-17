@@ -12,6 +12,52 @@ namespace Dog.Portal.Controllers
 
         private bool IsAuthenticated() =>
             !string.IsNullOrEmpty(HttpContext.Session.GetString("UserSession"));
+
+        /// Turns a raw (never-swallowed) API response into an honest success/message pair —
+        /// distinguishes a real failure reason (e.g. "still has related records", a permission
+        /// error, or a DB conflict) from a generic fallback that would otherwise mask it.
+        private static object BuildResult(ApiRawResult raw, string successFallback)
+        {
+            ApiResponse<bool>? parsed = null;
+            try { parsed = JsonSerializer.Deserialize<ApiResponse<bool>>(raw.Body, new JsonSerializerOptions { PropertyNameCaseInsensitive = true }); }
+            catch { /* body wasn't the expected envelope shape — fall through */ }
+
+            if (raw.IsSuccessStatusCode && parsed?.Success == true)
+                return new { success = true, message = parsed.Message ?? successFallback };
+
+            if (raw.StatusCode == 401 || raw.StatusCode == 403)
+                return new { success = false, message = "You don't have permission to do this." };
+
+            if (parsed?.Message != null)
+                return new { success = false, message = parsed.Message };
+
+            var bodySnippet = raw.Body.Length > 200 ? raw.Body[..200] + "…" : raw.Body;
+            return new { success = false, message = $"Request failed ({raw.StatusCode}): {bodySnippet}" };
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> CheckUsername(string username)
+        {
+            if (string.IsNullOrWhiteSpace(username))
+                return Json(new { available = false });
+
+            try
+            {
+                var allUsers = await _apiClient.GetAsync<ApiResponse<List<UserDto>>>("api/users");
+                var users = allUsers?.Data ?? new List<UserDto>();
+
+                // Check if username already exists (case-insensitive)
+                var exists = users.Any(u =>
+                    u.Username != null &&
+                    u.Username.Equals(username, StringComparison.OrdinalIgnoreCase));
+
+                return Json(new { available = !exists });
+            }
+            catch
+            {
+                return Json(new { available = false });
+            }
+        }
         public async Task<IActionResult> Index(string? search, string? status, string? role, int page = 1, int pageSize = 10)
         {
             // ✅ Get session FIRST
@@ -56,32 +102,44 @@ namespace Dog.Portal.Controllers
                 // 🔥 STEP 1: BUILD ALLOWED COMPANY IDS
                 // =========================================
                 List<int> allowedCompanyIds = new List<int>();
+                var myCompanyId = Convert.ToInt32(userSession.CompanyId);
 
                 if (userSession.Role == "SystemOwner")
                 {
+                    // SystemOwner sees everyone
                     allowedCompanyIds = allCompanies.Select(c => c.Id).ToList();
                 }
-                else if (userSession.Role == "Admin" || userSession.Role == "Administrator")
+                else if (userSession.IsHeadOffice)
                 {
-                    var myCompany = allCompanies.FirstOrDefault(c => c.Id == Convert.ToInt32(userSession.CompanyId));
-
-                    if (myCompany != null)
+                    if (userSession.CurrentBranchId.HasValue && userSession.CurrentBranchId.Value > 0)
                     {
-                        allowedCompanyIds.Add(myCompany.Id);
-
-                        // include direct branches
+                        // Head-office user switched to a specific branch → show only that branch
+                        allowedCompanyIds.Add(userSession.CurrentBranchId.Value);
+                    }
+                    else
+                    {
+                        // Head-office with no branch selected → show head-office + all direct branches
+                        allowedCompanyIds.Add(myCompanyId);
                         allowedCompanyIds.AddRange(
                             allCompanies
-                                .Where(c => c.ParentCompanyId == myCompany.Id)
+                                .Where(c => c.ParentCompanyId == myCompanyId)
                                 .Select(c => c.Id)
                         );
                     }
                 }
                 else
                 {
-                    // fallback: only own company
-                    allowedCompanyIds.Add(Convert.ToInt32(userSession.CompanyId));
+                    // Branch user → only own company
+                    allowedCompanyIds.Add(myCompanyId);
                 }
+
+                // Determine the default company for the "Add User" / "Change Branch" modal
+                ViewBag.DefaultCompanyId = userSession.IsHeadOffice && userSession.CurrentBranchId.HasValue
+                    ? userSession.CurrentBranchId.Value
+                    : myCompanyId;
+
+                // Pass current user ID so the view can exclude self from dropdowns
+                ViewBag.CurrentUserId = userSession.Id;
 
                 // =========================================
                 // 🔥 STEP 2: FILTER COMPANIES (UI DROPDOWN)
@@ -94,7 +152,7 @@ namespace Dog.Portal.Controllers
                 // 🔥 STEP 3: FILTER USERS
                 // =========================================
                 allUsers = allUsers
-                    .Where(u => allowedCompanyIds.Contains(u.CompanyId))
+                    .Where(u => allowedCompanyIds.Contains(u.CompanyId) && u.Id != userSession.Id)
                     .ToList();
 
                 // =========================================
@@ -158,6 +216,7 @@ namespace Dog.Portal.Controllers
                 {
                     firstName = req.FirstName,
                     lastName = req.LastName,
+                    username = req.Username,
                     email = req.Email,
                     password = req.Password,
                     phoneNumber = req.PhoneNumber,
@@ -180,6 +239,7 @@ namespace Dog.Portal.Controllers
                     id,
                     firstName = req.FirstName,
                     lastName = req.LastName,
+                    username = req.Username,
                     phoneNumber = req.PhoneNumber,
                     status = req.Status,
                     roleName = req.RoleName,
@@ -196,8 +256,8 @@ namespace Dog.Portal.Controllers
             if (!IsAuthenticated()) return Json(new { success = false, message = "Session expired." });
             try
             {
-                var resp = await _apiClient.DeleteAsync<ApiResponse<bool>>($"api/users/{id}");
-                return Json(new { success = resp?.Success ?? false, message = resp?.Message ?? "Done." });
+                var raw = await _apiClient.DeleteRawAsync($"api/users/{id}");
+                return Json(BuildResult(raw, "Done."));
             }
             catch (Exception ex) { return Json(new { success = false, message = ex.Message }); }
         }

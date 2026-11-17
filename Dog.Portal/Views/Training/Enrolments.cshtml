@@ -1,0 +1,151 @@
+@{
+    Layout = "_AdminLayout";
+    ViewData["Title"] = "Training Enrolments";
+}
+<partial name="_TrainingShared" />
+<div class="tr">
+    <div class="tr-head">
+        <div><h4><i class="bi bi-clipboard2-check me-2" style="color:#667eea"></i>Training Enrolments</h4><p>Dogs enrolled for training and where they are in the process</p></div>
+        <div class="tr-actions"><button class="tr-btn btn-primary-t" id="btnNew" style="display:none"><i class="bi bi-plus-lg"></i> New enrolment</button></div>
+    </div>
+
+    <div class="tr-card">
+        <div class="tr-filters" style="margin:0">
+            <div class="tr-field" style="flex:1;min-width:200px"><label>Search</label><input class="tr-in" id="fSearch" placeholder="Dog, customer or enrolment no."></div>
+            <div class="tr-field"><label>Status</label><select class="tr-in" id="fStatus"></select></div>
+            <div class="tr-field"><label>Programme</label><select class="tr-in" id="fProg"><option value="">All</option></select></div>
+            <div class="tr-field"><label>Handler</label><select class="tr-in" id="fHandler"><option value="">All</option></select></div>
+            <div class="tr-field"><label>From</label><input type="date" class="tr-in" id="fFrom"></div>
+            <div class="tr-field"><label>To</label><input type="date" class="tr-in" id="fTo"></div>
+            <button class="tr-btn btn-primary-t" id="fApply"><i class="bi bi-search"></i> Search</button>
+        </div>
+    </div>
+
+    <div class="tr-tablewrap">
+        <table class="tr-table">
+            <thead><tr><th>No.</th><th>Dog</th><th>Customer</th><th>Programme</th><th>Status</th><th>Invoice</th><th>Handler</th><th>Progress</th><th>Created</th></tr></thead>
+            <tbody id="rows"><tr><td colspan="9"><div class="tr-empty">Loading…</div></td></tr></tbody>
+        </table>
+    </div>
+</div>
+
+<!-- New enrolment -->
+<div class="tr-modal" id="mNew">
+    <div class="tr-box">
+        <div class="tr-box-h"><h5>New training enrolment</h5><button class="tr-x" onclick="T.close('mNew')"><i class="bi bi-x-lg"></i></button></div>
+        <div class="tr-box-b">
+            <div class="tr-alert al-info"><i class="bi bi-info-circle-fill"></i><span>The dog must pass a health assessment before it can be invoiced and start training.</span></div>
+            <div class="tr-field"><label>Customer *</label>
+                <div style="display:flex;gap:.4rem"><select class="tr-in" id="nCust"></select><button type="button" class="tr-btn btn-ghost-t btn-sm-t" id="nAddCust" data-perm="training.customer.manage" style="white-space:nowrap">+ New customer</button></div></div>
+            <div id="nCustForm" class="tr-card" style="display:none;background:#fafbff">
+                <div class="tr-row"><div class="tr-field"><label>Full name *</label><input class="tr-in" id="qcName"></div><div class="tr-field"><label>Phone / WhatsApp</label><input class="tr-in" id="qcPhone"></div><div class="tr-field"><label>Email</label><input class="tr-in" id="qcEmail"></div></div>
+                <button type="button" class="tr-btn btn-primary-t btn-sm-t" id="qcSave">Save customer</button> <button type="button" class="tr-btn btn-ghost-t btn-sm-t" onclick="document.getElementById('nCustForm').style.display='none'">Cancel</button></div>
+            <div class="tr-field"><label>Dog *</label>
+                <div style="display:flex;gap:.4rem"><select class="tr-in" id="nDog"><option value="">Choose a customer first</option></select><button type="button" class="tr-btn btn-ghost-t btn-sm-t" id="nAddDog" data-perm="training.dog.manage" style="white-space:nowrap">+ New dog</button></div>
+                <div class="tr-note">These are the customer's own dogs brought for training &ndash; not the company's dogs.</div></div>
+            <div id="nDogForm" class="tr-card" style="display:none;background:#fafbff">
+                <div class="tr-row"><div class="tr-field"><label>Dog's name *</label><input class="tr-in" id="qdName"></div><div class="tr-field"><label>Breed</label><input class="tr-in" id="qdBreed"></div><div class="tr-field"><label>Gender</label><select class="tr-in" id="qdGender"><option value="">—</option><option>Male</option><option>Female</option></select></div></div>
+                <button type="button" class="tr-btn btn-primary-t btn-sm-t" id="qdSave">Save dog</button> <button type="button" class="tr-btn btn-ghost-t btn-sm-t" onclick="document.getElementById('nDogForm').style.display='none'">Cancel</button></div>
+            <div class="tr-field"><label>Training programme *</label><select class="tr-in" id="nProg"></select><div class="tr-note" id="nProgInfo"></div></div>
+            <div class="tr-row">
+                <div class="tr-field"><label>Additional charges</label><input type="number" min="0" step="0.01" class="tr-in" id="nExtra" value="0"></div>
+                <div class="tr-field"><label>Additional charges note</label><input class="tr-in" id="nExtraNote" placeholder="e.g. Transport, equipment"></div>
+            </div>
+            <div class="tr-field"><label>Notes</label><textarea class="tr-in" id="nNotes"></textarea></div>
+        </div>
+        <div class="tr-box-f"><button class="tr-btn btn-ghost-t" onclick="T.close('mNew')">Cancel</button><button class="tr-btn btn-primary-t" id="nSave">Create enrolment</button></div>
+    </div>
+</div>
+
+<script>
+(function () {
+    var programmes = [];
+    var STATUSES = [['', 'All statuses']].concat(Object.keys(T.STATUS).map(function (k) { return [k, T.STATUS[k][0]]; }));
+    fStatus.innerHTML = STATUSES.map(function (s) { return '<option value="' + s[0] + '">' + s[1] + '</option>'; }).join('');
+    var pre = T.qs('status'); if (pre) { if (pre.indexOf(',') < 0) fStatus.value = pre; }
+    var preStatus = pre;
+
+    async function load() {
+        var p = [];
+        var st = fStatus.value || (preStatus && preStatus.indexOf(',') >= 0 && !fStatus.dataset.touched ? preStatus : '');
+        if (st) p.push('status=' + encodeURIComponent(st));
+        if (fSearch.value.trim()) p.push('search=' + encodeURIComponent(fSearch.value.trim()));
+        if (fProg.value) p.push('programmeId=' + fProg.value);
+        if (fHandler.value) p.push('handlerUserId=' + encodeURIComponent(fHandler.value));
+        if (fFrom.value) p.push('from=' + fFrom.value); if (fTo.value) p.push('to=' + fTo.value);
+        var r = await T.api('GET', 'enrollments' + (p.length ? '?' + p.join('&') : ''));
+        if (!r.success) { rows.innerHTML = '<tr><td colspan="9"><div class="tr-empty"><i class="bi bi-exclamation-circle"></i>' + T.esc(r.message || 'Could not load.') + '</div></td></tr>'; return; }
+        if (r.data.length === 0) { rows.innerHTML = '<tr><td colspan="9"><div class="tr-empty"><i class="bi bi-inbox"></i>No enrolments found.</div></td></tr>'; return; }
+        rows.innerHTML = r.data.map(function (e) {
+            var inv = e.invoiceNumber ? T.esc(e.invoiceNumber) + '<div class="tr-note" style="margin:0">' + T.esc(e.invoiceStatus) + (e.invoiceBalance > 0 ? ' · due ' + T.money(e.invoiceBalance) : '') + '</div>' : '<span class="tr-note">—</span>';
+            var prog = e.currentWeek ? 'Week ' + e.currentWeek + ' · Day ' + e.dayNumber + ' / ' + (e.durationDays + e.extensionDays) : '—';
+            return '<tr class="click" onclick="location.href=\'/Training/Enrolment/' + e.id + '\'"><td><b>' + T.esc(e.enrollmentNumber) + '</b></td><td>' + T.dog(e.dogName, e.dogBreed, e.dogPhotoUrl) + '</td><td>' + T.esc(e.customerName || '—') + '</td><td>' + T.esc(e.programmeName) + '</td><td>' + T.badge(e.status) + '</td><td>' + inv + '</td><td>' + T.esc(e.handlerName || '—') + '</td><td>' + prog + '</td><td>' + T.date(e.createdAt) + '</td></tr>';
+        }).join('');
+    }
+
+    async function boot() {
+        var p = await T.api('GET', 'programmes/active');
+        if (p.success) { programmes = p.data; fProg.innerHTML += T.opts(programmes, 'id', function (x) { return x.name; }, ''); }
+        if (T.can('training.handler.view')) { var h = await T.api('GET', 'handlers'); if (h.success) fHandler.innerHTML += T.opts(h.data, 'userId', function (x) { return x.name; }, ''); }
+        if (T.can('training.enrolment.create')) { btnNew.style.display = ''; }
+        load();
+        if (T.qs('new') === '1' && T.can('training.enrolment.create')) openNew();
+    }
+
+    var customers = [], preDog = T.qs('dog');
+    async function loadDogs(customerId, selectId) {
+        if (!customerId) { nDog.innerHTML = '<option value="">Choose a customer first</option>'; return; }
+        var r = await T.api('GET', 'dogs?customerId=' + customerId);
+        var dogs = r.success ? r.data : [];
+        nDog.innerHTML = '<option value="">' + (dogs.length ? 'Select a dog' : 'No dogs yet – add one with "+ New dog"') + '</option>' + dogs.map(function (d) { return '<option value="' + d.id + '"' + (String(d.id) === String(selectId) ? ' selected' : '') + '>' + T.esc(d.name + (d.breed ? ' (' + d.breed + ')' : '')) + '</option>'; }).join('');
+    }
+    async function openNew() {
+        nProg.innerHTML = T.opts(programmes, 'id', function (x) { return x.name + ' – ' + x.durationDays + ' days'; }, '', programmes.length ? 'Select a programme' : 'No active programmes – create one first');
+        nCustForm.style.display = 'none'; nDogForm.style.display = 'none';
+        nCust.innerHTML = '<option value="">Loading…</option>'; T.open('mNew');
+        var r = await T.api('GET', 'customers'); customers = r.success ? r.data : [];
+        nCust.innerHTML = '<option value="">' + (customers.length ? 'Select a customer' : 'No customers yet – add one with "+ New customer"') + '</option>' + T.opts(customers, 'id', function (c) { return c.fullName + (c.phone ? ' · ' + c.phone : ''); }, '');
+        nDog.innerHTML = '<option value="">Choose a customer first</option>';
+        if (preDog) {   // coming from the Training Dogs list
+            var all = await T.api('GET', 'dogs'); var d = (all.success ? all.data : []).filter(function (x) { return String(x.id) === String(preDog); })[0];
+            if (d) { nCust.value = d.customerId; await loadDogs(d.customerId, d.id); }
+            preDog = null;
+        }
+    }
+    nCust.onchange = function () { loadDogs(nCust.value); };
+    nAddCust.onclick = function () { nCustForm.style.display = ''; qcName.focus(); };
+    nAddDog.onclick = function () { if (!nCust.value) { T.toast('Choose or add the customer first.', 'error'); return; } nDogForm.style.display = ''; qdName.focus(); };
+    qcSave.onclick = async function () {
+        var r = await T.api('POST', 'customers', { fullName: qcName.value, phone: qcPhone.value, email: qcEmail.value });
+        if (!r.success) { T.toast(r.message || 'Could not save the customer.', 'error'); return; }
+        customers.push(r.data); nCust.innerHTML += '<option value="' + r.data.id + '">' + T.esc(r.data.fullName) + '</option>'; nCust.value = r.data.id;
+        nCustForm.style.display = 'none'; qcName.value = qcPhone.value = qcEmail.value = ''; T.toast('Customer added.'); loadDogs(r.data.id);
+    };
+    qdSave.onclick = async function () {
+        var r = await T.api('POST', 'dogs', { customerId: +nCust.value, name: qdName.value, breed: qdBreed.value, gender: qdGender.value });
+        if (!r.success) { T.toast(r.message || 'Could not save the dog.', 'error'); return; }
+        nDogForm.style.display = 'none'; qdName.value = qdBreed.value = ''; T.toast('Dog added.'); await loadDogs(nCust.value, r.data.id);
+    };
+
+    nProg.onchange = function () {
+        var x = programmes.filter(function (p) { return String(p.id) === nProg.value; })[0];
+        nProgInfo.textContent = x ? 'Fee: ' + T.money(x.fee) + ' · ' + x.durationDays + ' days' + (x.description ? ' · ' + x.description : '') : '';
+    };
+
+    nSave.onclick = async function () {
+        if (!nCust.value) { T.toast('Choose the customer.', 'error'); return; }
+        if (!nDog.value) { T.toast('Choose a dog.', 'error'); return; }
+        if (!nProg.value) { T.toast('Choose a training programme.', 'error'); return; }
+        T.busy(nSave, true, 'Creating…');
+        var r = await T.api('POST', 'enrollments', { dogId: +nDog.value, programmeId: +nProg.value, additionalCharges: +nExtra.value || 0, additionalChargesNote: nExtraNote.value, notes: nNotes.value });
+        T.busy(nSave, false);
+        if (r.success) { T.toast(r.message || 'Created.'); location.href = '/Training/Enrolment/' + r.data.id; }
+        else T.toast(r.message || 'Could not create the enrolment.', 'error');
+    };
+
+    btnNew.onclick = openNew;
+    fApply.onclick = function () { fStatus.dataset.touched = '1'; load(); };
+    fSearch.onkeydown = function (e) { if (e.key === 'Enter') fApply.onclick(); };
+    boot();
+})();
+</script>
