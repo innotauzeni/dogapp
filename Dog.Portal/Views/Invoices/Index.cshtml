@@ -3,6 +3,7 @@
 @{
     Layout = "_AdminLayout";
     ViewData["Title"] = "Invoices";
+    var P = PermHelper.For(Context);
 }
 <style>
 .page-hdr h4{font-size:1.15rem;font-weight:800;color:#0f172a;margin:0 0 .25rem}
@@ -68,8 +69,8 @@
 .empty-state h3{font-size:1.1rem;font-weight:600;color:#64748b;margin-bottom:.5rem}
 .modal-backdrop-custom{position:fixed;inset:0;background:rgba(15,23,42,.45);backdrop-filter:blur(3px);z-index:1050;display:none;align-items:center;justify-content:center;padding:1rem}
 .modal-backdrop-custom.open{display:flex}
-.modal-box{background:#fff;border-radius:16px;box-shadow:0 20px 60px rgba(0,0,0,.2);width:100%;max-width:700px;max-height:92vh;overflow-y:auto;animation:mslide .22s ease}
-.modal-box.sm{max-width:460px}
+.modal-box{background:#fff;border-radius:16px;box-shadow:0 20px 60px rgba(0,0,0,.2);width:100%;max-width:820px;max-height:92vh;overflow-y:auto;animation:mslide .22s ease}
+.modal-box.sm{max-width:580px}
 @@keyframes mslide{from{opacity:0;transform:translateY(-16px)}to{opacity:1;transform:translateY(0)}}
 .modal-hdr{display:flex;align-items:center;justify-content:space-between;padding:1.25rem 1.5rem;border-bottom:1px solid #f1f5f9;position:sticky;top:0;background:#fff;z-index:1}
 .modal-hdr h5{font-size:1rem;font-weight:800;color:#0f172a;margin:0;display:flex;align-items:center;gap:.5rem}
@@ -102,6 +103,16 @@
 .totals-box{background:#f8fafc;border-radius:10px;padding:1rem;margin-top:1rem}
 .totals-row{display:flex;justify-content:space-between;font-size:.855rem;padding:.3rem 0}
 .totals-row.total{font-weight:800;font-size:1rem;color:#1e293b;border-top:1px solid #e2e8f0;padding-top:.6rem;margin-top:.3rem}
+.search-dd{position:relative}
+.search-dd-list{position:absolute;top:100%;left:0;right:0;background:#fff;border:1px solid #e2e8f0;border-radius:9px;box-shadow:0 10px 28px rgba(0,0,0,.14);max-height:220px;overflow-y:auto;z-index:1060;display:none;margin-top:.25rem}
+.search-dd-list.open{display:block}
+.search-dd-item{padding:.6rem .875rem;font-size:.83rem;cursor:pointer;color:#1e293b}
+.search-dd-item:hover,.search-dd-item.active{background:#f1f5f9}
+.search-dd-item small{display:block;font-size:.72rem;color:#94a3b8;font-weight:500;margin-top:.1rem}
+.search-dd-empty{padding:.6rem .875rem;font-size:.8rem;color:#94a3b8}
+.dog-pick-wrap{display:flex;gap:.35rem;align-items:center}
+.btn-pick-dog{width:30px;height:30px;flex-shrink:0;border:1.5px solid #e2e8f0;border-radius:7px;background:#fff;color:#667eea;cursor:pointer;display:flex;align-items:center;justify-content:center}
+.btn-pick-dog:hover{background:#f1f5f9}
 .pay-method-tabs{display:flex;gap:.5rem;margin-bottom:1rem}
 .pay-tab{padding:.5rem 1rem;border:1.5px solid #e2e8f0;border-radius:8px;font-size:.82rem;font-weight:600;cursor:pointer;background:#fff;color:#64748b;transition:all .15s}
 .pay-tab.active{background:linear-gradient(135deg,#667eea,#764ba2);color:#fff;border-color:transparent}
@@ -124,7 +135,9 @@
   <div class="hdr-actions">
     <a href="@Url.Action("Suspense")" class="btn-nav"><i class="bi bi-bank2" style="color:#667eea"></i> Suspense (@Model.PendingSuspense.Count)</a>
     <a href="@Url.Action("Receipts")" class="btn-nav"><i class="bi bi-receipt-cutoff" style="color:#10b981"></i> Receipts</a>
-    <button class="btn-add" onclick="openModal('createModal')"><i class="bi bi-plus-lg"></i> New Invoice</button>
+    @if (P.Can("invoice.create")) {
+    <button class="btn-add" onclick="WB.create()"><i class="bi bi-plus-lg"></i> New Invoice</button>
+    }
   </div>
 </div>
 <div class="stats-row">
@@ -172,7 +185,7 @@
         <thead><tr>
           <th style="width:50px">#</th>
           <th style="width:140px">Invoice #</th>
-          <th style="width:180px">Customer</th>
+          <th style="width:210px">Bill to</th>
           <th style="width:100px">Date</th>
           <th style="width:100px">Due</th>
           <th style="width:110px">Total</th>
@@ -189,9 +202,9 @@
             <tr>
               <td><span class="rn">@(si+i+1)</span></td>
               <td><span style="font-weight:700;color:#1e293b;font-family:monospace">@item.InvoiceNumber</span></td>
-              <td title="@item.CustomerName">
-                <div style="font-weight:600;color:#1e293b">@item.CustomerName</div>
-                <div style="font-size:.75rem;color:#94a3b8">@item.CustomerEmail</div>
+              <td title="@(item.BillToName ?? item.CustomerName)">
+                <div style="font-weight:600;color:#1e293b">@(item.BillToName ?? item.CustomerName)@if (item.IsFiscal) { <span style="font-size:.62rem;background:#e0e7ff;color:#4338ca;padding:.05rem .35rem;border-radius:6px;margin-left:.3rem">FISCAL</span> }</div>
+                <div style="font-size:.75rem;color:#94a3b8">@(string.IsNullOrEmpty(item.ContactPerson) ? item.CustomerEmail : "Attn: " + item.ContactPerson)</div>
               </td>
               <td style="font-size:.8rem;color:#64748b">@item.InvoiceDate.ToString("dd MMM yy")</td>
               <td style="font-size:.8rem;color:@(isOverdue ? "#dc2626" : "#64748b");font-weight:@(isOverdue ? "700" : "400")">
@@ -199,7 +212,7 @@
                 @if (isOverdue) { <span style="font-size:.65rem;background:#fee2e2;color:#dc2626;padding:.1rem .35rem;border-radius:6px;margin-left:.25rem">OVERDUE</span> }
               </td>
               <td style="font-weight:600">@item.TotalAmount.ToString("N2")</td>
-              <td style="font-weight:700;color:@(item.BalanceAmount > 0 ? "#dc2626" : "#065f46")">@item.BalanceAmount.ToString("N2")</td>
+              <td style="font-weight:700;color:@(item.BalanceAmount > 0 ? "#dc2626" : "#065f46")">@item.BalanceAmount.ToString("N2")@if (item.PendingAmount > 0) { <div style="font-size:.66rem;font-weight:700;color:#92400e;background:#fef3c7;border-radius:6px;padding:.05rem .4rem;display:inline-block;margin-top:.15rem">@item.PendingAmount.ToString("N2") awaiting confirmation</div> }</td>
               <td><span class="inv-badge @badgeClass">@item.Status</span></td>
               <td style="text-align:center">
                 <div class="act-wrap">
@@ -207,13 +220,18 @@
                   <div class="act-menu"
                        data-id="@item.Id"
                        data-invnum="@item.InvoiceNumber"
-                       data-customer="@item.CustomerName"
+                       data-customer="@(item.BillToName ?? item.CustomerName)"
                        data-total="@item.TotalAmount"
                        data-balance="@item.BalanceAmount"
                        data-status="@item.Status">
                     <button class="act-item" onclick="viewInvoice(this.closest('.act-menu'))"><i class="bi bi-eye" style="color:#667eea"></i> View Details</button>
+                    <button class="act-item" onclick="downloadInvoicePdf(this.closest('.act-menu'))"><i class="bi bi-file-earmark-pdf" style="color:#dc2626"></i> Download PDF</button>
+                    @if (item.Status != "CANCELLED" && P.Can("invoice.email")) {
+                      <button class="act-item" onclick="emailInvoice(this.closest('.act-menu'))"><i class="bi bi-envelope-paper" style="color:#4f46e5"></i> Email Invoice</button>
+                    }
                     @if (item.Status == "DRAFT") {
-                      <button class="act-item" onclick="sendInvoice(this.closest('.act-menu'))"><i class="bi bi-send" style="color:#1d4ed8"></i> Send Invoice</button>
+                      @if (P.Can("invoice.edit")) { <button class="act-item" onclick="editDraft(this.closest('.act-menu'))"><i class="bi bi-pencil-square" style="color:#667eea"></i> Edit Draft</button> }
+                      <button class="act-item" onclick="sendInvoice(this.closest('.act-menu'))"><i class="bi bi-send" style="color:#1d4ed8"></i> Issue Invoice</button>
                     }
                     @if (item.Status == "SENT" || item.Status == "PARTIAL") {
                       <button class="act-item" onclick="openPayModal(this.closest('.act-menu'))"><i class="bi bi-cash-coin" style="color:#10b981"></i> Record Payment</button>
@@ -257,167 +275,7 @@
   }
 </div>
 
-<!-- VIEW DETAILS MODAL -->
-<div class="modal-backdrop-custom" id="viewModal">
-  <div class="modal-box">
-    <div class="modal-hdr">
-      <h5><i class="bi bi-receipt" style="color:#667eea"></i> Invoice Details</h5>
-      <button class="modal-close" onclick="closeModal('viewModal')"><i class="bi bi-x-lg"></i></button>
-    </div>
-    <div class="modal-body-p">
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:.75rem;margin-bottom:1.25rem" id="viewMeta"></div>
-      <div style="font-size:.8rem;font-weight:700;color:#374151;margin-bottom:.5rem;text-transform:uppercase;letter-spacing:.05em">Balance</div>
-      <div id="viewBalance" style="font-size:1.5rem;font-weight:800;color:#dc2626"></div>
-    </div>
-    <div class="modal-foot"><button class="btn-cancel" onclick="closeModal('viewModal')">Close</button></div>
-  </div>
-</div>
-
-<!-- CREATE INVOICE MODAL -->
-<div class="modal-backdrop-custom" id="createModal">
-  <div class="modal-box">
-    <div class="modal-hdr">
-      <h5><i class="bi bi-receipt" style="color:#667eea"></i> New Invoice</h5>
-      <button class="modal-close" onclick="closeModal('createModal')"><i class="bi bi-x-lg"></i></button>
-    </div>
-    <div class="modal-body-p">
-      <div class="frow-2">
-        <div class="frow"><label>Customer Name <span style="color:#ef4444">*</span></label><input class="finput" id="c_customerName" placeholder="Customer name"></div>
-        <div class="frow"><label>Customer Email</label><input class="finput" type="email" id="c_customerEmail" placeholder="email@example.com"></div>
-      </div>
-      <div class="frow-2">
-        <div class="frow"><label>Customer Phone</label><input class="finput" id="c_customerPhone" placeholder="+1 234 567 8900"></div>
-        <div class="frow"><label>Customer ID</label>
-          <select class="finput" id="c_customerId">
-            <option value="">Select customer (optional)</option>
-            @foreach (var c in Model.Customers) { <option value="@c.Id">@c.FullName @(c.Email != null ? "(" + c.Email + ")" : "")</option> }
-          </select>
-        </div>
-      </div>
-      <div class="frow-2">
-        <div class="frow"><label>Invoice Date <span style="color:#ef4444">*</span></label><input class="finput" type="date" id="c_invoiceDate"></div>
-        <div class="frow"><label>Due Date <span style="color:#ef4444">*</span></label><input class="finput" type="date" id="c_dueDate"></div>
-      </div>
-      <div style="font-size:.85rem;font-weight:700;color:#374151;margin-bottom:.5rem;margin-top:.5rem">Line Items</div>
-      <table class="line-items-table">
-        <thead><tr><th>Description</th><th style="width:70px">Qty</th><th style="width:90px">Unit Price</th><th style="width:70px">Tax%</th><th style="width:70px">Disc%</th><th style="width:90px">Amount</th><th style="width:30px"></th></tr></thead>
-        <tbody id="lineItemsBody"></tbody>
-      </table>
-      <button class="btn-add-line" onclick="addLineItem()"><i class="bi bi-plus"></i> Add Line</button>
-      <div class="totals-box">
-        <div class="totals-row"><span>Subtotal</span><span id="t_subtotal">0.00</span></div>
-        <div class="frow-2" style="margin-top:.5rem">
-          <div class="frow"><label>Tax Amount</label><input class="finput" type="number" id="c_taxAmount" value="0" min="0" step="0.01" oninput="recalcTotals()"></div>
-          <div class="frow"><label>Discount Amount</label><input class="finput" type="number" id="c_discountAmount" value="0" min="0" step="0.01" oninput="recalcTotals()"></div>
-        </div>
-        <div class="totals-row total"><span>TOTAL</span><span id="t_total">0.00</span></div>
-      </div>
-      <div class="frow" style="margin-top:1rem"><label>Notes</label><textarea class="finput" id="c_notes" rows="2" placeholder="Optional notes..."></textarea></div>
-      <div class="frow"><label>Terms</label><textarea class="finput" id="c_terms" rows="2" placeholder="Payment terms..."></textarea></div>
-    </div>
-    <div class="modal-foot">
-      <button class="btn-cancel" onclick="closeModal('createModal')">Cancel</button>
-      <button class="btn-pm" id="createBtn" onclick="submitCreate()"><i class="bi bi-receipt"></i> Create Invoice</button>
-    </div>
-  </div>
-</div>
-
-<!-- RECORD PAYMENT MODAL -->
-<div class="modal-backdrop-custom" id="payModal">
-  <div class="modal-box sm">
-    <div class="modal-hdr">
-      <h5><i class="bi bi-cash-coin" style="color:#10b981"></i> Record Payment</h5>
-      <button class="modal-close" onclick="closeModal('payModal')"><i class="bi bi-x-lg"></i></button>
-    </div>
-    <div class="modal-body-p">
-      <input type="hidden" id="p_invoiceId">
-      <div style="background:#f8fafc;border-radius:8px;padding:.75rem 1rem;margin-bottom:1rem">
-        <div style="font-size:.72rem;color:#94a3b8;font-weight:600;text-transform:uppercase">Invoice</div>
-        <div id="p_invoiceInfo" style="font-weight:700;color:#1e293b;font-size:.9rem"></div>
-      </div>
-      <div class="pay-method-tabs">
-        <button class="pay-tab active" onclick="setPayMethod(this,'CASH')"><i class="bi bi-cash"></i> Cash</button>
-        <button class="pay-tab" onclick="setPayMethod(this,'ECOCASH')"><i class="bi bi-phone"></i> EcoCash</button>
-        <button class="pay-tab" onclick="setPayMethod(this,'BANK')"><i class="bi bi-bank2"></i> Bank</button>
-      </div>
-      <input type="hidden" id="p_payMethod" value="CASH">
-      <div class="frow"><label>Amount <span style="color:#ef4444">*</span></label><input class="finput" type="number" id="p_amount" min="0.01" step="0.01" placeholder="0.00"></div>
-      <div class="frow"><label>Reference / Transaction ID</label><input class="finput" id="p_reference" placeholder="e.g. EcoCash ref, bank ref..."></div>
-      <div class="frow"><label>Notes</label><textarea class="finput" id="p_notes" rows="2" placeholder="Optional notes..."></textarea></div>
-
-      <!-- Bank-specific fields (shown only when BANK tab is active) -->
-      <div id="bankFields" style="display:none;border-top:1px solid #f1f5f9;padding-top:1rem;margin-top:.5rem">
-        <div style="font-size:.78rem;font-weight:700;color:#374151;margin-bottom:.75rem;display:flex;align-items:center;gap:.4rem">
-          <i class="bi bi-bank2" style="color:#f59e0b"></i> Bank Payment Details
-        </div>
-        <div class="frow-2">
-          <div class="frow"><label>Bank <span style="color:#ef4444">*</span></label>
-            <select class="finput" id="p_bankId" onchange="onBankChange(this)">
-              <option value="">Select bank</option>
-              @foreach (var b in Model.Banks) {
-                <option value="@b.Id">@b.Name@(b.AccountName != null ? " — " + b.AccountName : "")</option>
-              }
-            </select>
-          </div>
-          <div class="frow"><label>Bank Account <span style="color:#ef4444">*</span></label>
-            <select class="finput" id="p_bankAccountId" onchange="onBankAccountChange(this)">
-              <option value="">— select bank first —</option>
-            </select>
-          </div>
-        </div>
-        <div class="frow-2">
-          <div class="frow">
-            <label>Account Number</label>
-            <input class="finput" id="p_accountNumber" placeholder="Auto-filled from account" readonly style="background:#f8fafc;color:#64748b">
-          </div>
-          <div class="frow">
-            <label>Currency <span style="color:#ef4444">*</span></label>
-            <input class="finput" id="p_currencyDisplay" placeholder="Auto-filled from account" readonly style="background:#f8fafc;color:#64748b">
-            <input type="hidden" id="p_currencyId">
-          </div>
-        </div>
-        <div class="frow-2">
-          <div class="frow"><label>Customer <span style="color:#ef4444">*</span></label>
-            <select class="finput" id="p_customerId">
-              <option value="">Select customer</option>
-              @foreach (var c in Model.Customers) { <option value="@c.Id">@c.FullName</option> }
-            </select>
-          </div>
-          <div class="frow"><label>Statement Reference</label><input class="finput" id="p_statementRef" placeholder="Bank statement reference"></div>
-        </div>
-
-        <!-- POP Upload -->
-        <div style="background:#fef3c7;border:1.5px dashed #f59e0b;border-radius:10px;padding:1rem;margin-top:.5rem">
-          <div style="font-size:.8rem;font-weight:700;color:#92400e;margin-bottom:.5rem;display:flex;align-items:center;gap:.4rem">
-            <i class="bi bi-paperclip"></i> Proof of Payment (POP) <span style="color:#ef4444">*</span>
-          </div>
-          <input type="file" id="p_popFile" accept=".pdf,.jpg,.jpeg,.png,.gif" style="display:none" onchange="handlePopFile(this)">
-          <div id="popDropZone" onclick="document.getElementById('p_popFile').click()"
-               style="border:1.5px dashed #e2e8f0;border-radius:8px;padding:1.25rem;text-align:center;cursor:pointer;background:#fff;transition:all .15s"
-               ondragover="event.preventDefault();this.style.borderColor='#667eea'"
-               ondragleave="this.style.borderColor='#e2e8f0'"
-               ondrop="handlePopDrop(event)">
-            <i class="bi bi-cloud-upload" style="font-size:1.5rem;color:#94a3b8;display:block;margin-bottom:.4rem"></i>
-            <div style="font-size:.82rem;color:#64748b;font-weight:500">Click to upload or drag & drop</div>
-            <div style="font-size:.72rem;color:#94a3b8;margin-top:.2rem">PDF, JPG, PNG (max 5MB)</div>
-          </div>
-          <div id="popFileInfo" style="display:none;margin-top:.5rem;background:#d1fae5;border-radius:7px;padding:.5rem .75rem;align-items:center;gap:.5rem;font-size:.82rem;color:#065f46">
-            <i class="bi bi-file-earmark-check-fill"></i>
-            <span id="popFileName"></span>
-            <button onclick="clearPop()" style="margin-left:auto;background:none;border:none;color:#065f46;cursor:pointer;font-size:.8rem"><i class="bi bi-x"></i></button>
-          </div>
-        </div>
-      </div>
-
-      <!-- Embed bank accounts as JSON for client-side lookup -->
-      <script id="bankAccountsData" type="application/json">@Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.BankAccounts))</script>
-    </div>
-    <div class="modal-foot">
-      <button class="btn-cancel" onclick="closeModal('payModal')">Cancel</button>
-      <button class="btn-green" id="payBtn" onclick="submitPayment()"><i class="bi bi-check-circle"></i> Record Payment</button>
-    </div>
-  </div>
-</div>
+@await Html.PartialAsync("_Workbench", Model)
 
 <!-- CLAIM BANK TRANSACTION MODAL -->
 <div class="modal-backdrop-custom" id="claimModal">
@@ -507,257 +365,16 @@ function filterByStatus(s){window.location.href='?status='+s;}
 
 function drow(l,v){return '<div><div style="font-size:.72rem;color:#94a3b8;font-weight:600;text-transform:uppercase;margin-bottom:.2rem">'+l+'</div><div style="font-size:.875rem;color:#1e293b;font-weight:600">'+(v||'-')+'</div></div>';}
 
-function viewInvoice(menu){closeAllActMenus();var d=menu.dataset;document.getElementById('viewMeta').innerHTML=drow('Invoice #',d.invnum)+drow('Customer',d.customer)+drow('Total',parseFloat(d.total).toFixed(2))+drow('Status',d.status);var bal=parseFloat(d.balance);document.getElementById('viewBalance').textContent=bal.toFixed(2);document.getElementById('viewBalance').style.color=bal>0?'#dc2626':'#065f46';openModal('viewModal');}
-
-// ── CREATE INVOICE ────────────────────────────────────────────────────────────
-var lineCount = 0;
-function addLineItem(){
-    lineCount++;
-    var tbody = document.getElementById('lineItemsBody');
-    var tr = document.createElement('tr');
-    tr.id = 'line_'+lineCount;
-    tr.innerHTML = '<td><input class="finput" style="padding:.4rem .5rem" placeholder="Description" oninput="recalcTotals()"></td>'+
-        '<td><input class="finput" style="padding:.4rem .5rem" type="number" value="1" min="1" oninput="recalcTotals()"></td>'+
-        '<td><input class="finput" style="padding:.4rem .5rem" type="number" value="0" min="0" step="0.01" oninput="recalcTotals()"></td>'+
-        '<td><input class="finput" style="padding:.4rem .5rem" type="number" value="0" min="0" max="100" oninput="recalcTotals()"></td>'+
-        '<td><input class="finput" style="padding:.4rem .5rem" type="number" value="0" min="0" max="100" oninput="recalcTotals()"></td>'+
-        '<td id="amt_'+lineCount+'" style="font-weight:600;color:#1e293b">0.00</td>'+
-        '<td><button class="btn-rm-line" onclick="removeLine('+lineCount+')"><i class="bi bi-x"></i></button></td>';
-    tbody.appendChild(tr);
-    recalcTotals();
-}
-function removeLine(id){var r=document.getElementById('line_'+id);if(r)r.remove();recalcTotals();}
-function recalcTotals(){
-    var rows=document.getElementById('lineItemsBody').querySelectorAll('tr');
-    var subtotal=0;
-    rows.forEach(function(r){
-        var inputs=r.querySelectorAll('input');
-        var qty=parseFloat(inputs[1].value)||0;
-        var price=parseFloat(inputs[2].value)||0;
-        var tax=parseFloat(inputs[3].value)||0;
-        var disc=parseFloat(inputs[4].value)||0;
-        var amt=qty*price*(1-disc/100)*(1+tax/100);
-        subtotal+=qty*price;
-        var id=r.id.replace('line_','');
-        var amtEl=document.getElementById('amt_'+id);
-        if(amtEl)amtEl.textContent=amt.toFixed(2);
-    });
-    document.getElementById('t_subtotal').textContent=subtotal.toFixed(2);
-    var tax=parseFloat(document.getElementById('c_taxAmount').value)||0;
-    var disc=parseFloat(document.getElementById('c_discountAmount').value)||0;
-    var total=subtotal-disc+tax;
-    document.getElementById('t_total').textContent=total.toFixed(2);
-}
-function openCreateModal(){
-    document.getElementById('c_customerName').value='';document.getElementById('c_customerEmail').value='';
-    document.getElementById('c_customerPhone').value='';document.getElementById('c_customerId').value='';
-    document.getElementById('c_invoiceDate').value=new Date().toISOString().split('T')[0];
-    var due=new Date();due.setDate(due.getDate()+30);
-    document.getElementById('c_dueDate').value=due.toISOString().split('T')[0];
-    document.getElementById('c_taxAmount').value='0';document.getElementById('c_discountAmount').value='0';
-    document.getElementById('c_notes').value='';document.getElementById('c_terms').value='';
-    document.getElementById('lineItemsBody').innerHTML='';lineCount=0;
-    addLineItem();
-    openModal('createModal');
-}
-async function submitCreate(){
-    var name=document.getElementById('c_customerName').value.trim();
-    var invDate=document.getElementById('c_invoiceDate').value;
-    var dueDate=document.getElementById('c_dueDate').value;
-    if(!name){showToast('Customer name is required.','error');return;}
-    if(!invDate||!dueDate){showToast('Invoice and due dates are required.','error');return;}
-    var rows=document.getElementById('lineItemsBody').querySelectorAll('tr');
-    if(rows.length===0){showToast('Add at least one line item.','error');return;}
-    var items=[];
-    rows.forEach(function(r){
-        var inputs=r.querySelectorAll('input');
-        items.push({description:inputs[0].value.trim(),quantity:parseInt(inputs[1].value)||1,unitPrice:parseFloat(inputs[2].value)||0,taxRate:parseFloat(inputs[3].value)||0,discountRate:parseFloat(inputs[4].value)||0});
-    });
-    setLoading('createBtn',true);
-    try{
-        var r=await fetch('/Invoices/Create',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({customerName:name,customerEmail:document.getElementById('c_customerEmail').value.trim(),customerPhone:document.getElementById('c_customerPhone').value.trim(),customerId:document.getElementById('c_customerId').value||null,invoiceDate:invDate,dueDate:dueDate,taxAmount:parseFloat(document.getElementById('c_taxAmount').value)||0,discountAmount:parseFloat(document.getElementById('c_discountAmount').value)||0,notes:document.getElementById('c_notes').value.trim(),terms:document.getElementById('c_terms').value.trim(),items:items})});
-        var d=await r.json();
-        if(d.success){showToast(d.message||'Invoice created!','success');closeModal('createModal');setTimeout(function(){location.reload();},1200);}
-        else showToast(d.message||'Failed.','error');
-    }catch(e){showToast('Network error.','error');}
-    finally{setLoading('createBtn',false,'<i class="bi bi-receipt"></i> Create Invoice');}
-}
+function viewInvoice(menu){closeAllActMenus();WB.view(parseInt(menu.dataset.id));}
+function openPayModal(menu){closeAllActMenus();WB.payById(parseInt(menu.dataset.id));}
+function emailInvoice(menu){closeAllActMenus();WB.emailById(parseInt(menu.dataset.id));}
+function editDraft(menu){closeAllActMenus();WB.editById(parseInt(menu.dataset.id));}
 
 // ── SEND / CANCEL / DELETE ────────────────────────────────────────────────────
+function downloadInvoicePdf(menu){closeAllActMenus();window.open('/Invoices/Pdf/'+menu.dataset.id,'_blank');}
 async function sendInvoice(menu){closeAllActMenus();var id=menu.dataset.id;if(!confirm('Send invoice '+menu.dataset.invnum+'?'))return;try{var r=await fetch('/Invoices/Send/'+id,{method:'POST'});var d=await r.json();if(d.success){showToast(d.message||'Invoice sent!','success');setTimeout(function(){location.reload();},900);}else showToast(d.message||'Failed.','error');}catch(e){showToast('Network error.','error');}}
 async function cancelInvoice(menu){closeAllActMenus();var id=menu.dataset.id;if(!confirm('Cancel invoice '+menu.dataset.invnum+'? This cannot be undone.'))return;try{var r=await fetch('/Invoices/Cancel/'+id,{method:'POST'});var d=await r.json();if(d.success){showToast(d.message||'Cancelled.','success');setTimeout(function(){location.reload();},900);}else showToast(d.message||'Failed.','error');}catch(e){showToast('Network error.','error');}}
 async function deleteInvoice(menu){closeAllActMenus();var id=menu.dataset.id;if(!confirm('Delete invoice '+menu.dataset.invnum+'?'))return;try{var r=await fetch('/Invoices/Delete/'+id,{method:'POST'});var d=await r.json();if(d.success){showToast(d.message||'Deleted.','success');setTimeout(function(){location.reload();},900);}else showToast(d.message||'Failed.','error');}catch(e){showToast('Network error.','error');}}
-
-// ── RECORD PAYMENT ────────────────────────────────────────────────────────────
-var _popFileBase64 = null;
-var _popFileName = null;
-
-function setPayMethod(btn,method){
-    document.querySelectorAll('.pay-tab').forEach(function(t){t.classList.remove('active');});
-    btn.classList.add('active');
-    document.getElementById('p_payMethod').value=method;
-    // Show/hide bank fields
-    document.getElementById('bankFields').style.display = method === 'BANK' ? 'block' : 'none';
-}
-
-function handlePopFile(input){
-    var file = input.files[0];
-    if(!file) return;
-    if(file.size > 5*1024*1024){showToast('File too large. Max 5MB.','error');return;}
-    _popFileName = file.name;
-    var reader = new FileReader();
-    reader.onload = function(e){
-        var b64 = e.target.result.split(',')[1]; // strip data URI prefix
-        _popFileBase64 = b64;
-        document.getElementById('popDropZone').style.display='none';
-        var info = document.getElementById('popFileInfo');
-        info.style.display='flex';
-        document.getElementById('popFileName').textContent = file.name + ' (' + (file.size/1024).toFixed(1) + ' KB)';
-    };
-    reader.readAsDataURL(file);
-}
-
-function handlePopDrop(e){
-    e.preventDefault();
-    document.getElementById('popDropZone').style.borderColor='#e2e8f0';
-    var file = e.dataTransfer.files[0];
-    if(file){
-        var dt = new DataTransfer();
-        dt.items.add(file);
-        document.getElementById('p_popFile').files = dt.files;
-        handlePopFile(document.getElementById('p_popFile'));
-    }
-}
-
-function clearPop(){
-    _popFileBase64=null;_popFileName=null;
-    document.getElementById('p_popFile').value='';
-    document.getElementById('popDropZone').style.display='block';
-    document.getElementById('popFileInfo').style.display='none';
-}
-
-function openPayModal(menu){
-    closeAllActMenus();
-    var d=menu.dataset;
-    document.getElementById('p_invoiceId').value=d.id;
-    document.getElementById('p_invoiceInfo').textContent=d.invnum+' — Balance: '+parseFloat(d.balance).toFixed(2);
-    document.getElementById('p_amount').value='';
-    document.getElementById('p_reference').value='';
-    document.getElementById('p_notes').value='';
-    document.getElementById('bankFields').style.display='none';
-    // Reset bank fields
-    document.getElementById('p_bankId').value='';
-    document.getElementById('p_bankAccountId').innerHTML='<option value="">— select bank first —</option>';
-    document.getElementById('p_accountNumber').value='';
-    document.getElementById('p_currencyDisplay').value='';
-    document.getElementById('p_currencyId').value='';
-    document.getElementById('p_customerId').value='';
-    document.getElementById('p_statementRef').value='';
-    clearPop();
-    document.querySelectorAll('.pay-tab').forEach(function(t){t.classList.remove('active');});
-    document.querySelector('.pay-tab').classList.add('active');
-    document.getElementById('p_payMethod').value='CASH';
-    openModal('payModal');
-}
-
-async function submitPayment(){
-    var id=document.getElementById('p_invoiceId').value;
-    var amt=parseFloat(document.getElementById('p_amount').value);
-    var method=document.getElementById('p_payMethod').value;
-    if(!amt||amt<=0){showToast('Enter a valid amount.','error');return;}
-
-    if(method === 'BANK'){
-        // Bank payment requires POP + bank details
-        var bankId=parseInt(document.getElementById('p_bankId').value);
-        var currencyId=parseInt(document.getElementById('p_currencyId').value);
-        var customerId=parseInt(document.getElementById('p_customerId').value);
-        if(!bankId){showToast('Please select a bank.','error');return;}
-        if(!currencyId){showToast('Please select a currency.','error');return;}
-        if(!customerId){showToast('Please select a customer.','error');return;}
-        if(!_popFileBase64){showToast('Please upload Proof of Payment (POP).','error');return;}
-
-        setLoading('payBtn',true);
-        try{
-            var r=await fetch('/Invoices/SubmitBankPayment',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
-                invoiceId:parseInt(id),amount:amt,bankId:bankId,currencyId:currencyId,customerId:customerId,
-                accountNumber:document.getElementById('p_accountNumber').value.trim(),
-                statementReference:document.getElementById('p_statementRef').value.trim(),
-                description:document.getElementById('p_notes').value.trim(),
-                popFileBase64:_popFileBase64,popFileName:_popFileName
-            })});
-            var d=await r.json();
-            if(d.success){showToast(d.message||'Bank payment submitted! POP saved. Awaiting finance review.','success');closeModal('payModal');setTimeout(function(){location.reload();},1200);}
-            else showToast(d.message||'Failed.','error');
-        }catch(e){showToast('Network error.','error');}
-        finally{setLoading('payBtn',false,'<i class="bi bi-check-circle"></i> Record Payment');}
-    } else {
-        // Cash or EcoCash — direct payment
-        setLoading('payBtn',true);
-        try{
-            var r=await fetch('/Invoices/RecordPayment',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({invoiceId:parseInt(id),amount:amt,paymentMethod:method,referenceNumber:document.getElementById('p_reference').value.trim(),notes:document.getElementById('p_notes').value.trim()})});
-            var d=await r.json();
-            if(d.success){showToast(d.message||'Payment recorded!','success');closeModal('payModal');setTimeout(function(){location.reload();},1200);}
-            else showToast(d.message||'Failed.','error');
-        }catch(e){showToast('Network error.','error');}
-        finally{setLoading('payBtn',false,'<i class="bi bi-check-circle"></i> Record Payment');}
-    }
-}
-
-// ── BANK ACCOUNT AUTO-POPULATE ────────────────────────────────────────────────
-var _bankAccounts = [];
-(function(){
-    try{
-        var el = document.getElementById('bankAccountsData');
-        if(el) _bankAccounts = JSON.parse(el.textContent || '[]');
-    }catch(e){ _bankAccounts = []; }
-})();
-
-function onBankChange(sel){
-    var bankId = parseInt(sel.value);
-    var accSel = document.getElementById('p_bankAccountId');
-    // Clear previous options
-    accSel.innerHTML = '<option value="">— select account —</option>';
-    document.getElementById('p_accountNumber').value = '';
-    document.getElementById('p_currencyDisplay').value = '';
-    document.getElementById('p_currencyId').value = '';
-    if(!bankId) return;
-    // Filter accounts for this bank
-    var filtered = _bankAccounts.filter(function(a){ return a.bankId === bankId; });
-    if(filtered.length === 0){
-        accSel.innerHTML = '<option value="">No accounts found for this bank</option>';
-        return;
-    }
-    filtered.forEach(function(a){
-        var opt = document.createElement('option');
-        opt.value = a.id;
-        opt.textContent = (a.name || a.accountNumber || 'Account') + (a.accountNumber ? ' — ' + a.accountNumber : '') + (a.currencyCode ? ' (' + a.currencyCode + ')' : '');
-        opt.dataset.accountNumber = a.accountNumber || '';
-        opt.dataset.currencyId = a.currencyId || '';
-        opt.dataset.currencyCode = a.currencyCode || '';
-        opt.dataset.currencyName = a.currencyName || '';
-        accSel.appendChild(opt);
-    });
-    // Auto-select if only one account
-    if(filtered.length === 1){
-        accSel.selectedIndex = 1;
-        onBankAccountChange(accSel);
-    }
-}
-
-function onBankAccountChange(sel){
-    var opt = sel.options[sel.selectedIndex];
-    if(!opt || !opt.value){
-        document.getElementById('p_accountNumber').value = '';
-        document.getElementById('p_currencyDisplay').value = '';
-        document.getElementById('p_currencyId').value = '';
-        return;
-    }
-    document.getElementById('p_accountNumber').value = opt.dataset.accountNumber || '';
-    var currCode = opt.dataset.currencyCode || '';
-    var currName = opt.dataset.currencyName || '';
-    document.getElementById('p_currencyDisplay').value = currCode + (currName ? ' — ' + currName : '');
-    document.getElementById('p_currencyId').value = opt.dataset.currencyId || '';
-}
 
 // ── CLAIM BANK TX ─────────────────────────────────────────────────────────────
 function openClaimModal(menu){closeAllActMenus();document.getElementById('cl_invoiceId').value=menu.dataset.id;document.getElementById('cl_bankTxId').value='';document.getElementById('cl_customerId').value='';document.getElementById('cl_currencyId').value='';openModal('claimModal');}
@@ -771,3 +388,5 @@ async function submitApply(){var invId=document.getElementById('ap_invoiceId').v
 // Init
 document.addEventListener('DOMContentLoaded',function(){openCreateModal=function(){document.getElementById('c_customerName').value='';document.getElementById('c_customerEmail').value='';document.getElementById('c_customerPhone').value='';document.getElementById('c_customerId').value='';document.getElementById('c_invoiceDate').value=new Date().toISOString().split('T')[0];var due=new Date();due.setDate(due.getDate()+30);document.getElementById('c_dueDate').value=due.toISOString().split('T')[0];document.getElementById('c_taxAmount').value='0';document.getElementById('c_discountAmount').value='0';document.getElementById('c_notes').value='';document.getElementById('c_terms').value='';document.getElementById('lineItemsBody').innerHTML='';lineCount=0;addLineItem();openModal('createModal');};});
 </script>
+@{ var newFor = Context.Request.Query["newFor"].ToString(); }
+@if (!string.IsNullOrEmpty(newFor) && int.TryParse(newFor, out var newForId)) { <script>window.addEventListener('load',function(){ WB.create(@newForId); });</script> }

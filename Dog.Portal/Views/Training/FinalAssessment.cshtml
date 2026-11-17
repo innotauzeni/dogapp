@@ -1,0 +1,92 @@
+@{
+    Layout = "_AdminLayout";
+    ViewData["Title"] = "Final Assessment";
+    int enrollmentId = (int)ViewBag.EnrollmentId;
+}
+<partial name="_TrainingShared" />
+<style>
+.area{display:grid;grid-template-columns:150px 1fr 56px;gap:.7rem;align-items:center;padding:.55rem 0;border-bottom:1px solid #f1f5f9}
+.area:last-child{border-bottom:0}
+.area input[type=range]{width:100%;accent-color:#667eea}
+.area .sc{font-weight:800;text-align:center;color:#667eea}
+@@media(max-width:600px){.area{grid-template-columns:1fr 56px}.area .nm{grid-column:1/3}.area .cm{grid-column:1/3}}
+</style>
+<div class="tr" style="max-width:860px">
+    <div style="margin-bottom:.5rem"><a href="/Training/Enrolment/@enrollmentId" style="font-size:.82rem;color:#667eea;text-decoration:none"><i class="bi bi-arrow-left"></i> Enrolment</a></div>
+    <div id="head"><div class="tr-empty">Loading…</div></div>
+    <div id="body" style="display:none">
+        <div class="tr-card">
+            <h5><i class="bi bi-clipboard2-pulse-fill" style="color:#667eea"></i> Assessment areas <span class="tr-note" style="font-weight:400">(score each 0–10)</span></h5>
+            <div id="areas"></div>
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-top:.8rem;padding-top:.8rem;border-top:2px solid #e2e8f0"><b>Overall score</b><span style="font-size:1.5rem;font-weight:800;color:#667eea" id="overall">—</span></div>
+        </div>
+        <div class="tr-card">
+            <h5>Result</h5>
+            <div id="sugg" class="tr-note" style="margin:-.3rem 0 .6rem"></div>
+            <div style="display:flex;gap:.5rem;flex-wrap:wrap;margin-bottom:.8rem">
+                <label class="tr-chip" data-r="Passed"><input type="radio" name="res" value="Passed" style="display:none"> <i class="bi bi-check-circle"></i> Passed</label>
+                <label class="tr-chip" data-r="RequiresAdditionalTraining"><input type="radio" name="res" value="RequiresAdditionalTraining" style="display:none"> <i class="bi bi-arrow-repeat"></i> Requires additional training</label>
+                <label class="tr-chip" data-r="Failed"><input type="radio" name="res" value="Failed" style="display:none"> <i class="bi bi-x-circle"></i> Failed</label>
+            </div>
+            <div id="extBox" style="display:none">
+                <div class="tr-alert al-warn"><i class="bi bi-arrow-repeat"></i><span>Training will be extended and the extra activities added to the dog's plan. For a failed dog you may also leave this at 0 and decide later.</span></div>
+                <div class="tr-row"><div class="tr-field"><label>Extra training days</label><input type="number" min="0" max="90" class="tr-in" id="extDays" value="7"></div></div>
+                <div class="tr-field"><label>Additional activities</label><textarea class="tr-in" id="extActs" placeholder="One per line"></textarea></div>
+            </div>
+            <div class="tr-field"><label>Overall comments</label><textarea class="tr-in" id="comments"></textarea></div>
+        </div>
+        <div class="tr-actions" style="margin-bottom:2rem"><button class="tr-btn btn-primary-t" id="save"><i class="bi bi-check2-circle"></i> Save assessment</button><a class="tr-btn btn-ghost-t" href="/Training/Enrolment/@enrollmentId">Cancel</a></div>
+    </div>
+</div>
+
+<script>
+(function () {
+    var ENR = @enrollmentId, E = null, scores = {}, notes = {};
+    var DEFAULT = ['Obedience', 'Sit', 'Stay', 'Recall', 'Heel', 'Leash control', 'Socialisation', 'Behaviour', 'Responsiveness', 'Specialised skills'];
+
+    async function load() {
+        var r = await T.api('GET', 'enrollments/' + ENR);
+        if (!r.success) { head.innerHTML = '<div class="tr-card"><div class="tr-empty"><i class="bi bi-exclamation-circle"></i>' + T.esc(r.message || 'Could not open the enrolment.') + '</div></div>'; return; }
+        E = r.data;
+        var prev = E.finalAssessments.length;
+        head.innerHTML = '<div class="tr-card" style="display:flex;justify-content:space-between;gap:1rem;flex-wrap:wrap;align-items:center">' + T.dog(E.dogName, (E.dogBreed || '') + (E.customerName ? ' · ' + E.customerName : ''), E.dogPhotoUrl) + '<div style="text-align:right">' + T.badge(E.status) + '<div class="tr-note" style="margin:.2rem 0 0">Attempt #' + (prev + 1) + ' · ' + E.programmeName + '</div></div></div>' +
+            (E.status !== 'AwaitingFinalAssessment' ? '<div class="tr-alert al-warn"><i class="bi bi-exclamation-triangle-fill"></i><span>This dog is not ready for its final assessment (the training period must be finished first).</span></div>' : '') +
+            (prev ? '<div class="tr-alert al-info"><i class="bi bi-info-circle-fill"></i><span>Previous attempt: ' + E.finalAssessments.map(function (a) { return '#' + a.attemptNumber + ' ' + T.esc(a.result.replace(/([a-z])([A-Z])/g, '$1 $2')) + ' (' + (a.overallScore != null ? a.overallScore : '—') + '/10)'; }).join(', ') + '</span></div>' : '');
+        DEFAULT.forEach(function (a) { scores[a] = 5; notes[a] = ''; });
+        areas.innerHTML = DEFAULT.map(function (a, i) {
+            return '<div class="area"><div class="nm"><b>' + T.esc(a) + '</b></div><input type="range" min="0" max="10" step="1" value="5" data-a="' + T.esc(a) + '"><div class="sc" id="sc' + i + '">5</div><div class="cm" style="grid-column:1/4"><input class="tr-in" data-c="' + T.esc(a) + '" placeholder="Comments (optional)"></div></div>';
+        }).join('');
+        areas.querySelectorAll('input[type=range]').forEach(function (s, i) { s.oninput = function () { scores[s.dataset.a] = +s.value; document.getElementById('sc' + i).textContent = s.value; recalc(); }; });
+        areas.querySelectorAll('[data-c]').forEach(function (c) { c.oninput = function () { notes[c.dataset.c] = c.value; }; });
+        body.style.display = E.status === 'AwaitingFinalAssessment' ? '' : 'none';
+        recalc();
+    }
+
+    var chosen = null;
+    function avg() { var v = DEFAULT.map(function (a) { return scores[a]; }); return Math.round(v.reduce(function (x, y) { return x + y; }, 0) * 10 / v.length) / 10; }
+    function recalc() {
+        var a = avg(); overall.textContent = a + ' / 10';
+        var s = a >= 7 ? 'Passed' : a >= 5 ? 'RequiresAdditionalTraining' : 'Failed';
+        sugg.innerHTML = 'Suggested from the scores: <b>' + s.replace(/([a-z])([A-Z])/g, '$1 $2') + '</b> (7+ pass · 5–6.9 additional training · below 5 fail). You decide the final result.';
+        if (!chosen) pickResult(s, true);
+    }
+    function pickResult(r, auto) {
+        if (!auto) chosen = r; else if (chosen) return;
+        document.querySelectorAll('[data-r]').forEach(function (l) { l.classList.toggle('on', l.dataset.r === r); l.querySelector('input').checked = l.dataset.r === r; });
+        extBox.style.display = r === 'Passed' ? 'none' : '';
+        if (r === 'RequiresAdditionalTraining' && !+extDays.value) extDays.value = 7;
+        pickResult.cur = r;
+    }
+    document.querySelectorAll('[data-r]').forEach(function (l) { l.onclick = function (e) { e.preventDefault(); pickResult(l.dataset.r, false); }; });
+
+    save.onclick = async function () {
+        var res = pickResult.cur; if (!res) { T.toast('Choose a result.', 'error'); return; }
+        if (!confirm('Save this assessment as ' + res.replace(/([a-z])([A-Z])/g, '$1 $2') + '?')) return;
+        T.busy(save, true, 'Saving…');
+        var r = await T.api('POST', 'final-assessments', { enrollmentId: ENR, assessmentDate: new Date().toISOString(), items: DEFAULT.map(function (a) { return { area: a, score: scores[a], comments: notes[a] }; }), result: res, comments: comments.value, extensionDays: res === 'Passed' ? 0 : (+extDays.value || 0), additionalActivities: extActs.value });
+        T.busy(save, false);
+        if (r.success) { T.toast(r.message); setTimeout(function () { location.href = '/Training/Enrolment/' + ENR; }, 900); } else T.toast(r.message || 'Could not save the assessment.', 'error');
+    };
+    load();
+})();
+</script>

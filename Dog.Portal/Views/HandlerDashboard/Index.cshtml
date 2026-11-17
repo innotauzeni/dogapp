@@ -1,0 +1,161 @@
+@model Dog.Portal.Controllers.HandlerDashboardViewModel
+@{
+    Layout = null;
+    ViewData["Title"] = "Handler Dashboard";
+}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>@ViewData["Title"]</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.7.2/font/bootstrap-icons.css">
+    <style>
+    body { background-color: #f8f9fa; }
+    .dashboard-header { padding: 2.5rem 2rem; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border-radius: 16px; margin-bottom: 2.5rem; box-shadow: 0 8px 24px rgba(102, 126, 234, 0.2); position: relative; overflow: hidden; }
+    .dashboard-header::before { content: ''; position: absolute; top: -50%; right: -10%; width: 300px; height: 300px; background: rgba(255,255,255,0.05); border-radius: 50%; }
+    .dashboard-header h2 { margin: 0; font-size: 2.2rem; font-weight: 900; position: relative; z-index: 1; }
+    .dashboard-header p { margin: 0.75rem 0 0 0; opacity: 0.95; font-size: 1.05rem; position: relative; z-index: 1; }
+
+    .stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1.75rem; margin-bottom: 2.5rem; }
+    .stat-card { background: white; border-radius: 14px; padding: 1.75rem; border: 1px solid #e2e8f0; display: flex; align-items: center; gap: 1.25rem; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); box-shadow: 0 2px 8px rgba(0,0,0,0.04); }
+    .stat-card:hover { transform: translateY(-4px); box-shadow: 0 12px 24px rgba(0,0,0,0.12); border-color: #cbd5e1; }
+    .stat-icon { font-size: 2.5rem; width: 70px; height: 70px; border-radius: 14px; display: flex; align-items: center; justify-content: center; font-weight: 600; }
+    .stat-icon.blue { background: linear-gradient(135deg, #ede9fe, #ddd6fe); color: #667eea; }
+    .stat-icon.green { background: linear-gradient(135deg, #d1fae5, #a7f3d0); color: #059669; }
+    .stat-icon.orange { background: linear-gradient(135deg, #fef3c7, #fde68a); color: #d97706; }
+    .stat-icon.red { background: linear-gradient(135deg, #fee2e2, #fecaca); color: #dc2626; }
+    .stat-content h3 { margin: 0; font-size: 2.2rem; font-weight: 900; color: #0f172a; }
+    .stat-content p { margin: 0.35rem 0 0 0; font-size: 0.95rem; color: #64748b; font-weight: 500; }
+
+    .dogs-section { background: white; border-radius: 14px; padding: 2rem; box-shadow: 0 2px 8px rgba(0,0,0,0.04); }
+    .dogs-section h3 { font-size: 1.5rem; font-weight: 900; color: #0f172a; margin-bottom: 1.75rem; display: flex; align-items: center; gap: 0.75rem; }
+    .dog-card { background: #f8fafc; border-radius: 12px; padding: 1.25rem; border: 1.5px solid #e2e8f0; display: flex; align-items: center; gap: 1.25rem; margin-bottom: 1rem; transition: all 0.3s ease; cursor: pointer; }
+    .dog-card:hover { background: white; border-color: #cbd5e1; box-shadow: 0 4px 12px rgba(0,0,0,0.08); transform: translateX(4px); }
+    .dog-avatar { width: 56px; height: 56px; border-radius: 12px; background: linear-gradient(135deg, #667eea, #764ba2); color: white; display: flex; align-items: center; justify-content: center; font-weight: 900; flex-shrink: 0; font-size: 1.4rem; box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3); }
+    .dog-info { flex: 1; }
+    .dog-info h4 { margin: 0; font-weight: 800; color: #0f172a; font-size: 1.05rem; }
+    .dog-info p { margin: 0.35rem 0 0 0; font-size: 0.88rem; color: #64748b; }
+    .dog-alerts { display: flex; gap: 0.65rem; flex-wrap: wrap; }
+    .alert-badge { font-size: 0.78rem; padding: 0.35rem 0.85rem; border-radius: 6px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.02em; }
+    .alert-vaccine { background: linear-gradient(135deg, #fef3c7, #fde68a); color: #92400e; }
+    .alert-attention { background: linear-gradient(135deg, #fee2e2, #fecaca); color: #7f1d1d; }
+
+    .empty-state { text-align: center; padding: 4rem 2rem; }
+    .empty-state-icon { font-size: 4rem; margin-bottom: 1.5rem; }
+    .empty-state h4 { color: #475569; font-weight: 700; margin-bottom: 0.75rem; font-size: 1.2rem; }
+    .empty-state p { color: #94a3b8; font-size: 0.95rem; }
+
+    .handler-navbar { background: linear-gradient(135deg, #667eea, #764ba2); color: white; padding: 1rem 0; box-shadow: 0 4px 12px rgba(102, 126, 234, 0.15); }
+    .handler-navbar .navbar-brand { font-size: 1.3rem; font-weight: 900; letter-spacing: -0.02em; }
+    .handler-navbar a { color: rgba(255,255,255,0.9); text-decoration: none; transition: color 0.2s; }
+    .handler-navbar a:hover { color: white; }
+</style>
+</head>
+<body style="background-color: #f8f9fa;">
+<nav class="handler-navbar">
+    <div style="max-width: 1200px; margin: 0 auto; padding: 0 1rem; display: flex; justify-content: space-between; align-items: center;">
+        <div class="navbar-brand">🐕 Handler Portal</div>
+        <div><a href="/" style="font-size: 0.95rem;"><i class="bi bi-arrow-left"></i> Back to Main</a></div>
+    </div>
+</nav>
+<div style="max-width: 1200px; margin: 0 auto; padding: 2rem 1rem;">
+<div class="dashboard-header">
+    <h2>👋 Welcome, Handler!</h2>
+    <p>Here's your quick overview of assigned dogs and care tasks</p>
+</div>
+
+<div class="stat-grid">
+    <div class="stat-card">
+        <div class="stat-icon blue"><i class="bi bi-dog"></i></div>
+        <div class="stat-content">
+            <h3>@Model.TotalAssigned</h3>
+            <p>Assigned Dogs</p>
+        </div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon green"><i class="bi bi-calendar-check"></i></div>
+        <div class="stat-content">
+            <h3>@Model.TodayActivities</h3>
+            <p>Today's Care</p>
+        </div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon orange"><i class="bi bi-shield-check"></i></div>
+        <div class="stat-content">
+            <h3>@Model.VaccineDue</h3>
+            <p>Vaccine Due</p>
+        </div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon red"><i class="bi bi-exclamation-circle"></i></div>
+        <div class="stat-content">
+            <h3>@Model.NeedsAttention</h3>
+            <p>Needs Attention</p>
+        </div>
+    </div>
+</div>
+
+<div class="dogs-section">
+    <h3><i class="bi bi-paw"></i> Your Dogs</h3>
+    @if (Model.Dogs.Count == 0)
+    {
+        <div class="empty-state">
+            <div class="empty-state-icon">🐕</div>
+            <h4>No dogs assigned</h4>
+            <p>Dogs assigned to you will appear here</p>
+        </div>
+    }
+    else
+    {
+        @foreach (var dog in Model.Dogs)
+        {
+            <div class="dog-card">
+                <div class="dog-avatar">@dog.Name[0]</div>
+                <div class="dog-info">
+                    <h4>@dog.Name</h4>
+                    <p>@dog.Breed • @dog.Color</p>
+                </div>
+                <div class="dog-alerts">
+                    @if (dog.Vaccinations?.Any(v => DateTime.Now > (v.NextDueDate ?? DateTime.MaxValue)) ?? false)
+                    {
+                        <span class="alert-badge alert-vaccine">Vaccine Due</span>
+                    }
+                    @if (dog.MatingRecords.Any())
+                    {
+                        var puppyCount = dog.MatingRecords.Sum(m => m.Litters.Sum(l => l.Puppies.Count));
+                        <span class="alert-badge alert-attention">@puppyCount Pups</span>
+                    }
+                </div>
+            </div>
+            @if (dog.MatingRecords.Any())
+            {
+                <div style="margin-left: 66px; margin-top: 8px; padding: 12px; background: #fce7f3; border-radius: 8px; border-left: 4px solid #ec4899;">
+                    <div style="font-size: 0.85rem; font-weight: 700; color: #831843; margin-bottom: 8px;">❤️ Matings & Litters</div>
+                    @foreach (var mating in dog.MatingRecords)
+                    {
+                        <div style="font-size: 0.8rem; color: #555; margin-bottom: 6px; padding: 6px 8px; background: white; border-radius: 4px;">
+                            <strong>@mating.SireName × @mating.DamName</strong>
+                            @if (mating.MatingDate.HasValue)
+                            {
+                                <span style="color: #999;">(@mating.MatingDate.Value.ToString("MMM d, yyyy"))</span>
+                            }
+                            @if (mating.Litters.Any())
+                            {
+                                <div style="margin-top: 4px; font-size: 0.75rem; color: #666;">
+                                    📊 @mating.Litters.Count litter@(mating.Litters.Count != 1 ? "s" : "")
+                                    • 🐶 @mating.Litters.Sum(l => l.Puppies.Count) puppies
+                                </div>
+                            }
+                        </div>
+                    }
+                </div>
+            }
+        }
+    }
+</div>
+</div>
+</div><!-- End main wrapper -->
+</body>
+</html>

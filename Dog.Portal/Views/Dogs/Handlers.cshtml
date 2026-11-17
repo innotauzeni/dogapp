@@ -1,0 +1,413 @@
+@model Dog.Portal.Models.DogsListViewModel
+@using Dog.Portal.Helpers
+@{
+    Layout = "_AdminLayout";
+    ViewData["Title"] = "Dog Handlers";
+    var P = PermHelper.For(Context);
+    var statusFilter = ViewBag.StatusFilter as string ?? "";
+    var genderFilter = ViewBag.GenderFilter as string ?? "";
+    var totalActive = Model.Doglist.Count(d => d.IsActive);
+    var totalInactive = Model.Doglist.Count(d => !d.IsActive);
+}
+<style>
+.page-hdr-row{display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;flex-wrap:wrap;margin-bottom:1.5rem}
+.page-hdr h4{font-size:1.15rem;font-weight:800;color:#0f172a;margin:0 0 .25rem}
+.page-hdr p{font-size:.845rem;color:#64748b;margin:0}
+.hdr-actions{display:flex;align-items:center;gap:.625rem;flex-wrap:wrap}
+.btn-back{display:inline-flex;align-items:center;gap:.4rem;padding:.6rem 1rem;background:#f1f5f9;color:#374151;border:1.5px solid #e2e8f0;border-radius:9px;font-size:.845rem;font-weight:500;text-decoration:none}
+.btn-back:hover{background:#e2e8f0;color:#1e293b}
+.btn-activity{display:inline-flex;align-items:center;gap:.4rem;padding:.6rem 1rem;background:linear-gradient(135deg,#667eea,#764ba2);color:#fff;border:none;border-radius:9px;font-size:.845rem;font-weight:600;text-decoration:none;box-shadow:0 2px 8px rgba(102,126,234,.25)}
+.btn-activity:hover{opacity:.92;color:#fff}
+.stats-row{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:.875rem;margin-bottom:1.5rem}
+.stat-card{background:#fff;border-radius:12px;border:1px solid #e9eef4;box-shadow:0 1px 4px rgba(0,0,0,.04);padding:1rem 1.25rem;display:flex;align-items:center;gap:.875rem}
+.stat-icon{width:42px;height:42px;border-radius:11px;display:flex;align-items:center;justify-content:center;font-size:1.1rem;flex-shrink:0}
+.si-total{background:linear-gradient(135deg,#ede9fe,#ddd6fe);color:#7c3aed}
+.si-active{background:linear-gradient(135deg,#d1fae5,#a7f3d0);color:#065f46}
+.si-inactive{background:linear-gradient(135deg,#fee2e2,#fecaca);color:#991b1b}
+.stat-body .val{font-size:1.35rem;font-weight:800;color:#0f172a;line-height:1}
+.stat-body .lbl{font-size:.75rem;color:#94a3b8;font-weight:500;margin-top:.2rem}
+.dc{background:#fff;border-radius:14px;border:1px solid #e9eef4;box-shadow:0 1px 4px rgba(0,0,0,.04),0 6px 20px rgba(0,0,0,.04);overflow:hidden}
+.dc-head{padding:1rem 1.375rem;border-bottom:1px solid #f1f5f9;background:#fafbfc;display:flex;align-items:center;gap:.625rem;flex-wrap:wrap}
+.srch-wrap{position:relative;flex:1;min-width:180px;max-width:280px}
+.srch-wrap i{position:absolute;left:.875rem;top:50%;transform:translateY(-50%);color:#94a3b8;font-size:.9rem;pointer-events:none}
+.srch-input{width:100%;padding:.6rem .875rem .6rem 2.375rem;border:1.5px solid #e2e8f0;border-radius:9px;font-size:.845rem;color:#1e293b;background:#fff;outline:none}
+.srch-input:focus{border-color:#667eea;box-shadow:0 0 0 3px rgba(102,126,234,.1)}
+.filter-sel{padding:.6rem .875rem;border:1.5px solid #e2e8f0;border-radius:9px;font-size:.845rem;color:#374151;background:#fff;outline:none;cursor:pointer;min-width:130px}
+.btn-srch{padding:.6rem 1.125rem;background:linear-gradient(135deg,#667eea,#764ba2);color:#fff;border:none;border-radius:9px;font-size:.845rem;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:.375rem}
+.btn-clr{padding:.6rem .875rem;background:#f1f5f9;color:#64748b;border:1.5px solid #e2e8f0;border-radius:9px;font-size:.845rem;cursor:pointer;text-decoration:none;display:inline-flex;align-items:center;gap:.3rem}
+</style>
+<style>
+.tbl-wrap{overflow-x:auto;min-height:300px}
+.dt{width:100%;border-collapse:collapse;table-layout:fixed}
+.dt thead th{padding:.75rem 1.125rem;font-size:.7rem;font-weight:700;color:#64748b;text-transform:uppercase;background:#f8fafc;border-bottom:1px solid #f0f4f8;white-space:nowrap}
+.dt tbody td{padding:.875rem 1.125rem;font-size:.855rem;color:#374151;border-bottom:1px solid #f8fafc;vertical-align:middle}
+.dt tbody tr:hover td{background:#fafbff}
+.rn{color:#cbd5e1;font-size:.8rem;font-weight:600}
+.photo-thumb{width:44px;height:44px;object-fit:cover;border-radius:10px;border:1px solid #e2e8f0;flex-shrink:0}
+.photo-placeholder{width:44px;height:44px;border-radius:10px;border:1px solid #e2e8f0;background:#f8fafc;display:flex;align-items:center;justify-content:center;color:#cbd5e1;flex-shrink:0}
+.s-badge{display:inline-flex;align-items:center;gap:.3rem;font-size:.74rem;font-weight:700;padding:.25rem .65rem;border-radius:20px}
+.s-active{background:#d1fae5;color:#065f46}
+.s-inactive{background:#fee2e2;color:#991b1b}
+.btn-care{display:inline-flex;align-items:center;gap:.35rem;padding:.45rem .9rem;background:linear-gradient(135deg,#667eea,#764ba2);color:#fff;border:none;border-radius:8px;font-size:.8rem;font-weight:600;cursor:pointer;white-space:nowrap}
+.btn-care:hover{opacity:.9;box-shadow:0 4px 12px rgba(102,126,234,.28);transform:translateY(-1px)}
+.btn-care{transition:all .16s}
+.dog-name-link{font-weight:700;color:#1e293b;text-decoration:none;transition:color .15s}
+.dog-name-link:hover{color:#667eea;text-decoration:underline}
+.dc-foot{padding:.9rem 1.375rem;border-top:1px solid #f1f5f9;background:#fafbfc;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.75rem}
+.ri{font-size:.82rem;color:#94a3b8}.ri strong{color:#374151}
+.pgn{display:flex;align-items:center;gap:.25rem}
+.pb{display:flex;align-items:center;justify-content:center;min-width:32px;height:32px;padding:0 .5rem;border:1.5px solid #e2e8f0;border-radius:7px;font-size:.8rem;color:#64748b;text-decoration:none;background:#fff}
+.pb.cur{background:linear-gradient(135deg,#667eea,#764ba2);color:#fff;border-color:transparent;font-weight:700}
+.pb.off{opacity:.35;pointer-events:none}
+.pb.wide{padding:0 .875rem}
+.es{text-align:center;padding:4rem 2rem}
+.es-icon{font-size:3rem;color:#e2e8f0;margin-bottom:1rem;display:block}
+.es h6{font-weight:600;color:#64748b;margin:0 0 .375rem}
+.es p{font-size:.845rem;color:#94a3b8;margin:0}
+/* Modals */
+.modal-backdrop-custom{position:fixed;inset:0;background:rgba(15,23,42,.45);backdrop-filter:blur(3px);z-index:1050;display:none;align-items:center;justify-content:center;padding:1rem}
+.modal-backdrop-custom.open{display:flex}
+.modal-box{background:#fff;border-radius:16px;box-shadow:0 20px 60px rgba(0,0,0,.2);width:100%;max-width:780px;max-height:90vh;overflow-y:auto;animation:mslide .22s ease}
+@@keyframes mslide{from{opacity:0;transform:translateY(-16px)}to{opacity:1;transform:translateY(0)}}
+.modal-hdr{display:flex;align-items:center;justify-content:space-between;padding:1.25rem 1.5rem;border-bottom:1px solid #f1f5f9;position:sticky;top:0;background:#fff;z-index:1}
+.modal-hdr h5{font-size:1rem;font-weight:800;color:#0f172a;margin:0;display:flex;align-items:center;gap:.5rem}
+.modal-close{width:30px;height:30px;border:none;background:#f1f5f9;border-radius:7px;color:#64748b;cursor:pointer;display:flex;align-items:center;justify-content:center}
+.modal-body-p{padding:1.375rem 1.5rem}
+.modal-foot{padding:1rem 1.5rem;border-top:1px solid #f1f5f9;display:flex;align-items:center;justify-content:flex-end;gap:.625rem;position:sticky;bottom:0;background:#fff}
+.frow{margin-bottom:1rem}
+.frow label{display:block;font-size:.8rem;font-weight:600;color:#374151;margin-bottom:.375rem}
+.finput{width:100%;padding:.65rem .875rem;border:1.5px solid #e2e8f0;border-radius:9px;font-size:.855rem;color:#1e293b;background:#fff;outline:none}
+.finput:focus{border-color:#667eea;box-shadow:0 0 0 3px rgba(102,126,234,.1)}
+.btn-cancel{padding:.65rem 1.25rem;background:#f1f5f9;color:#64748b;border:1.5px solid #e2e8f0;border-radius:9px;font-size:.855rem;font-weight:600;cursor:pointer}
+.btn-pm{padding:.65rem 1.5rem;background:linear-gradient(135deg,#667eea,#764ba2);color:#fff;border:none;border-radius:9px;font-size:.855rem;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:.4rem;min-width:120px;justify-content:center}
+.btn-pm:disabled{opacity:.6;cursor:not-allowed}
+.dog-info-card{background:linear-gradient(135deg,#f8fafc,#f1f5f9);border:1px solid #e2e8f0;border-radius:10px;padding:.875rem 1rem;margin-bottom:1.25rem;display:flex;align-items:center;gap:.75rem}
+.extra-section{background:#f8fafc;border:1px solid #e9eef4;border-radius:10px;padding:1rem;margin-top:.5rem;display:none}
+.extra-section.show{display:block}
+.event-chips{display:flex;gap:.4rem;flex-wrap:wrap;margin-bottom:1rem}
+.event-chip{padding:.4rem .875rem;border:1.5px solid #e2e8f0;border-radius:20px;font-size:.8rem;font-weight:600;color:#64748b;cursor:pointer;background:#fff;transition:all .15s}
+.event-chip.selected{background:linear-gradient(135deg,#667eea,#764ba2);color:#fff;border-color:transparent}
+.toast-wrap{position:fixed;bottom:1.75rem;right:1.75rem;z-index:9999;display:flex;flex-direction:column;gap:.5rem;pointer-events:none}
+.toast-msg{display:flex;align-items:center;gap:.625rem;padding:.875rem 1.25rem;border-radius:12px;font-size:.855rem;font-weight:600;box-shadow:0 8px 32px rgba(0,0,0,.15);pointer-events:all;transform:translateX(120%);transition:transform .3s cubic-bezier(.4,0,.2,1);max-width:320px}
+.toast-msg.show{transform:translateX(0)}
+.toast-success{background:#065f46;color:#fff}
+.toast-error{background:#991b1b;color:#fff}
+.spin{width:14px;height:14px;border:2px solid rgba(255,255,255,.35);border-top-color:#fff;border-radius:50%;animation:spin .65s linear infinite;flex-shrink:0}
+@@keyframes spin{to{transform:rotate(360deg)}}
+</style>
+
+<div class="toast-wrap" id="toastWrap"></div>
+
+<div class="page-hdr-row">
+    <div class="page-hdr">
+        <h4><i class="bi bi-person-lines-fill me-2" style="color:#667eea"></i>My Assigned Dogs</h4>
+        <p>Dogs under your care — log activity and view profiles.</p>
+    </div>
+    <div class="hdr-actions">
+        <a href="/DogHandler/Activity" class="btn-activity"><i class="bi bi-journal-medical"></i> My Activity</a>
+        <a href="/Dogs" class="btn-back"><i class="bi bi-arrow-left"></i> Back to Dogs</a>
+    </div>
+</div>
+
+<div class="stats-row">
+    <div class="stat-card">
+        <div class="stat-icon si-total"><i class="bi bi-shield-dog"></i></div>
+        <div class="stat-body"><div class="val">@Model.TotalCount</div><div class="lbl">Assigned Dogs</div></div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon si-active"><i class="bi bi-check-circle-fill"></i></div>
+        <div class="stat-body"><div class="val">@totalActive</div><div class="lbl">Active</div></div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon si-inactive"><i class="bi bi-x-circle-fill"></i></div>
+        <div class="stat-body"><div class="val">@totalInactive</div><div class="lbl">Inactive</div></div>
+    </div>
+</div>
+
+<div class="dc">
+    <div class="dc-head">
+        <form method="get" action="/Dogs/Handlers" style="display:contents">
+            <div class="srch-wrap">
+                <i class="bi bi-search"></i>
+                <input class="srch-input" name="search" type="text" placeholder="Search name, breed, color..." value="@Model.SearchTerm">
+            </div>
+            <select name="status" class="filter-sel">
+                <option value="">All Status</option>
+                @if (statusFilter == "active") { <option value="active" selected>Active</option> } else { <option value="active">Active</option> }
+                @if (statusFilter == "inactive") { <option value="inactive" selected>Inactive</option> } else { <option value="inactive">Inactive</option> }
+            </select>
+            <select name="gender" class="filter-sel">
+                <option value="">All Genders</option>
+                @if (genderFilter == "Male") { <option value="Male" selected>Male</option> } else { <option value="Male">Male</option> }
+                @if (genderFilter == "Female") { <option value="Female" selected>Female</option> } else { <option value="Female">Female</option> }
+            </select>
+            <button type="submit" class="btn-srch"><i class="bi bi-funnel-fill"></i> Filter</button>
+            @if (!string.IsNullOrEmpty(Model.SearchTerm) || !string.IsNullOrEmpty(statusFilter) || !string.IsNullOrEmpty(genderFilter)) {
+                <a href="/Dogs/Handlers" class="btn-clr"><i class="bi bi-x"></i> Clear</a>
+            }
+        </form>
+    </div>
+
+    <div class="tbl-wrap">
+        @if (Model.Doglist.Any()) {
+            <table class="dt">
+                <thead><tr>
+                    <th style="width:48px">#</th>
+                    <th style="width:56px">Photo</th>
+                    <th>Dog Name</th>
+                    <th style="width:160px">Breed</th>
+                    <th style="width:80px">Gender</th>
+                    <th style="width:90px">Status</th>
+                    <th style="width:150px;text-align:center">Actions</th>
+                </tr></thead>
+                <tbody>
+                    @{ var rowNum = Model.From; }
+                    @foreach (var dog in Model.Doglist) {
+                        <tr>
+                            <td><span class="rn">@rowNum</span></td>
+                            <td>
+                                @if (!string.IsNullOrEmpty(dog.PhotoUrl)) {
+                                    <img src="@dog.PhotoUrl" alt="@dog.Name" class="photo-thumb" />
+                                } else {
+                                    <div class="photo-placeholder"><i class="bi bi-camera"></i></div>
+                                }
+                            </td>
+                            <td>
+                                <a href="/Dogs/Details/@dog.Id" class="dog-name-link">@dog.Name</a>
+                                <div style="font-size:.75rem;color:#94a3b8">@(dog.MicrochipNumber ?? "No microchip")</div>
+                            </td>
+                            <td style="color:#64748b">@(dog.Breed ?? "—")</td>
+                            <td>
+                                @if (!string.IsNullOrEmpty(dog.Gender)) {
+                                    <span style="font-size:.75rem;font-weight:600;color:@(dog.Gender=="Male"?"#1d4ed8":"#be185d")">
+                                        <i class="bi bi-gender-@(dog.Gender=="Male"?"male":"female")" style="margin-right:.2rem"></i>@dog.Gender
+                                    </span>
+                                } else { <span style="color:#cbd5e1">—</span> }
+                            </td>
+                            <td><span class="s-badge @(dog.IsActive ? "s-active" : "s-inactive")">@(dog.IsActive ? "Active" : "Inactive")</span></td>
+                            <td style="text-align:center">
+                                <button class="btn-care" onclick='openCareModal(@dog.Id, @Html.Raw(System.Text.Json.JsonSerializer.Serialize(dog.Name ?? "")))'>
+                                    <i class="bi bi-clipboard2-pulse-fill"></i> Record Care
+                                </button>
+                            </td>
+                        </tr>
+                        rowNum++;
+                    }
+                </tbody>
+            </table>
+        } else {
+            <div class="es">
+                <i class="bi bi-hourglass-split es-icon"></i>
+                <h6>No assigned dogs</h6>
+                <p>No dogs have been assigned to you yet. Your assigned dogs will appear here.</p>
+            </div>
+        }
+    </div>
+
+    @if (Model.TotalPages > 1) {
+        <div class="dc-foot">
+            <div class="ri">Showing <strong>@Model.From</strong>–<strong>@Model.To</strong> of <strong>@Model.TotalCount</strong></div>
+            <nav class="pgn">
+                @{ var bu = $"/Dogs/Handlers?search={Model.SearchTerm}&status={statusFilter}&gender={genderFilter}&pageSize={Model.PageSize}"; }
+                <a class="pb wide @(Model.Page<=1?"off":"")" href="@bu&page=@(Model.Page-1)"><i class="bi bi-chevron-left" style="font-size:.7rem"></i> Prev</a>
+                @for (int p=1;p<=Model.TotalPages;p++) { <a class="pb @(p==Model.Page?"cur":"")" href="@bu&page=@p">@p</a> }
+                <a class="pb wide @(Model.Page>=Model.TotalPages?"off":"")" href="@bu&page=@(Model.Page+1)">Next <i class="bi bi-chevron-right" style="font-size:.7rem"></i></a>
+            </nav>
+        </div>
+    } else if (Model.TotalCount > 0) {
+        <div class="dc-foot"><div class="ri">Showing <strong>@Model.TotalCount</strong> dog@(Model.TotalCount != 1 ? "s" : "")</div></div>
+    }
+</div>
+
+<!-- RECORD CARE MODAL -->
+<div class="modal-backdrop-custom" id="careModal">
+    <div class="modal-box">
+        <div class="modal-hdr">
+            <h5><i class="bi bi-clipboard2-pulse-fill" style="color:#667eea"></i> Record Care Activity</h5>
+            <button class="modal-close" onclick="closeModal('careModal')"><i class="bi bi-x-lg"></i></button>
+        </div>
+        <div class="modal-body-p">
+            <input type="hidden" id="c_dogId">
+            <div class="dog-info-card">
+                <div style="width:38px;height:38px;border-radius:10px;background:linear-gradient(135deg,#667eea,#764ba2);display:flex;align-items:center;justify-content:center;color:#fff;font-size:1rem;flex-shrink:0">
+                    <i class="bi bi-shield-dog"></i>
+                </div>
+                <div>
+                    <div style="font-size:.72rem;font-weight:600;color:#94a3b8;text-transform:uppercase">Recording care for</div>
+                    <div id="c_dogName" style="font-weight:700;color:#0f172a;font-size:.95rem"></div>
+                </div>
+            </div>
+
+            <div class="frow">
+                <label>Event Type <span style="color:#ef4444">*</span></label>
+                <div class="event-chips" id="eventChips">
+                    @foreach (var et in new[]{"Feeding","Vaccinated","Illness","Injured","Bite someone","Heat","Mating","Birth","Other"}) {
+                        <button type="button" class="event-chip @(et=="Feeding"?"selected":"")" onclick="selectEvent(this,'@et')">@et</button>
+                    }
+                </div>
+                <input type="hidden" id="c_eventType" value="Feeding">
+            </div>
+
+            <div class="frow">
+                <label>Date &amp; Time <span style="color:#ef4444">*</span></label>
+                <input class="finput" type="datetime-local" id="c_occurredOn">
+            </div>
+            <div class="frow">
+                <label>Details / Notes</label>
+                <textarea class="finput" id="c_details" rows="3" placeholder="Food given, symptoms, observations..."></textarea>
+            </div>
+            <div class="frow">
+                <label>Quantity / Outcome</label>
+                <input class="finput" id="c_outcome" placeholder="e.g. 2 cups, medication given, 6 puppies">
+            </div>
+
+            <!-- Vaccination extra -->
+            <div class="extra-section" id="extra_Vaccinated">
+                <div style="font-size:.78rem;font-weight:700;color:#374151;margin-bottom:.75rem;display:flex;align-items:center;gap:.4rem"><i class="bi bi-shield-fill-check" style="color:#10b981"></i> Vaccination Details</div>
+                <div class="frow"><label>Vaccine Name</label><input class="finput" id="v_name" placeholder="e.g. Rabies, DHPP"></div>
+                <div class="frow"><label>Batch / Lot</label><input class="finput" id="v_batch" placeholder="Batch or lot number"></div>
+                <div class="frow"><label>Next Due Date</label><input class="finput" type="date" id="v_nextdue"></div>
+                <div class="frow"><label>Notes</label><textarea class="finput" id="v_notes" rows="2" placeholder="Route, dosage, reactions..."></textarea></div>
+            </div>
+
+            <!-- Injury extra -->
+            <div class="extra-section" id="extra_Injured">
+                <div style="font-size:.78rem;font-weight:700;color:#374151;margin-bottom:.75rem;display:flex;align-items:center;gap:.4rem"><i class="bi bi-bandaid-fill" style="color:#ef4444"></i> Injury Details</div>
+                <div class="frow"><label>Severity</label>
+                    <select class="finput" id="i_severity"><option value="Minor">Minor</option><option value="Moderate">Moderate</option><option value="Severe">Severe</option></select>
+                </div>
+                <div class="frow"><label>Injury Description</label><textarea class="finput" id="i_details" rows="2" placeholder="Location, nature, treatment..."></textarea></div>
+                <div style="display:flex;align-items:center;gap:.5rem;margin-bottom:1rem">
+                    <input type="checkbox" id="i_treated" style="width:16px;height:16px;cursor:pointer">
+                    <label for="i_treated" style="margin:0;font-size:.845rem;font-weight:600;color:#374151;cursor:pointer">Treated on-site</label>
+                </div>
+            </div>
+
+            <!-- Bite extra -->
+            <div class="extra-section" id="extra_Bite_someone">
+                <div style="font-size:.78rem;font-weight:700;color:#374151;margin-bottom:.75rem;display:flex;align-items:center;gap:.4rem"><i class="bi bi-exclamation-triangle-fill" style="color:#f59e0b"></i> Bite Incident</div>
+                <div class="frow"><label>Severity</label>
+                    <select class="finput" id="b_severity"><option value="Minor">Minor</option><option value="Moderate">Moderate</option><option value="Severe">Severe</option></select>
+                </div>
+                <div class="frow"><label>Victim &amp; Circumstances</label><textarea class="finput" id="b_details" rows="2" placeholder="Who was bitten and what happened..."></textarea></div>
+                <div class="frow"><label>Reported To</label><input class="finput" id="b_reported" placeholder="e.g. Owner, Police, Clinic"></div>
+            </div>
+
+            <!-- Mating extra -->
+            <div class="extra-section" id="extra_Mating">
+                <div style="font-size:.78rem;font-weight:700;color:#374151;margin-bottom:.75rem;display:flex;align-items:center;gap:.4rem"><i class="bi bi-heart-fill" style="color:#ec4899"></i> Mating Details</div>
+                <div class="frow"><label>Partner Name</label><input class="finput" id="m_partner" placeholder="Partner dog's name — registered or an outside dog"><div style="font-size:.72rem;color:#94a3b8;margin-top:.25rem">Just type the name if the partner isn't in the system.</div></div>
+                <div class="frow"><label>Duration</label><input class="finput" id="m_duration" placeholder="e.g. 10 minutes"></div>
+            </div>
+
+            <div style="display:flex;align-items:center;gap:.5rem;margin-top:.5rem">
+                <input type="checkbox" id="c_attention" style="width:16px;height:16px;cursor:pointer">
+                <label for="c_attention" style="margin:0;font-size:.845rem;font-weight:600;color:#dc2626;cursor:pointer">
+                    <i class="bi bi-exclamation-circle-fill"></i> Requires attention or follow-up
+                </label>
+            </div>
+        </div>
+        <div class="modal-foot">
+            <button class="btn-cancel" onclick="closeModal('careModal')">Cancel</button>
+            <button class="btn-pm" id="careSaveBtn" onclick="saveCareRecord()"><i class="bi bi-check2-circle"></i> Save Record</button>
+        </div>
+    </div>
+</div>
+
+<script>
+function openModal(id){document.getElementById(id).classList.add('open');document.body.style.overflow='hidden';}
+function closeModal(id){document.getElementById(id).classList.remove('open');document.body.style.overflow='';}
+document.querySelectorAll('.modal-backdrop-custom').forEach(bd=>{bd.addEventListener('click',e=>{if(e.target===bd)closeModal(bd.id);});});
+document.addEventListener('keydown',e=>{if(e.key==='Escape')document.querySelectorAll('.modal-backdrop-custom.open').forEach(m=>closeModal(m.id));});
+
+function showToast(msg,type){var w=document.getElementById('toastWrap');var el=document.createElement('div');el.className='toast-msg toast-'+type;el.innerHTML='<i class="bi '+(type==='success'?'bi-check-circle-fill':'bi-exclamation-circle-fill')+'"></i>'+msg;w.appendChild(el);requestAnimationFrame(function(){el.classList.add('show');});setTimeout(function(){el.classList.remove('show');setTimeout(function(){el.remove();},350);},3500);}
+function setLoading(id,on,html){var b=document.getElementById(id);if(!b)return;b.disabled=on;if(on)b.innerHTML='<span class="spin"></span> Saving...';else if(html)b.innerHTML=html;}
+
+function selectEvent(btn, type){
+    document.querySelectorAll('.event-chip').forEach(function(c){c.classList.remove('selected');});
+    btn.classList.add('selected');
+    document.getElementById('c_eventType').value = type;
+    // show/hide extra sections
+    var allExtras = document.querySelectorAll('.extra-section');
+    allExtras.forEach(function(s){s.classList.remove('show');});
+    // normalize key: replace spaces with underscores
+    var key = 'extra_' + type.replace(/ /g,'_');
+    var extra = document.getElementById(key);
+    if(extra) extra.classList.add('show');
+}
+
+// datetime-local expects a *local* wall-clock string. toISOString() is UTC, so
+// prefilling straight from it back-dates the record by the timezone offset.
+function nowForDateTimeInput(){
+    const d = new Date();
+    d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
+    return d.toISOString().slice(0,16);
+}
+
+function openCareModal(dogId, dogName){
+    document.getElementById('c_dogId').value = dogId;
+    document.getElementById('c_dogName').textContent = dogName;
+    document.getElementById('c_occurredOn').value = nowForDateTimeInput();
+    document.getElementById('c_details').value = '';
+    document.getElementById('c_outcome').value = '';
+    document.getElementById('c_attention').checked = false;
+    // reset event type to Feeding
+    document.querySelectorAll('.event-chip').forEach(function(c){c.classList.remove('selected');});
+    var first = document.querySelector('.event-chip');
+    if(first){ first.classList.add('selected'); document.getElementById('c_eventType').value = 'Feeding'; }
+    document.querySelectorAll('.extra-section').forEach(function(s){s.classList.remove('show');});
+    // clear all extra inputs
+    ['v_name','v_batch','v_nextdue','v_notes','i_details','b_details','b_reported','m_partner','m_duration']
+        .forEach(function(id){ var el=document.getElementById(id); if(el) el.value=''; });
+    try{document.getElementById('i_severity').value='Minor';}catch(e){}
+    try{document.getElementById('b_severity').value='Minor';}catch(e){}
+    try{document.getElementById('i_treated').checked=false;}catch(e){}
+    openModal('careModal');
+}
+
+async function saveCareRecord(){
+    var dogId = document.getElementById('c_dogId').value;
+    var occurredOn = document.getElementById('c_occurredOn').value;
+    var eventType = document.getElementById('c_eventType').value;
+    if(!dogId||!occurredOn){showToast('Date and time is required.','error');return;}
+
+    var payload = {
+        dogId: parseInt(dogId,10),
+        eventType: eventType,
+        occurredOn: occurredOn,
+        details: document.getElementById('c_details').value.trim()||null,
+        quantityOrOutcome: document.getElementById('c_outcome').value.trim()||null,
+        requiresAttention: document.getElementById('c_attention').checked
+    };
+    // Add event-specific fields
+    if(eventType==='Vaccinated'){
+        payload.vaccineName = document.getElementById('v_name').value.trim()||null;
+        payload.vaccineBatch = document.getElementById('v_batch').value.trim()||null;
+        payload.vaccineNextDue = document.getElementById('v_nextdue').value||null;
+        payload.vaccineNotes = document.getElementById('v_notes').value.trim()||null;
+    }
+    if(eventType==='Injured'){
+        payload.injurySeverity = document.getElementById('i_severity').value||null;
+        payload.injuryDetails = document.getElementById('i_details').value.trim()||null;
+        payload.injuryTreated = document.getElementById('i_treated').checked;
+    }
+    if(eventType==='Bite someone'){
+        payload.biteSeverity = document.getElementById('b_severity').value||null;
+        payload.biteDetails = document.getElementById('b_details').value.trim()||null;
+        payload.biteReportedTo = document.getElementById('b_reported').value.trim()||null;
+    }
+    if(eventType==='Mating'){
+        payload.matingPartnerName = document.getElementById('m_partner').value.trim()||null;
+        payload.matingDuration = document.getElementById('m_duration').value.trim()||null;
+    }
+
+    setLoading('careSaveBtn',true);
+    try{
+        var r = await fetch('/Dogs/AddCareRecord',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+        var d = await r.json();
+        if(d.success){showToast(d.message||'Care record saved!','success');closeModal('careModal');setTimeout(function(){location.reload();},800);}
+        else showToast(d.message||'Failed to save.','error');
+    }catch(e){showToast('Network error.','error');}
+    finally{setLoading('careSaveBtn',false,'<i class="bi bi-check2-circle"></i> Save Record');}
+}
+</script>

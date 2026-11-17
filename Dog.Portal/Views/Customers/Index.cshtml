@@ -3,6 +3,7 @@
     Layout = "_AdminLayout";
     ViewData["Title"] = "Customers";
     var totalAll = Model.TotalCount;
+    var P = PermHelper.For(Context);
 }
 <style>
 .page-hdr h4{font-size:1.15rem;font-weight:800;color:#0f172a;margin:0 0 .25rem}
@@ -36,7 +37,7 @@
 .act-btn:hover{background:#f8fafc;border-color:#cbd5e1;color:#334155}
 .act-menu{position:fixed;background:#fff;border:1px solid #e2e8f0;border-radius:11px;box-shadow:0 12px 40px rgba(0,0,0,.18);min-width:200px;z-index:1045;padding:.375rem;display:none}
 .act-menu.open{display:block}
-.act-item{display:flex;align-items:center;gap:.625rem;padding:.5rem .75rem;border-radius:7px;font-size:.835rem;font-weight:500;color:#374151;cursor:pointer;border:none;background:none;width:100%;text-align:left}
+.act-item{display:flex;align-items:center;gap:.625rem;padding:.5rem .75rem;border-radius:7px;font-size:.835rem;font-weight:500;color:#374151;cursor:pointer;border:none;background:none;width:100%;text-align:left;text-decoration:none}
 .act-item:hover{background:#f8fafc}
 .act-item.danger{color:#dc2626}
 .act-item.danger:hover{background:#fef2f2}
@@ -92,7 +93,9 @@
   <div class="page-hdr"><h4>Customers</h4><p>Manage customer information and profiles</p></div>
   <div class="hdr-actions">
     <span class="total-chip"><i class="bi bi-people"></i> @totalAll Total</span>
+    @if (P.Can("customer.create")) {
     <button class="btn-add" onclick="openModal('createModal')"><i class="bi bi-person-plus-fill"></i> Add Customer</button>
+    }
   </div>
 </div>
 <div class="stats-row">
@@ -112,6 +115,7 @@
         <thead><tr>
           <th style="width:50px">#</th>
           <th style="width:200px">Customer</th>
+          <th style="width:170px">Company</th>
           <th style="width:90px">Gender</th>
           <th style="width:180px">Email</th>
           <th style="width:130px">Cellphone</th>
@@ -128,12 +132,13 @@
             <tr>
               <td><span class="rn">@(si+i+1)</span></td>
               <td>
-                <div class="name-cell">
+                <a href="@Url.Action("Details", new { id = item.Id })" class="name-cell" style="text-decoration:none">
                   @if (!string.IsNullOrEmpty(item.Profile)) { <img src="@item.Profile" style="width:36px;height:36px;border-radius:50%;object-fit:cover" /> }
                   else { <span class="avatar-ph">@ini</span> }
                   <div><div style="font-weight:600;color:#1e293b">@item.FullName</div><div style="font-size:.75rem;color:#94a3b8">@item.FirstName @item.LastName</div></div>
-                </div>
+                </a>
               </td>
+              <td title="@item.CustomerCompanyName">@if (!string.IsNullOrEmpty(item.CustomerCompanyName)) { <a href="@Url.Action("Index", "CustomerCompanies", new { open = item.CustomerCompanyId })" style="color:#4f46e5;font-weight:600;text-decoration:none"><i class="bi bi-buildings"></i> @item.CustomerCompanyName</a><div style="font-size:.72rem;color:#94a3b8">@item.JobTitle</div> } else { <span style="color:#cbd5e1">—</span> }</td>
               <td>@item.Gender</td>
               <td title="@item.Email">@item.Email</td>
               <td>@item.Cellphone</td>
@@ -154,11 +159,17 @@
                        data-cellphone="@item.Cellphone"
                        data-email="@item.Email"
                        data-address="@item.Address"
-                       data-profile="@item.Profile">
-                    <button class="act-item" onclick="openView(this.closest('.act-menu'))"><i class="bi bi-person" style="color:#667eea"></i> View Profile</button>
+                       data-profile="@item.Profile"
+                       data-jobtitle="@item.JobTitle"
+                       data-companyid="@item.CustomerCompanyId">
+                    <a class="act-item" href="@Url.Action("Details", new { id = item.Id })"><i class="bi bi-person" style="color:#667eea"></i> View Profile</a>
+                    @if (P.Can("customer.edit")) {
                     <button class="act-item" onclick="openEdit(this.closest('.act-menu'))"><i class="bi bi-pencil-fill" style="color:#667eea"></i> Edit</button>
+                    }
+                    @if (P.Can("customer.delete")) {
                     <div class="act-divider"></div>
                     <button class="act-item danger" onclick="openDelete(this.closest('.act-menu'))"><i class="bi bi-trash3-fill"></i> Delete</button>
+                    }
                   </div>
                 </div>
               </td>
@@ -187,24 +198,6 @@
       }
     </div>
   }
-</div><!-- VIEW PROFILE MODAL -->
-<div class="modal-backdrop-custom" id="viewModal">
-  <div class="modal-box">
-    <div class="modal-hdr">
-      <h5><i class="bi bi-person-fill" style="color:#667eea"></i> Customer Profile</h5>
-      <button class="modal-close" onclick="closeModal('viewModal')"><i class="bi bi-x-lg"></i></button>
-    </div>
-    <div class="modal-body" style="text-align:center;padding-top:1.5rem">
-      <div id="v_avatarWrap" style="margin-bottom:1rem"></div>
-      <h5 id="v_fullname" style="font-weight:800;color:#0f172a;margin-bottom:.25rem"></h5>
-      <p id="v_email" style="color:#64748b;font-size:.875rem;margin-bottom:1.5rem"></p>
-      <div id="v_details" style="text-align:left;background:#f8fafc;border-radius:10px;padding:1rem;display:grid;grid-template-columns:1fr 1fr;gap:.75rem"></div>
-    </div>
-    <div class="modal-foot">
-      <button class="btn-cancel" onclick="closeModal('viewModal')">Close</button>
-      <button class="btn-primary" id="v_editBtn"><i class="bi bi-pencil-fill"></i> Edit</button>
-    </div>
-  </div>
 </div>
 <!-- CREATE MODAL -->
 <div class="modal-backdrop-custom" id="createModal">
@@ -220,6 +213,10 @@
       </div>
       <div class="frow"><label>Full Name <span class="req">*</span></label><input class="finput" id="c_fullName" placeholder="Full name"></div>
       <div class="frow-2">
+        <div class="frow"><label>Company <a href="/CustomerCompanies" style="font-weight:500;font-size:.72rem;margin-left:.4rem;color:#4f46e5">+ new company</a></label><select class="finput" id="c_company"><option value="">— Individual (no company) —</option></select></div>
+        <div class="frow"><label>Job title / role</label><input class="finput" id="c_jobTitle" placeholder="e.g. Procurement manager"></div>
+      </div>
+      <div class="frow-2">
         <div class="frow"><label>Gender</label><select class="finput" id="c_gender"><option value="">Select</option><option>Male</option><option>Female</option><option>Other</option></select></div>
         <div class="frow"><label>Date of Birth</label><input class="finput" type="date" id="c_dob"></div>
       </div>
@@ -230,6 +227,13 @@
       <div class="frow"><label>Email</label><input class="finput" type="email" id="c_email" placeholder="email@example.com"></div>
       <div class="frow"><label>Address</label><textarea class="finput" id="c_address" rows="2" placeholder="Physical address"></textarea></div>
       <div class="frow"><label>Profile Photo URL</label><input class="finput" id="c_profile" placeholder="https://..."></div>
+      <div style="border-top:1px solid #f1f5f9;padding-top:1rem;margin-top:.25rem">
+        <div style="font-size:.85rem;font-weight:700;color:#374151;margin-bottom:.75rem">Contract (optional)</div>
+        <div class="frow-2">
+          <div class="frow"><label>Date of Contract</label><input class="finput" type="date" id="c_contractDate"></div>
+          <div class="frow"><label>Contract Details</label><input class="finput" id="c_contractDetails" placeholder="e.g. Annual security contract"></div>
+        </div>
+      </div>
     </div>
     <div class="modal-foot">
       <button class="btn-cancel" onclick="closeModal('createModal')">Cancel</button>
@@ -251,6 +255,10 @@
         <div class="frow"><label>Last Name</label><input class="finput" id="e_lastName"></div>
       </div>
       <div class="frow"><label>Full Name</label><input class="finput" id="e_fullName"></div>
+      <div class="frow-2">
+        <div class="frow"><label>Company</label><select class="finput" id="e_company"><option value="">— Individual (no company) —</option></select></div>
+        <div class="frow"><label>Job title / role</label><input class="finput" id="e_jobTitle"></div>
+      </div>
       <div class="frow-2">
         <div class="frow"><label>Gender</label><select class="finput" id="e_gender"><option value="">Select</option><option>Male</option><option>Female</option><option>Other</option></select></div>
         <div class="frow"><label>Date of Birth</label><input class="finput" type="date" id="e_dob"></div>
@@ -302,20 +310,19 @@ document.addEventListener('click',function(e){if(!e.target.closest('.act-wrap'))
 window.addEventListener('scroll',closeAllActMenus,true);
 window.addEventListener('resize',closeAllActMenus);
 
-function drow(l,v){return '<div><div style="font-size:.72rem;color:#94a3b8;font-weight:600;text-transform:uppercase">'+l+'</div><div style="font-size:.875rem;color:#1e293b;font-weight:500;margin-top:.15rem">'+(v||'-')+'</div></div>';}
-
-function openView(menu){closeAllActMenus();var d=menu.dataset;var ini=(d.fullname||'?').substring(0,1).toUpperCase();var w=document.getElementById('v_avatarWrap');if(d.profile){w.innerHTML='<img src="'+d.profile+'" style="width:80px;height:80px;border-radius:50%;object-fit:cover;border:3px solid #e2e8f0" />';}else{w.innerHTML='<div style="width:80px;height:80px;border-radius:50%;background:linear-gradient(135deg,#667eea,#764ba2);color:#fff;display:inline-flex;align-items:center;justify-content:center;font-size:2rem;font-weight:700">'+ini+'</div>';}document.getElementById('v_fullname').textContent=d.fullname||'-';document.getElementById('v_email').textContent=d.email||'-';document.getElementById('v_details').innerHTML=drow('First Name',d.firstname)+drow('Last Name',d.lastname)+drow('Gender',d.gender)+drow('DOB',d.dob)+drow('ID Number',d.idnumber)+drow('Cellphone',d.cellphone)+drow('Address',d.address);document.getElementById('v_editBtn').onclick=function(){closeModal('viewModal');setTimeout(function(){openEdit(menu);},300);};openModal('viewModal');}
-
-function openEdit(menu){closeAllActMenus();var d=menu.dataset;document.getElementById('e_id').value=d.id;document.getElementById('e_firstName').value=d.firstname||'';document.getElementById('e_lastName').value=d.lastname||'';document.getElementById('e_fullName').value=d.fullname||'';document.getElementById('e_gender').value=d.gender||'';document.getElementById('e_dob').value=d.dob||'';document.getElementById('e_idNumber').value=d.idnumber||'';document.getElementById('e_cellphone').value=d.cellphone||'';document.getElementById('e_email').value=d.email||'';document.getElementById('e_address').value=d.address||'';document.getElementById('e_profile').value=d.profile||'';openModal('editModal');}
+function openEdit(menu){closeAllActMenus();var d=menu.dataset;document.getElementById('e_id').value=d.id;document.getElementById('e_firstName').value=d.firstname||'';document.getElementById('e_lastName').value=d.lastname||'';document.getElementById('e_fullName').value=d.fullname||'';document.getElementById('e_gender').value=d.gender||'';document.getElementById('e_dob').value=d.dob||'';document.getElementById('e_idNumber').value=d.idnumber||'';document.getElementById('e_cellphone').value=d.cellphone||'';document.getElementById('e_email').value=d.email||'';document.getElementById('e_address').value=d.address||'';document.getElementById('e_profile').value=d.profile||'';document.getElementById('e_company').value=d.companyid||'';document.getElementById('e_jobTitle').value=d.jobtitle||'';openModal('editModal');}
 
 function openDelete(menu){closeAllActMenus();var d=menu.dataset;document.getElementById('d_id').value=d.id;document.getElementById('d_name').textContent=d.fullname||'this customer';openModal('deleteModal');}
 
+async function loadCompanies(){try{var r=await fetch('/CustomerCompanies/Lookup');var j=await r.json();var list=(j&&j.data)||j||[];['c_company','e_company'].forEach(function(id){var sel=document.getElementById(id);if(!sel)return;var keep=sel.value;list.forEach(function(c){var o=document.createElement('option');o.value=c.id;o.textContent=c.name+(c.vatNumber?' · VAT '+c.vatNumber:'');sel.appendChild(o);});sel.value=keep;});}catch(e){}}
+loadCompanies();
 function setLoading(btnId,loading,restoreHtml){var btn=document.getElementById(btnId);btn.disabled=loading;if(loading)btn.innerHTML='<span class="spin"></span> Saving...';else if(restoreHtml)btn.innerHTML=restoreHtml;}
 function showToast(msg,type){var wrap=document.getElementById('toastWrap');var el=document.createElement('div');el.className='toast-msg toast-'+type;el.innerHTML='<i class="bi '+(type==='success'?'bi-check-circle-fill':'bi-exclamation-circle-fill')+'"></i>'+msg;wrap.appendChild(el);requestAnimationFrame(function(){el.classList.add('show');});setTimeout(function(){el.classList.remove('show');setTimeout(function(){el.remove();},350);},3500);}
 
-async function submitCreate(){var fn=document.getElementById('c_firstName').value.trim();var ln=document.getElementById('c_lastName').value.trim();var full=document.getElementById('c_fullName').value.trim();if(!full&&!fn){showToast('Please enter at least a name.','error');return;}setLoading('createBtn',true);try{var res=await fetch('/Customers/Create',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({firstName:fn,lastName:ln,fullName:full,gender:document.getElementById('c_gender').value,dob:document.getElementById('c_dob').value,iDnumber:document.getElementById('c_idNumber').value.trim(),cellphone:document.getElementById('c_cellphone').value.trim(),email:document.getElementById('c_email').value.trim(),address:document.getElementById('c_address').value.trim(),profile:document.getElementById('c_profile').value.trim(),isActive:true})});var data=await res.json();if(data.success){showToast(data.message||'Customer created!','success');closeModal('createModal');setTimeout(function(){location.reload();},900);}else{showToast(data.message||'Failed to create customer.','error');}}catch(e){showToast('Network error. Please try again.','error');}finally{setLoading('createBtn',false,'<i class="bi bi-person-plus-fill"></i> Save Customer');}}
+async function submitCreate(){var fn=document.getElementById('c_firstName').value.trim();var ln=document.getElementById('c_lastName').value.trim();var full=document.getElementById('c_fullName').value.trim();if(!full&&!fn){showToast('Please enter at least a name.','error');return;}setLoading('createBtn',true);try{var res=await fetch('/Customers/Create',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({firstName:fn,lastName:ln,fullName:full,gender:document.getElementById('c_gender').value,dob:document.getElementById('c_dob').value,iDnumber:document.getElementById('c_idNumber').value.trim(),cellphone:document.getElementById('c_cellphone').value.trim(),email:document.getElementById('c_email').value.trim(),address:document.getElementById('c_address').value.trim(),profile:document.getElementById('c_profile').value.trim(),customerCompanyId:parseInt(document.getElementById('c_company').value)||null,jobTitle:document.getElementById('c_jobTitle').value.trim()||null,isActive:true,contractDate:document.getElementById('c_contractDate').value||null,contractDetails:document.getElementById('c_contractDetails').value.trim()||null})});var data=await res.json();if(data.success){showToast(data.message||'Customer created!','success');closeModal('createModal');setTimeout(function(){location.reload();},900);}else{showToast(data.message||'Failed to create customer.','error');}}catch(e){showToast('Network error. Please try again.','error');}finally{setLoading('createBtn',false,'<i class="bi bi-person-plus-fill"></i> Save Customer');}}
 
-async function submitEdit(){var id=document.getElementById('e_id').value;setLoading('editBtn',true);try{var res=await fetch('/Customers/Update',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:parseInt(id),firstName:document.getElementById('e_firstName').value.trim(),lastName:document.getElementById('e_lastName').value.trim(),fullName:document.getElementById('e_fullName').value.trim(),gender:document.getElementById('e_gender').value,dob:document.getElementById('e_dob').value,iDnumber:document.getElementById('e_idNumber').value.trim(),cellphone:document.getElementById('e_cellphone').value.trim(),email:document.getElementById('e_email').value.trim(),address:document.getElementById('e_address').value.trim(),profile:document.getElementById('e_profile').value.trim(),isActive:true})});var data=await res.json();if(data.success){showToast(data.message||'Customer updated!','success');closeModal('editModal');setTimeout(function(){location.reload();},900);}else{showToast(data.message||'Failed to update customer.','error');}}catch(e){showToast('Network error. Please try again.','error');}finally{setLoading('editBtn',false,'<i class="bi bi-check2-circle"></i> Save Changes');}}
+async function submitEdit(){var id=document.getElementById('e_id').value;setLoading('editBtn',true);try{var res=await fetch('/Customers/Update',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:parseInt(id),firstName:document.getElementById('e_firstName').value.trim(),lastName:document.getElementById('e_lastName').value.trim(),fullName:document.getElementById('e_fullName').value.trim(),gender:document.getElementById('e_gender').value,dob:document.getElementById('e_dob').value,iDnumber:document.getElementById('e_idNumber').value.trim(),cellphone:document.getElementById('e_cellphone').value.trim(),email:document.getElementById('e_email').value.trim(),address:document.getElementById('e_address').value.trim(),profile:document.getElementById('e_profile').value.trim(),customerCompanyId:parseInt(document.getElementById('e_company').value)||null,jobTitle:document.getElementById('e_jobTitle').value.trim()||null,isActive:true})});var data=await res.json();if(data.success){showToast(data.message||'Customer updated!','success');closeModal('editModal');setTimeout(function(){location.reload();},900);}else{showToast(data.message||'Failed to update customer.','error');}}catch(e){showToast('Network error. Please try again.','error');}finally{setLoading('editBtn',false,'<i class="bi bi-check2-circle"></i> Save Changes');}}
 
 async function submitDelete(){var id=document.getElementById('d_id').value;setLoading('deleteBtn',true);try{var res=await fetch('/Customers/Delete/'+id,{method:'POST'});var data=await res.json();if(data.success){showToast(data.message||'Customer deleted.','success');closeModal('deleteModal');setTimeout(function(){location.reload();},900);}else{showToast(data.message||'Failed to delete customer.','error');}}catch(e){showToast('Network error. Please try again.','error');}finally{setLoading('deleteBtn',false,'<i class="bi bi-trash3-fill"></i> Delete');}}
+
 </script>

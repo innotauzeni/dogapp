@@ -1,8 +1,12 @@
-﻿using Dog.Portal.Models;
+using Dog.Portal.Models;
 using Dog.Portal.Services;
 using Microsoft.AspNetCore.Mvc;
 using System.Text.Json;
 using Dog.Application.Features.Customers.DTOs;
+using Dog.Application.Features.CustomerContracts.DTOs;
+using Dog.Application.Features.CustomerSites.DTOs;
+using Dog.Application.Features.Deployments.DTOs;
+using AnimalListDto = Dog.Application.Features.Animals.DTOs.AnimalListDto;
 
 namespace Dog.Portal.Controllers
 {
@@ -32,7 +36,7 @@ namespace Dog.Portal.Controllers
 
             try
             {
-                var companyId = await _currentUserService.GetUserCompanyId();
+                var companyId = await _currentUserService.GetActiveCompanyId();
                 var resp = await _apiClient.GetAsync<ApiResponse<object>>($"api/Customer?CompanyId={companyId}");
 
                 if (resp?.Success == true && resp.Data != null)
@@ -69,6 +73,55 @@ namespace Dog.Portal.Controllers
             return View(vm);
         }
 
+        public async Task<IActionResult> Details(int id)
+        {
+            if (!await IsAuthenticated()) return RedirectToAction("Login", "Auth");
+
+            var jsonOpts = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+            var vm = new CustomerDetailsViewModel();
+
+            try
+            {
+                var custResp = await _apiClient.GetAsync<ApiResponse<object>>($"api/Customer/GetCustomerById?Id={id}");
+                if (custResp?.Success != true || custResp.Data == null)
+                {
+                    ViewBag.Error = custResp?.Message ?? "Customer not found.";
+                    return View(vm);
+                }
+                vm.Customer = JsonSerializer.Deserialize<CustomerDto>(JsonSerializer.Serialize(custResp.Data), jsonOpts)!;
+
+                var sitesResp = await _apiClient.GetAsync<ApiResponse<object>>($"api/CustomerSite?customerId={id}");
+                if (sitesResp?.Success == true && sitesResp.Data != null)
+                    vm.Sites = JsonSerializer.Deserialize<List<CustomerSiteDto>>(JsonSerializer.Serialize(sitesResp.Data), jsonOpts) ?? new();
+
+                var contractsResp = await _apiClient.GetAsync<ApiResponse<object>>($"api/CustomerContract?customerId={id}");
+                if (contractsResp?.Success == true && contractsResp.Data != null)
+                    vm.Contracts = JsonSerializer.Deserialize<List<CustomerContractDto>>(JsonSerializer.Serialize(contractsResp.Data), jsonOpts) ?? new();
+
+                var companyId = await _currentUserService.GetActiveCompanyId();
+
+                var dogsResp = await _apiClient.GetAsync<ApiResponse<object>>($"api/Animal/GetPets?CompanyId={companyId}");
+                if (dogsResp?.Success == true && dogsResp.Data != null)
+                {
+                    var allDogs = JsonSerializer.Deserialize<List<AnimalListDto>>(JsonSerializer.Serialize(dogsResp.Data), jsonOpts) ?? new();
+                    vm.OwnedDogs = allDogs.Where(d => d.CustomerId == id).ToList();
+                }
+
+                var depResp = await _apiClient.GetAsync<ApiResponse<object>>($"api/Deployment?CompanyId={companyId}");
+                if (depResp?.Success == true && depResp.Data != null)
+                {
+                    var allDeployments = JsonSerializer.Deserialize<List<DeploymentDto>>(JsonSerializer.Serialize(depResp.Data), jsonOpts) ?? new();
+                    vm.Deployments = allDeployments.Where(d => d.CustomerId == id).OrderByDescending(d => d.StartDate).ToList();
+                }
+            }
+            catch (Exception ex)
+            {
+                ViewBag.Error = $"Unable to load customer. Error: {ex.Message}";
+            }
+
+            return View(vm);
+        }
+
         [HttpPost]
         public async Task<IActionResult> Create([FromBody] CreateCustomerRequest req)
         {
@@ -77,7 +130,7 @@ namespace Dog.Portal.Controllers
 
             try
             {
-                var companyId = await _currentUserService.GetUserCompanyId();
+                var companyId = await _currentUserService.GetActiveCompanyId();
                 var dto = new CreateCustomerDto
                 {
                     CompanyId = companyId,
@@ -91,6 +144,8 @@ namespace Dog.Portal.Controllers
                     Cellphone = req.Cellphone,
                     Email = req.Email,
                     Address = req.Address,
+                    JobTitle = req.JobTitle,
+                    CustomerCompanyId = req.CustomerCompanyId,
                     IsActive = req.IsActive
                 };
 
@@ -98,6 +153,24 @@ namespace Dog.Portal.Controllers
 
                 if (resp?.Success == true)
                 {
+                    // Optionally record the initial contract alongside the new customer.
+                    if (!string.IsNullOrWhiteSpace(req.ContractDate) && DateTime.TryParse(req.ContractDate, out var contractDate) && resp.Data != null)
+                    {
+                        var created = JsonSerializer.Deserialize<CustomerDto>(JsonSerializer.Serialize(resp.Data), new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+                        if (created != null)
+                        {
+                            var contractDto = new CreateCustomerContractDto
+                            {
+                                CustomerId = created.Id,
+                                CompanyId = companyId,
+                                ContractDate = contractDate,
+                                ContractDetails = req.ContractDetails,
+                                IsActive = true,
+                            };
+                            await _apiClient.PostAsync<ApiResponse<object>>("api/CustomerContract", contractDto);
+                        }
+                    }
+
                     return Json(new { success = true, message = "Customer created successfully!" });
                 }
 
@@ -117,7 +190,7 @@ namespace Dog.Portal.Controllers
 
             try
             {
-                var companyId = await _currentUserService.GetUserCompanyId();
+                var companyId = await _currentUserService.GetActiveCompanyId();
                 var dto = new CreateCustomerDto
                 {
                     CompanyId = companyId,
@@ -131,6 +204,8 @@ namespace Dog.Portal.Controllers
                     Cellphone = req.Cellphone,
                     Email = req.Email,
                     Address = req.Address,
+                    JobTitle = req.JobTitle,
+                    CustomerCompanyId = req.CustomerCompanyId,
                     IsActive = req.IsActive
                 };
 

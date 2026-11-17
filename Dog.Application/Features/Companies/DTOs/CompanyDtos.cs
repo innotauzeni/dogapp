@@ -9,6 +9,8 @@ namespace Dog.Application.Features.Companies.DTOs
         public string? PhoneNumber { get; set; }
         public string? Website { get; set; }
         public string? Address { get; set; }
+        public string? Logo { get; set; }
+        public string? BrandColor { get; set; }
         public string? Location { get; set; }
         public int CountryId { get; set; }
         public string? CountryName { get; set; }
@@ -34,6 +36,8 @@ namespace Dog.Application.Features.Companies.DTOs
         public string? PhoneNumber { get; set; }
         public string? Website { get; set; }
         public string? Address { get; set; }
+        public string? Logo { get; set; }
+        public string? BrandColor { get; set; }
         public string? Location { get; set; }
         public int CountryId { get; set; }
         public int ProvinceId { get; set; }
@@ -46,5 +50,11 @@ namespace Dog.Application.Features.Companies.DTOs
     public class UpdateCompanyDto : CreateCompanyDto
     {
         public int Id { get; set; }
+    }
+
+    public class UpdateBrandColorDto
+    {
+        /// Hex color, e.g. "#1D4ED8". Pass null to reset to the app default.
+        public string? BrandColor { get; set; }
     }
 }

@@ -1,0 +1,90 @@
+@{
+    Layout = "_AdminLayout";
+    ViewData["Title"] = "Weekly Progress Report";
+    int enrollmentId = (int)ViewBag.EnrollmentId;
+    int week = (int)ViewBag.Week;
+}
+<partial name="_TrainingShared" />
+<div class="tr" style="max-width:820px">
+    <div style="margin-bottom:.5rem"><a href="/Training/Enrolment/@enrollmentId" style="font-size:.82rem;color:#667eea;text-decoration:none"><i class="bi bi-arrow-left"></i> Enrolment</a></div>
+    <div id="head"><div class="tr-empty">Loading…</div></div>
+    <div id="body" style="display:none">
+        <div id="note"></div>
+        <div class="tr-card">
+            <div class="tr-field"><label>Training objectives (this week's plan)</label><textarea class="tr-in" id="fObj" style="min-height:90px"></textarea></div>
+            <div class="tr-field"><label>Activities completed</label><textarea class="tr-in" id="fDone"></textarea></div>
+            <div class="tr-field"><label>Activities outstanding</label><textarea class="tr-in" id="fOut"></textarea></div>
+            <div class="tr-field"><label>Performance summary *</label><textarea class="tr-in" id="fPerf"></textarea></div>
+            <div class="tr-field"><label>Challenges encountered</label><textarea class="tr-in" id="fChal"></textarea></div>
+            <div class="tr-field"><label>Improvements</label><textarea class="tr-in" id="fImpr"></textarea></div>
+            <div class="tr-field"><label>Handler recommendations</label><textarea class="tr-in" id="fRec"></textarea></div>
+        </div>
+        <div class="tr-card" id="filesCard" style="display:none"><h5><i class="bi bi-camera-fill" style="color:#667eea"></i> Supporting photographs</h5><div id="files"></div></div>
+
+        <div class="tr-card" id="reviewCard" style="display:none">
+            <h5><i class="bi bi-patch-check" style="color:#667eea"></i> Review</h5>
+            <div class="tr-field"><label>Comments (required when returning to the handler)</label><textarea class="tr-in" id="rvComment"></textarea></div>
+        </div>
+        <div class="tr-actions" id="foot" style="margin-bottom:2rem"></div>
+    </div>
+</div>
+
+<script>
+(function () {
+    var ENR = @enrollmentId, WEEK = @week, rep = null;
+    var canSubmit = T.can('training.progress.submit'), canReview = T.can('training.progress.review');
+
+    async function load() {
+        var r = await T.api('GET', 'progress-reports/draft?enrollmentId=' + ENR + '&week=' + WEEK);
+        if (!r.success) { head.innerHTML = '<div class="tr-card"><div class="tr-empty"><i class="bi bi-exclamation-circle"></i>' + T.esc(r.message || 'Could not open the report.') + '</div></div>'; return; }
+        rep = r.data; draw();
+    }
+
+    function draw() {
+        var editable = canSubmit && (rep.status === 'Draft' || rep.status === 'Returned');
+        head.innerHTML = '<div class="tr-card" style="display:flex;justify-content:space-between;gap:1rem;flex-wrap:wrap;align-items:center">' + T.dog(rep.dogName, 'Week ' + rep.weekNumber + (rep.customerName ? ' · ' + rep.customerName : '')) +
+            '<div style="text-align:right">' + T.resultBadge(rep.status) + '<div class="tr-note" style="margin:.2rem 0 0">' + (rep.logsInWeek || 0) + ' day(s) logged' + (rep.averageRating != null ? ' · avg ' + rep.averageRating + '/10' : '') + '</div></div></div>';
+        body.style.display = '';
+
+        var n = '';
+        if (rep.status === 'Returned') n = '<div class="tr-alert al-warn"><i class="bi bi-arrow-return-left"></i><span><b>Returned for changes:</b> ' + T.esc(rep.reviewComments || '') + '</span></div>';
+        else if (rep.status === 'Submitted') n = '<div class="tr-alert al-info"><i class="bi bi-hourglass-split"></i><span>Submitted' + (rep.submittedOn ? ' on ' + T.date(rep.submittedOn) : '') + ' and waiting for review.</span></div>';
+        else if (rep.status === 'Approved') n = '<div class="tr-alert al-ok"><i class="bi bi-check-circle-fill"></i><span>Approved' + (rep.reviewedByName ? ' by ' + T.esc(rep.reviewedByName) : '') + (rep.reviewedOn ? ' on ' + T.date(rep.reviewedOn) : '') + '.' + (rep.reviewComments ? ' ' + T.esc(rep.reviewComments) : '') + '</span></div>';
+        else if (rep.id === 0) n = '<div class="tr-alert al-info"><i class="bi bi-magic"></i><span>Pre-filled from this week\'s plan and the daily logbook. Review it, add your comments, then submit.</span></div>';
+        note.innerHTML = n;
+
+        fObj.value = rep.objectives || ''; fDone.value = rep.activitiesCompleted || ''; fOut.value = rep.activitiesOutstanding || ''; fPerf.value = rep.performanceSummary || '';
+        fChal.value = rep.challenges || ''; fImpr.value = rep.improvements || ''; fRec.value = rep.recommendations || '';
+        document.querySelectorAll('#body textarea').forEach(function (t) { if (t.id !== 'rvComment') t.disabled = !editable; });
+
+        if (rep.id) { filesCard.style.display = ''; T.attachments('files', 'TrainingReport', rep.id, editable); }
+        reviewCard.style.display = canReview && rep.status === 'Submitted' ? '' : 'none';
+
+        var f = '';
+        if (editable) f += '<button class="tr-btn btn-ghost-t" id="bDraft"><i class="bi bi-save"></i> Save draft</button><button class="tr-btn btn-primary-t" id="bSubmit"><i class="bi bi-send-fill"></i> Submit for review</button>';
+        if (canReview && rep.status === 'Submitted') f += '<button class="tr-btn btn-warn-t" id="bReturn"><i class="bi bi-arrow-return-left"></i> Return to handler</button><button class="tr-btn btn-success-t" id="bApprove"><i class="bi bi-check-circle"></i> Approve</button>';
+        if (rep.id && rep.status === 'Approved') f += '<a class="tr-btn btn-primary-t" target="_blank" href="/Training/ProgressReportPdf/' + rep.id + '"><i class="bi bi-file-earmark-pdf"></i> Download PDF</a>';
+        else if (rep.id) f += '<a class="tr-btn btn-ghost-t" target="_blank" href="/Training/ProgressReportPdf/' + rep.id + '"><i class="bi bi-printer"></i> Print</a>';
+        foot.innerHTML = f;
+        var b;
+        if ((b = document.getElementById('bDraft'))) b.onclick = function () { save(false); };
+        if ((b = document.getElementById('bSubmit'))) b.onclick = function () { if (confirm('Submit this report for review? You will not be able to edit it afterwards.')) save(true); };
+        if ((b = document.getElementById('bApprove'))) b.onclick = function () { review(true); };
+        if ((b = document.getElementById('bReturn'))) b.onclick = function () { review(false); };
+    }
+
+    async function save(submit) {
+        var btn = document.getElementById(submit ? 'bSubmit' : 'bDraft'); T.busy(btn, true, submit ? 'Submitting…' : 'Saving…');
+        var r = await T.api('POST', 'progress-reports', { enrollmentId: ENR, weekNumber: WEEK, objectives: fObj.value, activitiesCompleted: fDone.value, activitiesOutstanding: fOut.value, performanceSummary: fPerf.value, challenges: fChal.value, improvements: fImpr.value, recommendations: fRec.value, submit: submit });
+        T.busy(btn, false);
+        if (r.success) { T.toast(r.message); rep = r.data; draw(); } else T.toast(r.message || 'Could not save the report.', 'error');
+    }
+
+    async function review(approve) {
+        if (!approve && !rvComment.value.trim()) { T.toast('Explain what needs to change.', 'error'); rvComment.focus(); return; }
+        var r = await T.api('POST', 'progress-reports/' + rep.id + '/review', { approve: approve, comments: rvComment.value });
+        if (r.success) { T.toast(r.message); rep = r.data; draw(); } else T.toast(r.message || 'Could not record the review.', 'error');
+    }
+    load();
+})();
+</script>

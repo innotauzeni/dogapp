@@ -1,0 +1,129 @@
+@{
+    Layout = "_AdminLayout";
+    ViewData["Title"] = "Daily Training Log";
+    int enrollmentId = (int)ViewBag.EnrollmentId;
+    string date = (string)ViewBag.Date;
+}
+<partial name="_TrainingShared" />
+<style>
+.lg{max-width:760px;margin:0 auto;padding-bottom:5.5rem}
+.slot{border:1.5px solid #e2e8f0;border-radius:14px;padding:.85rem .95rem;margin-bottom:.7rem;background:#fff}
+.slot.done{border-color:#a7f3d0;background:#f0fdf9}
+.slot .t{display:flex;justify-content:space-between;gap:.5rem;align-items:flex-start}
+.slot .tm{font-weight:800;color:#667eea;font-size:.85rem}
+.slot .nm{font-weight:700;color:#0f172a}
+.slot .pu{font-size:.78rem;color:#64748b;margin:.15rem 0 .5rem}
+.tick{border:1.5px solid #cbd5e1;background:#fff;border-radius:10px;padding:.4rem .8rem;font-weight:700;font-size:.8rem;cursor:pointer;color:#64748b;min-height:38px}
+.slot.done .tick{background:#059669;border-color:#059669;color:#fff}
+.stickybar{position:fixed;left:0;right:0;bottom:0;background:#fff;border-top:1px solid #e2e8f0;padding:.7rem 1rem;display:flex;gap:.6rem;justify-content:center;z-index:900;box-shadow:0 -4px 16px rgba(15,23,42,.06)}
+.stickybar .tr-btn{flex:1;max-width:340px}
+.tgt li{margin:.25rem 0}
+</style>
+<div class="tr lg">
+    <div style="margin-bottom:.5rem"><a href="/Training/Logbook" style="font-size:.82rem;color:#667eea;text-decoration:none"><i class="bi bi-arrow-left"></i> My dogs</a></div>
+    <div id="head"><div class="tr-empty">Loading…</div></div>
+    <div id="form" style="display:none">
+        <div class="tr-card" id="targetCard" style="display:none">
+            <h5 style="cursor:pointer" id="tgtToggle"><i class="bi bi-bullseye" style="color:#667eea"></i> This week's target <i class="bi bi-chevron-down" style="margin-left:auto;font-size:.8rem"></i></h5>
+            <div id="tgtBody" style="display:none"></div>
+        </div>
+
+        <h5 style="font-size:.95rem;font-weight:800;margin:.4rem 0 .6rem">Today's schedule</h5>
+        <div id="slots"></div>
+        <div class="tr-card" style="display:flex;justify-content:space-between;align-items:center;gap:.6rem;flex-wrap:wrap">
+            <div><div class="tr-note" style="margin:0">Average rating of completed activities</div><div style="font-size:1.5rem;font-weight:800" id="avg">—</div></div>
+            <div style="flex:1;min-width:230px"><div class="tr-note" style="margin:0 0 .3rem">Overall performance for the day</div><div id="perf" style="display:flex;gap:.3rem;flex-wrap:wrap"></div></div>
+        </div>
+
+        <div class="tr-card">
+            <div class="tr-row">
+                <div class="tr-field"><label>Training duration (minutes)</label><input type="number" min="0" max="1440" inputmode="numeric" class="tr-in" id="dur"></div>
+                <div class="tr-field"><label>Commands practised</label><input class="tr-in" id="cmds" placeholder="Sit, Down, Place, Come…"></div>
+            </div>
+            <div class="tr-field"><label>Activities performed</label><textarea class="tr-in" id="acts"></textarea></div>
+            <div class="tr-field"><label>Behaviour observations</label><textarea class="tr-in" id="obs"></textarea></div>
+            <div class="tr-field"><label>Challenges</label><textarea class="tr-in" id="chal"></textarea></div>
+            <div class="tr-field"><label>Improvements</label><textarea class="tr-in" id="impr"></textarea></div>
+            <div class="tr-field"><label>Recommendations</label><textarea class="tr-in" id="recs"></textarea></div>
+            <div class="tr-field"><label>Next training objectives</label><textarea class="tr-in" id="next"></textarea></div>
+        </div>
+
+        <div class="tr-card"><h5><i class="bi bi-camera-fill" style="color:#667eea"></i> Photos &amp; videos</h5><div id="files"><div class="tr-note">Save the record first, then add photos or video from your phone here.</div></div></div>
+    </div>
+</div>
+<div class="stickybar" id="bar" style="display:none"><button class="tr-btn btn-primary-t" id="save"><i class="bi bi-check2-circle"></i> Save today's record</button></div>
+
+<script>
+(function () {
+    var ID = @enrollmentId, DATE = '@date', log = null, slots = [], performance = null, suggested = null, canRecord = T.can('training.log.record');
+    var LEVELS = ['Excellent', 'Very Good', 'Good', 'Needs Improvement', 'Poor'];
+
+    function suggest(avg) { return avg >= 9 ? 'Excellent' : avg >= 7 ? 'Very Good' : avg >= 5 ? 'Good' : avg >= 3 ? 'Needs Improvement' : 'Poor'; }
+
+    async function load() {
+        var r = await T.api('GET', 'logs/day?enrollmentId=' + ID + '&date=' + DATE);
+        if (!r.success) { head.innerHTML = '<div class="tr-card"><div class="tr-empty"><i class="bi bi-exclamation-circle"></i>' + T.esc(r.message || 'Could not open this dog.') + '</div></div>'; return; }
+        log = r.data; slots = (log.slots || []).map(function (s) { return { time: s.time, title: s.title, done: !!s.done, rating: s.rating, notes: s.notes || '' }; });
+        performance = log.id ? log.performance : null;
+        head.innerHTML = '<div class="tr-card">' + T.dog(log.dogName, log.weekNumber ? 'Week ' + log.weekNumber + ' · Day ' + log.dayNumber : 'Training not active on this date') +
+            '<div class="tr-field" style="margin:.8rem 0 0;max-width:210px"><label>Training date</label><input type="date" class="tr-in" id="dt" value="' + DATE + '" max="' + T.isoDate() + '"></div></div>';
+        document.getElementById('dt').onchange = function () { location.href = '/Training/Log/' + ID + '?date=' + this.value; };
+        form.style.display = ''; bar.style.display = canRecord ? '' : 'none';
+        dur.value = log.durationMinutes || ''; cmds.value = log.commandsPracticed || ''; acts.value = log.activitiesPerformed || ''; obs.value = log.behaviourObservations || '';
+        chal.value = log.challenges || ''; impr.value = log.improvements || ''; recs.value = log.recommendations || ''; next.value = log.nextObjectives || '';
+        if (!canRecord) document.querySelectorAll('#form input,#form textarea,#form button').forEach(function (e) { if (e.id !== 'tgtToggle') e.disabled = true; });
+        drawSlots(); loadTarget(); drawFiles();
+    }
+
+    async function loadTarget() {
+        var r = await T.api('GET', 'enrollments/' + ID + '/plans');
+        if (!r.success) return;
+        var p = r.data.filter(function (x) { return x.weekNumber === log.weekNumber; })[0]; if (!p || !p.targets) return;
+        targetCard.style.display = '';
+        tgtBody.innerHTML = '<div class="tr-note" style="margin:0 0 .4rem"><b>' + T.esc(p.title) + '</b>' + (p.focus ? ' · ' + T.esc(p.focus) : '') + '</div><ul class="tgt" style="font-size:.86rem;padding-left:1.1rem;margin:0">' + p.targets.split('\n').filter(Boolean).map(function (t) { var i = t.indexOf(':'); return '<li>' + (i > 0 ? '<b>' + T.esc(t.slice(0, i)) + '</b>' + T.esc(t.slice(i)) : T.esc(t)) + '</li>'; }).join('') + '</ul>';
+        tgtToggle.onclick = function () { tgtBody.style.display = tgtBody.style.display === 'none' ? '' : 'none'; };
+    }
+
+    function drawSlots() {
+        var el = document.getElementById('slots');
+        if (slots.length === 0) { el.innerHTML = '<div class="tr-card"><div class="tr-note">No schedule is set for this day. Fill in the details below.</div></div>'; updateAvg(); return; }
+        el.innerHTML = slots.map(function (s, i) {
+            var rate = ''; for (var n = 0; n <= 10; n++) rate += '<button type="button" data-i="' + i + '" data-n="' + n + '" class="' + (s.rating === n ? 'on' : '') + '">' + n + '</button>';
+            return '<div class="slot' + (s.done ? ' done' : '') + '" data-slot="' + i + '"><div class="t"><div><div class="tm">' + T.esc(s.time) + '</div><div class="nm">' + T.esc(s.title) + '</div></div><button type="button" class="tick" data-tick="' + i + '">' + (s.done ? '<i class="bi bi-check-lg"></i> Done' : 'Mark done') + '</button></div>' +
+                (s.done ? '<div class="tr-note" style="margin:.4rem 0 .25rem">Rate out of 10</div><div class="tr-rate">' + rate + '</div><input class="tr-in" style="margin-top:.5rem" data-note="' + i + '" placeholder="Notes (optional)" value="' + T.esc(s.notes) + '">' : '') + '</div>';
+        }).join('');
+        el.querySelectorAll('[data-tick]').forEach(function (b) { b.onclick = function () { var s = slots[+b.dataset.tick]; s.done = !s.done; if (!s.done) s.rating = null; drawSlots(); }; });
+        el.querySelectorAll('.tr-rate button').forEach(function (b) { b.onclick = function () { slots[+b.dataset.i].rating = +b.dataset.n; drawSlots(); }; });
+        el.querySelectorAll('[data-note]').forEach(function (i) { i.oninput = function () { slots[+i.dataset.note].notes = i.value; }; });
+        updateAvg();
+    }
+
+    function updateAvg() {
+        var r = slots.filter(function (s) { return s.done && s.rating != null; }).map(function (s) { return s.rating; });
+        var avg = r.length ? Math.round(r.reduce(function (a, b) { return a + b; }, 0) * 10 / r.length) / 10 : null;
+        document.getElementById('avg').textContent = avg == null ? '—' : avg + ' / 10';
+        suggested = avg == null ? null : suggest(avg);
+        if (!performance && suggested) performance = suggested;
+        var el = document.getElementById('perf');
+        el.innerHTML = LEVELS.map(function (l) { return '<span class="tr-chip' + (performance === l ? ' on' : '') + '" data-l="' + l + '">' + l + (suggested === l ? ' ·suggested' : '') + '</span>'; }).join('');
+        el.querySelectorAll('.tr-chip').forEach(function (c) { c.onclick = function () { if (!canRecord) return; performance = c.dataset.l; updateAvg(); }; });
+    }
+
+    function drawFiles() {
+        if (log && log.id) T.attachments('files', 'TrainingLog', log.id, canRecord);
+    }
+
+    save.onclick = async function () {
+        if (slots.some(function (s) { return s.done && s.rating == null; }) && !confirm('Some completed activities have no rating. Save anyway?')) return;
+        T.busy(save, true, 'Saving…');
+        var r = await T.api('POST', 'logs', {
+            enrollmentId: ID, trainingDate: DATE, activitiesPerformed: acts.value, commandsPracticed: cmds.value, durationMinutes: +dur.value || 0,
+            slots: slots.map(function (s) { return { time: s.time, title: s.title, done: s.done, rating: s.done ? s.rating : null, notes: s.notes }; }),
+            performance: performance, behaviourObservations: obs.value, challenges: chal.value, improvements: impr.value, recommendations: recs.value, nextObjectives: next.value
+        });
+        T.busy(save, false);
+        if (r.success) { T.toast(r.message); log = r.data; drawFiles(); window.scrollTo({ top: 0, behavior: 'smooth' }); } else T.toast(r.message || 'Could not save.', 'error');
+    };
+    load();
+})();
+</script>

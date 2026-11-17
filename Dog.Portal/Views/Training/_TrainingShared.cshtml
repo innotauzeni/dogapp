@@ -1,0 +1,203 @@
+@using System.Text.Json
+@using Dog.Portal.Models
+@{
+    var sessionJson = Context.Session.GetString("UserSession");
+    var sess = string.IsNullOrEmpty(sessionJson) ? null : JsonSerializer.Deserialize<UserSessionModel>(sessionJson);
+    var perms = (sess?.Permissions ?? new List<string>()).Where(p => p.StartsWith("training.", StringComparison.OrdinalIgnoreCase) || p.StartsWith("invoice.", StringComparison.OrdinalIgnoreCase)).ToList();
+}
+<style>
+.tr{max-width:1280px;margin:0 auto}
+.tr *{box-sizing:border-box}
+.tr-head{display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;flex-wrap:wrap;margin-bottom:1.25rem}
+.tr-head h4{font-size:1.2rem;font-weight:800;color:#0f172a;margin:0 0 .2rem}
+.tr-head p{margin:0;color:#64748b;font-size:.86rem}
+.tr-actions{display:flex;gap:.5rem;flex-wrap:wrap;align-items:center}
+.tr-card{background:#fff;border:1px solid #e9eef4;border-radius:14px;padding:1.1rem 1.25rem;margin-bottom:1rem}
+.tr-card h5{font-size:.95rem;font-weight:800;color:#0f172a;margin:0 0 .75rem;display:flex;align-items:center;gap:.5rem}
+.tr-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:.85rem;margin-bottom:1.1rem}
+.tr-stat{background:#fff;border:1px solid #e9eef4;border-radius:12px;padding:.9rem 1rem;display:block;text-decoration:none;color:inherit;transition:.15s}
+.tr-stat:hover{transform:translateY(-2px);box-shadow:0 6px 16px rgba(15,23,42,.08);border-color:#cbd5e1}
+.tr-stat .n{font-size:1.65rem;font-weight:800;color:#0f172a;line-height:1}
+.tr-stat .l{font-size:.74rem;color:#64748b;font-weight:600;margin-top:.3rem}
+.tr-stat .i{float:right;font-size:1.3rem;opacity:.9}
+.tr-tablewrap{overflow-x:auto;border:1px solid #e9eef4;border-radius:12px;background:#fff}
+.tr-table{width:100%;border-collapse:collapse;font-size:.84rem}
+.tr-table th{background:#f8fafc;color:#64748b;font-size:.68rem;text-transform:uppercase;letter-spacing:.03em;text-align:left;padding:.65rem .85rem;white-space:nowrap;border-bottom:1px solid #eef2f7}
+.tr-table td{padding:.7rem .85rem;border-bottom:1px solid #f4f6f9;vertical-align:middle}
+.tr-table tr:last-child td{border-bottom:0}
+.tr-table tr.click{cursor:pointer}
+.tr-table tr.click:hover td{background:#fafbff}
+.tr-empty{text-align:center;color:#94a3b8;padding:2rem 1rem;font-size:.88rem}
+.tr-empty i{display:block;font-size:2rem;margin-bottom:.4rem;color:#e2e8f0}
+.tr-badge{display:inline-flex;align-items:center;gap:.3rem;font-size:.7rem;font-weight:700;padding:.22rem .6rem;border-radius:20px;white-space:nowrap}
+.b-gray{background:#f1f5f9;color:#475569}.b-blue{background:#dbeafe;color:#1d4ed8}.b-green{background:#d1fae5;color:#065f46}
+.b-amber{background:#fef3c7;color:#92400e}.b-red{background:#fee2e2;color:#991b1b}.b-purple{background:#ede9fe;color:#6d28d9}.b-teal{background:#ccfbf1;color:#0f766e}
+.tr-btn{display:inline-flex;align-items:center;justify-content:center;gap:.4rem;padding:.55rem 1rem;border:1.5px solid transparent;border-radius:9px;font-size:.84rem;font-weight:700;cursor:pointer;text-decoration:none;line-height:1.2;min-height:38px}
+.tr-btn:disabled{opacity:.55;cursor:not-allowed}
+.btn-primary-t{background:linear-gradient(135deg,#667eea,#764ba2);color:#fff}
+.btn-ghost-t{background:#fff;color:#475569;border-color:#e2e8f0}.btn-ghost-t:hover{background:#f8fafc}
+.btn-success-t{background:#059669;color:#fff}.btn-danger-t{background:#dc2626;color:#fff}.btn-warn-t{background:#d97706;color:#fff}
+.btn-sm-t{padding:.35rem .7rem;font-size:.76rem;min-height:30px;border-radius:7px}
+.tr-field{display:flex;flex-direction:column;gap:.25rem;margin-bottom:.75rem}
+.tr-field>label{font-size:.72rem;font-weight:700;color:#475569;text-transform:uppercase;letter-spacing:.02em}
+.tr-in{width:100%;padding:.55rem .7rem;border:1.5px solid #e2e8f0;border-radius:9px;font-size:.88rem;color:#1e293b;background:#fff;outline:none;font-family:inherit}
+.tr-in:focus{border-color:#667eea;box-shadow:0 0 0 3px rgba(102,126,234,.12)}
+textarea.tr-in{min-height:70px;resize:vertical}
+.tr-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:.75rem}
+.tr-filters{display:flex;gap:.6rem;flex-wrap:wrap;margin-bottom:1rem;align-items:flex-end}
+.tr-filters .tr-field{margin:0;min-width:150px}
+.tr-modal{position:fixed;inset:0;background:rgba(15,23,42,.5);backdrop-filter:blur(3px);z-index:1050;display:none;align-items:flex-start;justify-content:center;padding:1rem;overflow-y:auto}
+.tr-modal.open{display:flex}
+.tr-box{background:#fff;border-radius:16px;width:100%;max-width:780px;margin:auto;box-shadow:0 20px 60px rgba(0,0,0,.25);animation:trslide .2s ease}
+.tr-box.wide{max-width:1000px}
+@@keyframes trslide{from{opacity:0;transform:translateY(-12px)}to{opacity:1;transform:none}}
+.tr-box-h{display:flex;align-items:center;justify-content:space-between;padding:1rem 1.25rem;border-bottom:1px solid #f1f5f9;position:sticky;top:0;background:#fff;border-radius:16px 16px 0 0;z-index:2}
+.tr-box-h h5{margin:0;font-size:1rem;font-weight:800;color:#0f172a}
+.tr-x{border:0;background:#f1f5f9;width:32px;height:32px;border-radius:8px;cursor:pointer;color:#64748b}
+.tr-box-b{padding:1.1rem 1.25rem}
+.tr-box-f{padding:.9rem 1.25rem;border-top:1px solid #f1f5f9;display:flex;justify-content:flex-end;gap:.5rem;flex-wrap:wrap;position:sticky;bottom:0;background:#fff;border-radius:0 0 16px 16px}
+.tr-kv{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:.6rem 1rem}
+.tr-kv .k{font-size:.68rem;font-weight:700;color:#94a3b8;text-transform:uppercase}
+.tr-kv .v{font-size:.9rem;font-weight:600;color:#1e293b;word-break:break-word}
+.tr-steps{display:flex;gap:.3rem;overflow-x:auto;padding:.2rem 0 .6rem;margin-bottom:.6rem}
+.tr-step{flex:1;min-width:104px;text-align:center;font-size:.68rem;font-weight:700;color:#94a3b8;padding:.55rem .3rem;border-radius:9px;background:#f1f5f9;position:relative}
+.tr-step i{display:block;font-size:1.1rem;margin-bottom:.15rem}
+.tr-step.done{background:#d1fae5;color:#065f46}.tr-step.cur{background:linear-gradient(135deg,#667eea,#764ba2);color:#fff}.tr-step.bad{background:#fee2e2;color:#991b1b}
+.tr-tabs{display:flex;gap:.3rem;flex-wrap:wrap;border-bottom:1px solid #e9eef4;margin-bottom:1rem}
+.tr-tab{padding:.55rem .9rem;font-size:.82rem;font-weight:700;color:#64748b;background:none;border:0;border-bottom:2.5px solid transparent;cursor:pointer}
+.tr-tab.on{color:#667eea;border-bottom-color:#667eea}
+.tr-note{font-size:.78rem;color:#64748b;margin-top:.25rem}
+.tr-alert{border-radius:10px;padding:.65rem .9rem;font-size:.84rem;font-weight:600;margin-bottom:.85rem;display:flex;gap:.5rem;align-items:flex-start}
+.al-info{background:#eff6ff;border:1px solid #bfdbfe;color:#1e40af}.al-warn{background:#fffbeb;border:1px solid #fde68a;color:#92400e}
+.al-bad{background:#fef2f2;border:1px solid #fecaca;color:#991b1b}.al-ok{background:#ecfdf5;border:1px solid #a7f3d0;color:#065f46}
+.tr-bar{height:8px;background:#e2e8f0;border-radius:6px;overflow:hidden}
+.tr-bar>div{height:100%;background:linear-gradient(90deg,#667eea,#764ba2)}
+.tr-dog{display:flex;align-items:center;gap:.65rem;min-width:0}
+.tr-dog .av{width:38px;height:38px;border-radius:10px;background:linear-gradient(135deg,#667eea,#764ba2);color:#fff;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;overflow:hidden}
+.tr-dog .av img{width:100%;height:100%;object-fit:cover}
+.tr-dog .nm{font-weight:700;color:#0f172a}.tr-dog .sub{font-size:.74rem;color:#94a3b8}
+.tr-toast{position:fixed;bottom:1.5rem;right:1.5rem;z-index:3000;display:flex;flex-direction:column;gap:.5rem;pointer-events:none}
+.tr-toast>div{padding:.8rem 1.1rem;border-radius:11px;font-size:.84rem;font-weight:600;color:#fff;box-shadow:0 8px 28px rgba(0,0,0,.18);max-width:340px;animation:trslide .2s}
+.tr-toast .ok{background:#065f46}.tr-toast .er{background:#991b1b}
+.tr-rate{display:flex;gap:.25rem;flex-wrap:wrap}
+.tr-rate button{width:34px;height:34px;border-radius:8px;border:1.5px solid #e2e8f0;background:#fff;font-weight:700;color:#475569;cursor:pointer}
+.tr-rate button.on{background:linear-gradient(135deg,#667eea,#764ba2);color:#fff;border-color:transparent}
+.tr-chip{display:inline-flex;align-items:center;gap:.3rem;padding:.4rem .8rem;border-radius:20px;border:1.5px solid #e2e8f0;font-size:.8rem;font-weight:700;color:#475569;background:#fff;cursor:pointer}
+.tr-chip.on{background:#ede9fe;border-color:#c4b5fd;color:#6d28d9}
+.tr-files{display:flex;gap:.5rem;flex-wrap:wrap}
+.tr-file{position:relative;width:92px;height:92px;border-radius:10px;overflow:hidden;border:1px solid #e2e8f0;background:#f8fafc;display:flex;align-items:center;justify-content:center;font-size:.7rem;color:#64748b;text-align:center;padding:.2rem}
+.tr-file img,.tr-file video{width:100%;height:100%;object-fit:cover}
+.tr-file .rm{position:absolute;top:3px;right:3px;width:22px;height:22px;border:0;border-radius:6px;background:rgba(15,23,42,.7);color:#fff;cursor:pointer;font-size:.7rem}
+@@media(max-width:640px){.tr-head{margin-bottom:.9rem}.tr-grid{grid-template-columns:repeat(2,1fr)}.tr-box-b,.tr-box-h,.tr-box-f{padding-left:.9rem;padding-right:.9rem}.tr-modal{padding:.4rem}.tr-btn{min-height:42px}}
+</style>
+<div class="tr-toast" id="trToast"></div>
+<script>
+window.T = (function () {
+    var perms = @Html.Raw(JsonSerializer.Serialize(perms));
+    var me = { id: @Html.Raw(JsonSerializer.Serialize(sess?.Id ?? "")), name: @Html.Raw(JsonSerializer.Serialize(sess?.Name ?? "")), isHandler: @(sess?.IsDogHandler == true ? "true" : "false") };
+    var STATUS = {
+        AwaitingHealthAssessment: ['Awaiting health assessment', 'b-amber'], HealthFailed: ['Health assessment failed', 'b-red'],
+        HealthPassed: ['Health passed – invoice due', 'b-teal'], AwaitingPayment: ['Awaiting payment', 'b-amber'],
+        AwaitingHandler: ['Awaiting handler', 'b-purple'], Ready: ['Ready to start', 'b-blue'], InTraining: ['In training', 'b-green'],
+        AwaitingFinalAssessment: ['Awaiting final assessment', 'b-purple'], AwaitingApproval: ['Awaiting approval', 'b-amber'],
+        Completed: ['Completed', 'b-green'], Cancelled: ['Cancelled', 'b-gray']
+    };
+    function esc(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
+    function toast(msg, type) {
+        var el = document.createElement('div'); el.className = type === 'error' ? 'er' : 'ok'; el.textContent = msg;
+        document.getElementById('trToast').appendChild(el); setTimeout(function () { el.remove(); }, 4200);
+    }
+    async function api(method, path, body) {
+        try {
+            var opt = { method: method, headers: {} };
+            if (body !== undefined) { opt.headers['Content-Type'] = 'application/json'; opt.body = JSON.stringify(body); }
+            var r = await fetch('/TrainingApi/' + path, opt);
+            if (r.status === 401) { location.href = '/Auth/Login'; return { success: false, message: 'Session expired.' }; }
+            var j = await r.json();
+            return j;
+        } catch (e) { return { success: false, message: 'Network error – please check your connection.' }; }
+    }
+    function date(d, withTime) {
+        if (!d) return '—'; var x = new Date(d); if (isNaN(x)) return '—';
+        var s = x.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+        return withTime ? s + ' ' + x.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }) : s;
+    }
+    function isoDate(d) { var x = d ? new Date(d) : new Date(); var m = ('0' + (x.getMonth() + 1)).slice(-2), dd = ('0' + x.getDate()).slice(-2); return x.getFullYear() + '-' + m + '-' + dd; }
+    function money(n) { return (Number(n) || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
+    function badge(status) { var s = STATUS[status] || [status, 'b-gray']; return '<span class="tr-badge ' + s[1] + '">' + esc(s[0]) + '</span>'; }
+    function resultBadge(r) {
+        var map = { Passed: 'b-green', Failed: 'b-red', Pending: 'b-amber', RequiresFurtherExamination: 'b-purple', RequiresAdditionalTraining: 'b-purple', Approved: 'b-green', Rejected: 'b-red', Submitted: 'b-blue', Draft: 'b-gray', Returned: 'b-amber', NotRequired: 'b-gray' };
+        var label = String(r || '').replace(/([a-z])([A-Z])/g, '$1 $2');
+        return '<span class="tr-badge ' + (map[r] || 'b-gray') + '">' + esc(label) + '</span>';
+    }
+    function dog(name, sub, photo) {
+        var av = photo ? '<img src="' + esc(photo) + '" alt="">' : esc((name || '?').charAt(0).toUpperCase());
+        return '<div class="tr-dog"><div class="av">' + av + '</div><div><div class="nm">' + esc(name) + '</div>' + (sub ? '<div class="sub">' + esc(sub) + '</div>' : '') + '</div></div>';
+    }
+    function open(id) { var m = document.getElementById(id); if (m) { m.classList.add('open'); document.body.style.overflow = 'hidden'; } }
+    function close(id) { var m = document.getElementById(id); if (m) { m.classList.remove('open'); if (!document.querySelector('.tr-modal.open')) document.body.style.overflow = ''; } }
+    document.addEventListener('keydown', function (e) { if (e.key === 'Escape') document.querySelectorAll('.tr-modal.open').forEach(function (m) { close(m.id); }); });
+    document.addEventListener('click', function (e) { if (e.target.classList && e.target.classList.contains('tr-modal')) close(e.target.id); });
+    function qs(name) { return new URLSearchParams(location.search).get(name); }
+    function opts(list, valueKey, labelFn, selected, blank) {
+        return (blank != null ? '<option value="">' + esc(blank) + '</option>' : '') + list.map(function (o) {
+            var v = o[valueKey]; return '<option value="' + esc(v) + '"' + (String(v) === String(selected) ? ' selected' : '') + '>' + esc(labelFn(o)) + '</option>';
+        }).join('');
+    }
+    function busy(btn, on, label) { if (!btn) return; if (on) { btn.dataset.l = btn.innerHTML; btn.disabled = true; btn.innerHTML = '<i class="bi bi-hourglass-split"></i> ' + (label || 'Please wait…'); } else { btn.disabled = false; btn.innerHTML = btn.dataset.l || btn.innerHTML; } }
+    /* Shrinks a photo in the browser (longest side 1600px, JPEG) before it is uploaded. Videos/PDFs pass through untouched. */
+    function shrink(file) {
+        return new Promise(function (resolve) {
+            if (!file.type || file.type.indexOf('image/') !== 0 || file.type === 'image/gif') { resolve(file); return; }
+            var img = new Image(), url = URL.createObjectURL(file);
+            img.onload = function () {
+                var s = Math.min(1, 1600 / Math.max(img.naturalWidth, img.naturalHeight));
+                var c = document.createElement('canvas'); c.width = Math.round(img.naturalWidth * s); c.height = Math.round(img.naturalHeight * s);
+                var g = c.getContext('2d'); g.fillStyle = '#fff'; g.fillRect(0, 0, c.width, c.height); g.drawImage(img, 0, 0, c.width, c.height);
+                URL.revokeObjectURL(url);
+                c.toBlob(function (b) { resolve(b ? new File([b], file.name.replace(/\.[^.]+$/, '') + '.jpg', { type: 'image/jpeg' }) : file); }, 'image/jpeg', 0.85);
+            };
+            img.onerror = function () { URL.revokeObjectURL(url); resolve(file); };
+            img.src = url;
+        });
+    }
+    async function upload(file, entityType, entityId) {
+        var f = await shrink(file); var fd = new FormData();
+        fd.append('file', f); fd.append('entityType', entityType); fd.append('entityId', entityId);
+        try { var r = await fetch('/Training/Upload', { method: 'POST', body: fd }); return await r.json(); }
+        catch (e) { return { success: false, message: 'Upload failed – check your connection.' }; }
+    }
+    /* Renders the attachment list for a record and wires the add/remove buttons. host = element id. */
+    async function attachments(host, entityType, entityId, canEdit) {
+        var el = document.getElementById(host); if (!el) return;
+        var r = await api('GET', 'attachments?entityType=' + entityType + '&entityId=' + entityId);
+        var list = (r.success && r.data) ? r.data : [];
+        var html = '<div class="tr-files">' + list.map(function (a) {
+            var ct = a.contentType || '', body;
+            if (ct.indexOf('image/') === 0) body = '<a href="' + esc(a.fileUrl) + '" target="_blank"><img src="' + esc(a.fileUrl) + '" alt=""></a>';
+            else if (ct.indexOf('video/') === 0) body = '<video src="' + esc(a.fileUrl) + '" controls preload="metadata"></video>';
+            else body = '<a href="' + esc(a.fileUrl) + '" target="_blank"><i class="bi bi-file-earmark-pdf" style="font-size:1.6rem;color:#dc2626;display:block"></i>' + esc(a.fileName) + '</a>';
+            return '<div class="tr-file">' + body + (canEdit ? '<button class="rm" title="Remove" data-id="' + a.id + '"><i class="bi bi-x"></i></button>' : '') + '</div>';
+        }).join('') + '</div>' + (list.length === 0 ? '<div class="tr-note">No files attached yet.</div>' : '');
+        if (canEdit) html += '<div style="margin-top:.6rem"><label class="tr-btn btn-ghost-t btn-sm-t" style="cursor:pointer"><i class="bi bi-camera-fill"></i> Add photo / video / file<input type="file" multiple accept="image/*,video/*,.pdf" capture="environment" style="display:none" data-add></label></div>';
+        el.innerHTML = html;
+        el.querySelectorAll('.rm').forEach(function (b) {
+            b.onclick = async function () {
+                if (!confirm('Remove this file?')) return;
+                var d = await api('DELETE', 'attachments/' + b.dataset.id + '?entityType=' + entityType + '&entityId=' + entityId);
+                if (d.success) attachments(host, entityType, entityId, canEdit); else toast(d.message || 'Could not remove the file.', 'error');
+            };
+        });
+        var inp = el.querySelector('[data-add]');
+        if (inp) inp.onchange = async function () {
+            var files = Array.prototype.slice.call(inp.files || []); var ok = 0;
+            for (var i = 0; i < files.length; i++) { var u = await upload(files[i], entityType, entityId); if (u.success) ok++; else toast(u.message || 'Upload failed.', 'error'); }
+            if (ok) toast(ok + ' file' + (ok === 1 ? '' : 's') + ' added.');
+            attachments(host, entityType, entityId, canEdit);
+        };
+    }
+    return { can: function (p) { return perms.indexOf(p) >= 0; }, canAny: function () { for (var i = 0; i < arguments.length; i++) if (perms.indexOf(arguments[i]) >= 0) return true; return false; },
+        me: me, STATUS: STATUS, esc: esc, toast: toast, api: api, date: date, isoDate: isoDate, money: money, badge: badge, resultBadge: resultBadge, dog: dog,
+        open: open, close: close, qs: qs, opts: opts, busy: busy, upload: upload, attachments: attachments };
+})();
+</script>

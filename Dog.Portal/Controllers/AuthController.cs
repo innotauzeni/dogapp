@@ -94,6 +94,14 @@ namespace Dog.Portal.Controllers
             if (userSession == null)
                 return Json(new { success = false, message = "Invalid session" });
 
+            // BranchId == 0 means "clear branch" → back to consolidated (all branches) view
+            if (request.BranchId == 0)
+            {
+                userSession.CurrentBranchId = null;
+                HttpContext.Session.SetString("UserSession", JsonSerializer.Serialize(userSession));
+                return Json(new { success = true, message = "Switched to All Branches" });
+            }
+
             var branch = userSession.Branches.FirstOrDefault(b => b.Id == request.BranchId);
             if (branch == null)
                 return Json(new { success = false, message = "Branch not found" });

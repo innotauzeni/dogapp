@@ -18,10 +18,45 @@ namespace Dog.Portal.Controllers
         private bool IsAuthenticated() =>
             !string.IsNullOrEmpty(HttpContext.Session.GetString("UserSession"));
 
+        private static readonly HttpClient _http = new() { Timeout = TimeSpan.FromSeconds(10) };
+
+        /// <summary>Best-effort image fetch for PDFs. Absolute URLs are downloaded; anything else / any failure → null.</summary>
+        private Task<byte[]?> TryLoadImageAsync(string? url)
+            => PdfImageLoader.LoadAsync(url, $"{Request.Scheme}://{Request.Host}");
+
+        public async Task<IActionResult> DetailReport(string? eventType = null)
+        {
+            if (!IsAuthenticated()) return RedirectToAction("Login", "Auth");
+
+            try
+            {
+                var dogs = await _apiClient.GetAsync<ApiResponse<List<AnimalDto>>>("api/animals");
+                var allDogs = dogs?.Data ?? new List<AnimalDto>();
+
+                // Filter by event type if specified
+                if (!string.IsNullOrEmpty(eventType))
+                {
+                    allDogs = allDogs.Where(d =>
+                        d.CareRecords != null &&
+                        d.CareRecords.Any(c => c.EventType == eventType)
+                    ).ToList();
+                }
+
+                ViewBag.EventType = eventType ?? "All Events";
+                ViewBag.Count = allDogs.Count;
+                return View("DetailReport", allDogs);
+            }
+            catch (Exception ex)
+            {
+                ViewBag.FetchError = $"Error loading report: {ex.Message}";
+                return View("DetailReport", new List<AnimalDto>());
+            }
+        }
+
         public async Task<IActionResult> Index()
         {
             if (!IsAuthenticated()) return RedirectToAction("Login", "Auth");
-            
+
             var vm = new ReportsViewModel();
 
             try
@@ -113,7 +148,106 @@ namespace Dog.Portal.Controllers
                 vm.TotalMatingRecords = 0;
             }
 
+            var userSessionJson = HttpContext.Session.GetString("UserSession");
+            var userSession = string.IsNullOrEmpty(userSessionJson) ? null : JsonSerializer.Deserialize<UserSessionModel>(userSessionJson);
+            ViewBag.CanGenerateHandlerCert = userSession?.Role == "Admin" || userSession?.Role == "SystemOwner";
+
             return View(vm);
+        }
+
+        // ── Browsable report pages (in addition to the raw CSV/PDF exports) ────────
+
+        public async Task<IActionResult> Vaccinated()
+        {
+            if (!IsAuthenticated()) return RedirectToAction("Login", "Auth");
+            try
+            {
+                var resp = await _apiClient.GetAsync<ApiResponse<object>>("api/Animal/vaccinated");
+                var data = resp?.Success == true && resp.Data != null
+                    ? JsonSerializer.Deserialize<List<VaccinatedDogDto>>(JsonSerializer.Serialize(resp.Data), new JsonSerializerOptions { PropertyNameCaseInsensitive = true })
+                    : null;
+                return View(data ?? new List<VaccinatedDogDto>());
+            }
+            catch (Exception ex)
+            {
+                ViewBag.FetchError = $"Error loading vaccinated dogs: {ex.Message}";
+                return View(new List<VaccinatedDogDto>());
+            }
+        }
+
+        public async Task<IActionResult> Puppies()
+        {
+            if (!IsAuthenticated()) return RedirectToAction("Login", "Auth");
+            try
+            {
+                var resp = await _apiClient.GetAsync<ApiResponse<object>>("api/Animal/puppies");
+                var data = resp?.Success == true && resp.Data != null
+                    ? JsonSerializer.Deserialize<List<PuppyReportDto>>(JsonSerializer.Serialize(resp.Data), new JsonSerializerOptions { PropertyNameCaseInsensitive = true })
+                    : null;
+                return View(data ?? new List<PuppyReportDto>());
+            }
+            catch (Exception ex)
+            {
+                ViewBag.FetchError = $"Error loading puppies: {ex.Message}";
+                return View(new List<PuppyReportDto>());
+            }
+        }
+
+        public async Task<IActionResult> Litters()
+        {
+            if (!IsAuthenticated()) return RedirectToAction("Login", "Auth");
+            try
+            {
+                var resp = await _apiClient.GetAsync<ApiResponse<object>>("api/Animal/litters");
+                var data = resp?.Success == true && resp.Data != null
+                    ? JsonSerializer.Deserialize<List<LitterReportDto>>(JsonSerializer.Serialize(resp.Data), new JsonSerializerOptions { PropertyNameCaseInsensitive = true })
+                    : null;
+                return View(data ?? new List<LitterReportDto>());
+            }
+            catch (Exception ex)
+            {
+                ViewBag.FetchError = $"Error loading litters: {ex.Message}";
+                return View(new List<LitterReportDto>());
+            }
+        }
+
+        public async Task<IActionResult> Matings()
+        {
+            if (!IsAuthenticated()) return RedirectToAction("Login", "Auth");
+            try
+            {
+                var resp = await _apiClient.GetAsync<ApiResponse<object>>("api/Animal/mating-records");
+                var data = resp?.Success == true && resp.Data != null
+                    ? JsonSerializer.Deserialize<List<MatingRecordReportDto>>(JsonSerializer.Serialize(resp.Data), new JsonSerializerOptions { PropertyNameCaseInsensitive = true })
+                    : null;
+                return View(data ?? new List<MatingRecordReportDto>());
+            }
+            catch (Exception ex)
+            {
+                ViewBag.FetchError = $"Error loading mating records: {ex.Message}";
+                return View(new List<MatingRecordReportDto>());
+            }
+        }
+
+        // Export Puppies Report
+        [HttpGet]
+        public async Task<IActionResult> ExportPuppies(string format = "csv")
+        {
+            if (!IsAuthenticated()) return RedirectToAction("Login", "Auth");
+            try
+            {
+                var resp = await _apiClient.GetAsync<ApiResponse<object>>("api/Animal/puppies");
+                if (resp?.Success == true && resp.Data != null)
+                {
+                    var data = JsonSerializer.Deserialize<List<PuppyReportDto>>(JsonSerializer.Serialize(resp.Data), new JsonSerializerOptions { PropertyNameCaseInsensitive = true }) ?? new List<PuppyReportDto>();
+                    return format.ToLower() == "pdf" ? await GeneratePuppiesPdf(data) : GeneratePuppiesCsv(data);
+                }
+                return BadRequest("Failed to export puppies data");
+            }
+            catch (Exception ex)
+            {
+                return BadRequest($"Export failed: {ex.Message}");
+            }
         }
 
         // Export Dogs Report
@@ -271,11 +405,96 @@ namespace Dog.Portal.Controllers
 
                     if (dogProfile != null)
                     {
-                        return await GenerateDogCertificatePdf(dogProfile);
+                        // Company branding (optional — never blocks the certificate)
+                        CompanyDto? company = null;
+                        try
+                        {
+                            var compResp = await _apiClient.GetAsync<ApiResponse<object>>($"api/companies/{dogProfile.Dog.CompanyId}");
+                            if (compResp?.Data != null)
+                                company = System.Text.Json.JsonSerializer.Deserialize<CompanyDto>(
+                                    System.Text.Json.JsonSerializer.Serialize(compResp.Data), new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+                        }
+                        catch { /* branding is optional */ }
+
+                        var logo = await TryLoadImageAsync(company?.Logo);
+                        var photo = await TryLoadImageAsync(dogProfile.Dog.PhotoUrl);
+
+                        var pdf = CertificatePdfService.Build(dogProfile, company, logo, photo);
+                        return File(pdf, "application/pdf", $"Dog_Certificate_{dogProfile.Dog.Name}_{DateTime.Now:yyyyMMdd}.pdf");
                     }
                 }
 
                 return BadRequest("Failed to generate dog certificate");
+            }
+            catch (Exception ex)
+            {
+                return BadRequest($"Certificate generation failed: {ex.Message}");
+            }
+        }
+
+        // GET /Reports/GetHandlersForDropdown — every user in the active company, for
+        // the Handler Training Certificate form's "Handler" select.
+        [HttpGet]
+        public async Task<IActionResult> GetHandlersForDropdown()
+        {
+            if (!IsAuthenticated()) return Json(new List<object>());
+            try
+            {
+                var resp = await _apiClient.GetAsync<ApiResponse<List<UserDto>>>("api/users");
+                var users = resp?.Data ?? new List<UserDto>();
+                return Json(users.Select(u => new { id = u.Id, name = u.FullName }));
+            }
+            catch
+            {
+                return Json(new List<object>());
+            }
+        }
+
+        // GET /Reports/HandlerCertificate — K9 handler training certificate. Admin/SystemOwner
+        // only (checked here rather than [HasPermission] since Portal controllers use
+        // session-role checks, not the API's permission attribute system). Generated
+        // on demand from admin-entered values; nothing is persisted, matching how the
+        // Dog Registration Certificate above already works.
+        [HttpGet]
+        public async Task<IActionResult> HandlerCertificate(string handlerName, string? dogName, string trainerName)
+        {
+            if (!IsAuthenticated()) return RedirectToAction("Login", "Auth");
+
+            var userSessionJson = HttpContext.Session.GetString("UserSession");
+            var userSession = string.IsNullOrEmpty(userSessionJson) ? null : JsonSerializer.Deserialize<UserSessionModel>(userSessionJson);
+            if (userSession == null || (userSession.Role != "Admin" && userSession.Role != "SystemOwner"))
+                return StatusCode(403, "Only an Admin or SystemOwner can generate this certificate.");
+
+            if (string.IsNullOrWhiteSpace(handlerName) || string.IsNullOrWhiteSpace(trainerName))
+                return BadRequest("Handler and Trainer name are required.");
+
+            try
+            {
+                var companyId = Convert.ToInt32(userSession.CompanyId);
+
+                Dog.Application.Features.Companies.DTOs.CompanyDto? company = null;
+                try
+                {
+                    var compResp = await _apiClient.GetAsync<ApiResponse<object>>($"api/companies/{companyId}");
+                    if (compResp?.Data != null)
+                        company = JsonSerializer.Deserialize<Dog.Application.Features.Companies.DTOs.CompanyDto>(
+                            JsonSerializer.Serialize(compResp.Data), new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+                }
+                catch { /* branding is optional */ }
+
+                var logo = await TryLoadImageAsync(company?.Logo);
+                var certificateNumber = DateTime.UtcNow.ToString("yyMMddHHmm");
+
+                var pdf = Dog.Application.Common.Pdf.HandlerCertificatePdfBuilder.Build(
+                    handlerName.Trim(),
+                    string.IsNullOrWhiteSpace(dogName) ? null : dogName.Trim(),
+                    trainerName.Trim(),
+                    DateTime.Now,
+                    certificateNumber,
+                    company,
+                    logo);
+
+                return File(pdf, "application/pdf", $"Handler_Certificate_{handlerName.Trim().Replace(' ', '_')}_{DateTime.Now:yyyyMMdd}.pdf");
             }
             catch (Exception ex)
             {
@@ -326,6 +545,20 @@ namespace Dog.Portal.Controllers
             return File(bytes, "text/csv", $"Litters_Report_{DateTime.Now:yyyyMMdd}.csv");
         }
 
+        private FileResult GeneratePuppiesCsv(List<PuppyReportDto> puppies)
+        {
+            var csv = new System.Text.StringBuilder();
+            csv.AppendLine("Name,Color,Gender,Birth Date,Age,Sire,Dam,Status");
+
+            foreach (var p in puppies)
+            {
+                csv.AppendLine($"{p.Name},{p.Color},{p.Gender},{p.DateOfBirth:yyyy-MM-dd},{p.AgeDisplay},{p.SireName},{p.DamName},{(p.IsAlive ? "Alive" : "Deceased")}");
+            }
+
+            var bytes = System.Text.Encoding.UTF8.GetBytes(csv.ToString());
+            return File(bytes, "text/csv", $"Puppies_Report_{DateTime.Now:yyyyMMdd}.csv");
+        }
+
         private FileResult GenerateMatingRecordsCsv(List<MatingRecordReportDto> matings)
         {
             var csv = new System.Text.StringBuilder();
@@ -361,6 +594,13 @@ namespace Dog.Portal.Controllers
             var html = GenerateLittersHtml(litters);
             var bytes = System.Text.Encoding.UTF8.GetBytes(html);
             return File(bytes, "text/html", $"Litters_Report_{DateTime.Now:yyyyMMdd}.html");
+        }
+
+        private async Task<FileResult> GeneratePuppiesPdf(List<PuppyReportDto> puppies)
+        {
+            var html = GeneratePuppiesHtml(puppies);
+            var bytes = System.Text.Encoding.UTF8.GetBytes(html);
+            return File(bytes, "text/html", $"Puppies_Report_{DateTime.Now:yyyyMMdd}.html");
         }
 
         private async Task<FileResult> GenerateMatingRecordsPdf(List<MatingRecordReportDto> matings)
@@ -453,6 +693,33 @@ namespace Dog.Portal.Controllers
             foreach (var litter in litters)
             {
                 html += $"<tr><td>{litter.Id}</td><td>{litter.SireName}</td><td>{litter.DamName}</td><td>{litter.BirthDate:yyyy-MM-dd}</td><td>{litter.TotalPuppies}</td><td>{litter.AlivePuppies}</td><td>{litter.DeceasedPuppies}</td></tr>";
+            }
+
+            html += "</table></body></html>";
+            return html;
+        }
+
+        private string GeneratePuppiesHtml(List<PuppyReportDto> puppies)
+        {
+            var html = $@"
+                <html>
+                <head><title>Puppies Report</title>
+                <style>
+                    body {{ font-family: Arial, sans-serif; margin: 20px; }}
+                    table {{ width: 100%; border-collapse: collapse; }}
+                    th, td {{ border: 1px solid #ddd; padding: 8px; text-align: left; }}
+                    th {{ background-color: #f2f2f2; }}
+                    h1 {{ color: #333; }}
+                </style>
+                </head>
+                <body>
+                <h1>Puppies Report - Generated on {DateTime.Now:yyyy-MM-dd HH:mm}</h1>
+                <table>
+                <tr><th>Name</th><th>Color</th><th>Gender</th><th>Birth Date</th><th>Age</th><th>Sire</th><th>Dam</th><th>Status</th></tr>";
+
+            foreach (var p in puppies)
+            {
+                html += $"<tr><td>{p.Name}</td><td>{p.Color}</td><td>{p.Gender}</td><td>{p.DateOfBirth:yyyy-MM-dd}</td><td>{p.AgeDisplay}</td><td>{p.SireName}</td><td>{p.DamName}</td><td>{(p.IsAlive ? "Alive" : "Deceased")}</td></tr>";
             }
 
             html += "</table></body></html>";

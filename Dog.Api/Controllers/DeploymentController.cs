@@ -41,6 +41,12 @@ namespace Dog.Api.Controllers
         public async Task<IActionResult> DeleteDeployment(int id, CancellationToken ct)
             => Ok(await _mediator.Send(new DeleteDeploymentCommand(id), ct));
 
+        /// Recalls the dog back to its branch/head office — ends this deployment.
+        [HttpPost("Deployment/{id:int}/return")]
+        [HasPermission("deployment.edit")]
+        public async Task<IActionResult> ReturnDog(int id, CancellationToken ct)
+            => Ok(await _mediator.Send(new EndDeploymentCommand(id), ct));
+
 
        
     }

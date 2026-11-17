@@ -1,0 +1,82 @@
+@{
+    Layout = "_AdminLayout";
+    ViewData["Title"] = "Training Customers";
+}
+<partial name="_TrainingShared" />
+<div class="tr">
+    <div class="tr-head">
+        <div><h4><i class="bi bi-people-fill me-2" style="color:#667eea"></i>Training Customers</h4><p>Owners who bring their dogs for training &ndash; kept separate from the company's own customers</p></div>
+        <div class="tr-actions"><button class="tr-btn btn-primary-t" id="btnNew" data-perm="training.customer.manage"><i class="bi bi-plus-lg"></i> Add customer</button></div>
+    </div>
+
+    <div class="tr-filters">
+        <div class="tr-field" style="flex:1;min-width:220px"><label>Search</label><input class="tr-in" id="fSearch" placeholder="Name, phone or email"></div>
+        <button class="tr-btn btn-primary-t" id="fGo"><i class="bi bi-search"></i> Search</button>
+    </div>
+
+    <div class="tr-tablewrap"><table class="tr-table">
+        <thead><tr><th>Customer</th><th>Phone</th><th>Email</th><th>ID number</th><th>Dogs</th><th>Enrolments</th><th></th></tr></thead>
+        <tbody id="rows"><tr><td colspan="7"><div class="tr-empty">Loading…</div></td></tr></tbody>
+    </table></div>
+</div>
+
+<div class="tr-modal" id="mCust"><div class="tr-box">
+    <div class="tr-box-h"><h5 id="cTitle">Customer</h5><button class="tr-x" onclick="T.close('mCust')"><i class="bi bi-x-lg"></i></button></div>
+    <div class="tr-box-b">
+        <div class="tr-field"><label>Full name *</label><input class="tr-in" id="cName"></div>
+        <div class="tr-row">
+            <div class="tr-field"><label>Phone / WhatsApp</label><input class="tr-in" id="cPhone"></div>
+            <div class="tr-field"><label>Email</label><input type="email" class="tr-in" id="cEmail"></div>
+            <div class="tr-field"><label>ID number</label><input class="tr-in" id="cId"></div>
+        </div>
+        <div class="tr-field"><label>Address</label><textarea class="tr-in" id="cAddr"></textarea></div>
+        <div class="tr-field"><label>Notes</label><textarea class="tr-in" id="cNotes"></textarea></div>
+        <div class="tr-note">A phone number or an email address is required.</div>
+    </div>
+    <div class="tr-box-f"><button class="tr-btn btn-ghost-t" onclick="T.close('mCust')">Cancel</button><button class="tr-btn btn-primary-t" id="cSave">Save customer</button></div>
+</div></div>
+
+<script>
+(function () {
+    var list = [], editing = null, canManage = T.can('training.customer.manage');
+    if (!canManage) btnNew.style.display = 'none';
+
+    async function load() {
+        var r = await T.api('GET', 'customers' + (fSearch.value.trim() ? '?search=' + encodeURIComponent(fSearch.value.trim()) : ''));
+        if (!r.success) { rows.innerHTML = '<tr><td colspan="7"><div class="tr-empty"><i class="bi bi-exclamation-circle"></i>' + T.esc(r.message || 'Could not load.') + '</div></td></tr>'; return; }
+        list = r.data;
+        rows.innerHTML = list.length === 0 ? '<tr><td colspan="7"><div class="tr-empty"><i class="bi bi-people"></i>No training customers yet.</div></td></tr>' : list.map(function (c) {
+            return '<tr><td><b>' + T.esc(c.fullName) + '</b>' + (c.address ? '<div class="tr-note" style="margin:0">' + T.esc(c.address) + '</div>' : '') + '</td><td>' + T.esc(c.phone || '—') + '</td><td>' + T.esc(c.email || '—') + '</td><td>' + T.esc(c.idNumber || '—') + '</td>' +
+                '<td><a href="/Training/Dogs?customer=' + c.id + '">' + c.dogCount + ' dog' + (c.dogCount === 1 ? '' : 's') + '</a></td><td>' + c.enrolmentCount + '</td><td style="text-align:right;white-space:nowrap">' +
+                (T.can('training.dog.manage') ? '<a class="tr-btn btn-ghost-t btn-sm-t" href="/Training/Dogs?customer=' + c.id + '&new=1"><i class="bi bi-plus"></i> Dog</a> ' : '') +
+                (canManage ? '<button class="tr-btn btn-ghost-t btn-sm-t" data-edit="' + c.id + '"><i class="bi bi-pencil"></i></button> <button class="tr-btn btn-ghost-t btn-sm-t" style="color:#dc2626" data-del="' + c.id + '"><i class="bi bi-trash3"></i></button>' : '') + '</td></tr>';
+        }).join('');
+        rows.querySelectorAll('[data-edit]').forEach(function (b) { b.onclick = function () { open(+b.dataset.edit); }; });
+        rows.querySelectorAll('[data-del]').forEach(function (b) { b.onclick = function () { del(+b.dataset.del); }; });
+    }
+
+    function open(id) {
+        editing = id ? list.filter(function (c) { return c.id === id; })[0] : null;
+        var c = editing || {};
+        cTitle.textContent = editing ? 'Edit customer' : 'Add customer';
+        cName.value = c.fullName || ''; cPhone.value = c.phone || ''; cEmail.value = c.email || ''; cId.value = c.idNumber || ''; cAddr.value = c.address || ''; cNotes.value = c.notes || '';
+        T.open('mCust');
+    }
+    btnNew.onclick = function () { open(0); };
+
+    cSave.onclick = async function () {
+        T.busy(cSave, true, 'Saving…');
+        var r = await T.api('POST', 'customers', { id: editing ? editing.id : null, fullName: cName.value, phone: cPhone.value, email: cEmail.value, idNumber: cId.value, address: cAddr.value, notes: cNotes.value });
+        T.busy(cSave, false);
+        if (r.success) { T.close('mCust'); T.toast(r.message); load(); } else T.toast(r.message || 'Could not save.', 'error');
+    };
+
+    async function del(id) {
+        if (!confirm('Delete this customer?')) return;
+        var r = await T.api('DELETE', 'customers/' + id);
+        if (r.success) { T.toast(r.message); load(); } else T.toast(r.message || 'Could not delete.', 'error');
+    }
+    fGo.onclick = load; fSearch.onkeydown = function (e) { if (e.key === 'Enter') load(); };
+    load();
+})();
+</script>

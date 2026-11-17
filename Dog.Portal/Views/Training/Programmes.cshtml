@@ -1,0 +1,110 @@
+@{
+    Layout = "_AdminLayout";
+    ViewData["Title"] = "Training Programmes";
+}
+<partial name="_TrainingShared" />
+<div class="tr">
+    <div class="tr-head">
+        <div><h4><i class="bi bi-journal-richtext me-2" style="color:#667eea"></i>Training Programmes</h4><p>Reusable training plans: duration, fee, weekly targets and the daily schedule</p></div>
+        <div class="tr-actions">
+            <button class="tr-btn btn-ghost-t" id="btnSeed" style="display:none"><i class="bi bi-magic"></i> Create default 21-day programme</button>
+            <button class="tr-btn btn-primary-t" id="btnNew" style="display:none"><i class="bi bi-plus-lg"></i> New programme</button>
+        </div>
+    </div>
+    <div id="list"><div class="tr-empty">Loading…</div></div>
+</div>
+
+<div class="tr-modal" id="mProg">
+    <div class="tr-box wide">
+        <div class="tr-box-h"><h5 id="pHead">Programme</h5><button class="tr-x" onclick="T.close('mProg')"><i class="bi bi-x-lg"></i></button></div>
+        <div class="tr-box-b">
+            <div class="tr-alert al-info"><i class="bi bi-info-circle-fill"></i><span>Changes apply to dogs enrolled <b>from now on</b>. Dogs already training keep the plan they started with (you can edit a single dog's plan from its enrolment).</span></div>
+            <div class="tr-row">
+                <div class="tr-field" style="grid-column:span 2"><label>Programme name *</label><input class="tr-in" id="pName"></div>
+                <div class="tr-field"><label>Duration (days) *</label><input type="number" min="1" max="365" class="tr-in" id="pDays" value="21"></div>
+                <div class="tr-field"><label>Fee *</label><input type="number" min="0" step="0.01" class="tr-in" id="pFee" value="0"></div>
+                <div class="tr-field"><label>Status</label><select class="tr-in" id="pActive"><option value="1">Active</option><option value="0">Inactive</option></select></div>
+            </div>
+            <div class="tr-field"><label>Description</label><textarea class="tr-in" id="pDesc"></textarea></div>
+
+            <h5 style="margin-top:.6rem">Weekly plan <button class="tr-btn btn-ghost-t btn-sm-t" id="addWeek" style="margin-left:.5rem"><i class="bi bi-plus"></i> Add week</button></h5>
+            <div id="weeks"></div>
+
+            <h5 style="margin-top:1rem">Daily schedule <button class="tr-btn btn-ghost-t btn-sm-t" id="addSlot" style="margin-left:.5rem"><i class="bi bi-plus"></i> Add time slot</button></h5>
+            <div class="tr-note" style="margin:-.3rem 0 .6rem">"All weeks" slots apply to every week; choose a week number to make a slot specific to that week.</div>
+            <div id="slots"></div>
+        </div>
+        <div class="tr-box-f"><button class="tr-btn btn-ghost-t" onclick="T.close('mProg')">Cancel</button><button class="tr-btn btn-primary-t" id="pSave">Save programme</button></div>
+    </div>
+</div>
+
+<script>
+(function () {
+    var list = [], editing = null, canManage = T.can('training.programme.manage');
+
+    async function load() {
+        var r = await T.api('GET', 'programmes');
+        if (!r.success) { document.getElementById('list').innerHTML = '<div class="tr-card"><div class="tr-empty"><i class="bi bi-exclamation-circle"></i>' + T.esc(r.message || 'Could not load.') + '</div></div>'; return; }
+        list = r.data;
+        if (canManage) { btnNew.style.display = ''; btnSeed.style.display = list.some(function (p) { return p.name === '21-Day Dog Training'; }) ? 'none' : ''; }
+        document.getElementById('list').innerHTML = list.length === 0
+            ? '<div class="tr-card"><div class="tr-empty"><i class="bi bi-journal-plus"></i>No programmes yet.' + (canManage ? '<br><br><button class="tr-btn btn-primary-t" id="emptySeed">Create the default 21-day programme</button>' : '') + '</div></div>'
+            : list.map(card).join('');
+        var es = document.getElementById('emptySeed'); if (es) es.onclick = seed;
+        document.querySelectorAll('[data-edit]').forEach(function (b) { b.onclick = function () { openEditor(+b.dataset.edit); }; });
+        document.querySelectorAll('[data-del]').forEach(function (b) { b.onclick = function () { del(+b.dataset.del); }; });
+    }
+
+    function card(p) {
+        var weeks = p.weeks.map(function (w) { return '<span class="tr-badge b-purple" title="' + T.esc(w.focus || '') + '">Week ' + w.weekNumber + ': ' + T.esc(w.title) + '</span>'; }).join(' ');
+        return '<div class="tr-card"><div style="display:flex;justify-content:space-between;gap:.75rem;flex-wrap:wrap"><div><b style="font-size:1.02rem">' + T.esc(p.name) + '</b> ' + (p.isActive ? '<span class="tr-badge b-green">Active</span>' : '<span class="tr-badge b-gray">Inactive</span>') +
+            '<div class="tr-note" style="margin:.2rem 0 .5rem">' + p.durationDays + ' days · Fee ' + T.money(p.fee) + ' · ' + p.activities.length + ' schedule slot(s) · used by ' + p.enrolmentCount + ' enrolment(s)</div></div>' +
+            (canManage ? '<div class="tr-actions"><button class="tr-btn btn-ghost-t btn-sm-t" data-edit="' + p.id + '"><i class="bi bi-pencil"></i> Edit</button>' + (p.enrolmentCount === 0 ? '<button class="tr-btn btn-ghost-t btn-sm-t" style="color:#dc2626" data-del="' + p.id + '"><i class="bi bi-trash3"></i></button>' : '') + '</div>' : '') + '</div>' +
+            (p.description ? '<div style="font-size:.86rem;color:#475569;margin-bottom:.5rem">' + T.esc(p.description) + '</div>' : '') + '<div style="display:flex;flex-wrap:wrap;gap:.3rem">' + (weeks || '<span class="tr-note">No weekly targets set</span>') + '</div></div>';
+    }
+
+    function weekBlock(w) {
+        return '<div class="tr-card" data-week style="background:#fafbfc"><div class="tr-row" style="grid-template-columns:90px 1fr 1fr 38px;align-items:end"><div class="tr-field" style="margin:0"><label>Week no.</label><input type="number" min="1" class="tr-in" data-f="n" value="' + (w.weekNumber || '') + '"></div><div class="tr-field" style="margin:0"><label>Title</label><input class="tr-in" data-f="title" value="' + T.esc(w.title || '') + '"></div><div class="tr-field" style="margin:0"><label>Focus</label><input class="tr-in" data-f="focus" value="' + T.esc(w.focus || '') + '" placeholder="e.g. Low Distraction"></div><button class="tr-btn btn-ghost-t btn-sm-t" data-rm style="min-height:38px">&times;</button></div>' +
+            '<div class="tr-field" style="margin:.6rem 0 0"><label>Targets (one per line, "Name: description")</label><textarea class="tr-in" data-f="targets" style="min-height:110px">' + T.esc(w.targets || '') + '</textarea></div></div>';
+    }
+    function slotRow(s) {
+        return '<div class="tr-row" data-slot style="grid-template-columns:110px 90px 1fr 2fr 38px;margin-bottom:.4rem;align-items:start"><select class="tr-in" data-f="week"><option value="0">All weeks</option>' + [1, 2, 3, 4, 5, 6, 7, 8, 9].map(function (n) { return '<option value="' + n + '"' + (s.weekNumber === n ? ' selected' : '') + '>Week ' + n + '</option>'; }).join('') + '</select><input class="tr-in" data-f="time" placeholder="07:00" value="' + T.esc(s.timeOfDay || '') + '"><input class="tr-in" data-f="title" placeholder="Activity" value="' + T.esc(s.title || '') + '"><input class="tr-in" data-f="purpose" placeholder="Purpose &amp; execution" value="' + T.esc(s.purpose || '') + '"><button class="tr-btn btn-ghost-t btn-sm-t" data-rm style="min-height:38px">&times;</button></div>';
+    }
+
+    function openEditor(id) {
+        editing = id ? list.filter(function (p) { return p.id === id; })[0] : null;
+        var p = editing || { name: '', description: '', durationDays: 21, fee: 0, isActive: true, weeks: [{ weekNumber: 1, title: '', focus: '', targets: '' }], activities: [] };
+        pHead.textContent = editing ? 'Edit programme' : 'New programme';
+        pName.value = p.name; pDays.value = p.durationDays; pFee.value = p.fee; pActive.value = p.isActive ? '1' : '0'; pDesc.value = p.description || '';
+        weeks.innerHTML = p.weeks.map(weekBlock).join(''); slots.innerHTML = p.activities.map(slotRow).join(''); T.open('mProg');
+    }
+    document.addEventListener('click', function (e) { var b = e.target.closest('[data-rm]'); if (b && b.closest('#mProg')) { var row = b.closest('[data-week],[data-slot]'); if (row) row.remove(); } });
+    addWeek.onclick = function () { var n = weeks.querySelectorAll('[data-week]').length + 1; weeks.insertAdjacentHTML('beforeend', weekBlock({ weekNumber: n })); };
+    addSlot.onclick = function () { slots.insertAdjacentHTML('beforeend', slotRow({ weekNumber: 0 })); };
+    btnNew.onclick = function () { openEditor(0); };
+
+    pSave.onclick = async function () {
+        var g = function (row, f) { return row.querySelector('[data-f=' + f + ']').value; };
+        var dto = {
+            id: editing ? editing.id : null, name: pName.value, description: pDesc.value, durationDays: +pDays.value || 0, fee: +pFee.value || 0, isActive: pActive.value === '1',
+            weeks: Array.prototype.map.call(weeks.querySelectorAll('[data-week]'), function (r) { return { weekNumber: +g(r, 'n') || 0, title: g(r, 'title'), focus: g(r, 'focus'), targets: g(r, 'targets') }; }),
+            activities: Array.prototype.map.call(slots.querySelectorAll('[data-slot]'), function (r, i) { return { weekNumber: +g(r, 'week') || 0, timeOfDay: g(r, 'time'), title: g(r, 'title'), purpose: g(r, 'purpose'), sortOrder: i + 1 }; })
+        };
+        T.busy(pSave, true, 'Saving…'); var r = await T.api('POST', 'programmes', dto); T.busy(pSave, false);
+        if (r.success) { T.close('mProg'); T.toast(r.message); load(); } else T.toast(r.message || 'Could not save the programme.', 'error');
+    };
+
+    async function seed() {
+        var r = await T.api('POST', 'programmes/seed-default', {});
+        if (r.success) { T.toast('Default programme created. Set its fee before invoicing.'); load(); } else T.toast(r.message || 'Could not create it.', 'error');
+    }
+    btnSeed.onclick = seed;
+
+    async function del(id) {
+        if (!confirm('Delete this programme?')) return;
+        var r = await T.api('DELETE', 'programmes/' + id);
+        if (r.success) { T.toast(r.message); load(); } else T.toast(r.message || 'Could not delete.', 'error');
+    }
+    load();
+})();
+</script>

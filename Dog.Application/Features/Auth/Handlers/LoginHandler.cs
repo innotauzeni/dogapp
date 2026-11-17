@@ -99,6 +99,13 @@ namespace Dog.Application.Features.Auth.Handlers
                     .ToListAsync(cancellationToken)
                 : new List<BranchDto>();
 
+            // Determine primary role: system roles always take priority over Dog Handler
+            string? primaryRole = null;
+            if (roleNames.Contains("SystemOwner")) primaryRole = "SystemOwner";
+            else if (roleNames.Contains("Admin")) primaryRole = "Admin";
+            else if (roleNames.Count == 1 && roleNames.Contains("Dog Handler")) primaryRole = "Dog Handler";
+            else primaryRole = roleNames.FirstOrDefault();
+
             return ApiResponse<LoginResponseDto>.Ok(new LoginResponseDto
             {
                 AccessToken = accessToken,
@@ -110,11 +117,12 @@ namespace Dog.Application.Features.Auth.Handlers
                     CompanyId = user.CompanyId.ToString(),
                     Email = user.Email!,
                     Name = $"{user.Name} {user.Surname}".Trim(),
-                    Role = roleNames.FirstOrDefault()
+                    Role = primaryRole
                 },
                 Permissions = permissions!,
                 IsHeadOffice = isHeadOffice,
                 Branches = branches,
+                BrandColor = company?.BrandColor,
                 Menus = menus.Select(m => new MenuNodeDto
                 {
                     Id = m.Id,
@@ -192,6 +200,13 @@ namespace Dog.Application.Features.Auth.Handlers
                 ExpiresAt = DateTime.UtcNow.AddDays(7),
             }, cancellationToken);
 
+            // Determine primary role: system roles always take priority over Dog Handler
+            string? primaryRole = null;
+            if (roleNames.Contains("SystemOwner")) primaryRole = "SystemOwner";
+            else if (roleNames.Contains("Admin")) primaryRole = "Admin";
+            else if (roleNames.Count == 1 && roleNames.Contains("Dog Handler")) primaryRole = "Dog Handler";
+            else primaryRole = roleNames.FirstOrDefault();
+
             return ApiResponse<LoginResponseDto>.Ok(new LoginResponseDto
             {
                 AccessToken = newAccess,
@@ -202,7 +217,7 @@ namespace Dog.Application.Features.Auth.Handlers
                     Id = user.Id,
                     Email = user.Email!,
                     Name = $"{user.Name} {user.Surname}".Trim(),
-                    Role = roleNames.FirstOrDefault()
+                    Role = primaryRole
                 },
                 Permissions = permissions!
             });

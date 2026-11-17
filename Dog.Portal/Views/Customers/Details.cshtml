@@ -1,0 +1,530 @@
+@model Dog.Portal.Models.CustomerDetailsViewModel
+@{
+    Layout = "_AdminLayout";
+    var c = Model.Customer;
+    ViewData["Title"] = c != null ? $"Customer - {c.FullName}" : "Customer";
+    var P = PermHelper.For(Context);
+}
+<style>
+.cust-hero{background:linear-gradient(135deg,#667eea,#764ba2);border-radius:20px;padding:2rem 2rem 2.5rem;margin-bottom:1.5rem;position:relative;overflow:hidden}
+.hero-back{display:inline-flex;align-items:center;gap:.4rem;color:rgba(255,255,255,.8);font-size:.845rem;font-weight:600;text-decoration:none;margin-bottom:1.5rem}
+.hero-back:hover{color:#fff}
+.hero-content{display:flex;align-items:center;gap:1.75rem;flex-wrap:wrap}
+.hero-photo{width:96px;height:96px;border-radius:50%;object-fit:cover;border:4px solid rgba(255,255,255,.3);box-shadow:0 8px 24px rgba(0,0,0,.2);flex-shrink:0}
+.hero-photo-ph{width:96px;height:96px;border-radius:50%;background:rgba(255,255,255,.15);border:4px solid rgba(255,255,255,.2);display:flex;align-items:center;justify-content:center;font-size:2.2rem;font-weight:800;color:#fff;flex-shrink:0}
+.hero-text{flex:1;min-width:180px}
+.hero-name{font-size:1.75rem;font-weight:900;color:#fff;margin:0 0 .2rem;line-height:1.1}
+.hero-sub{font-size:.9rem;color:rgba(255,255,255,.8);margin:0 0 .75rem}
+.hero-chips{display:flex;gap:.5rem;flex-wrap:wrap}
+.hchip{display:inline-flex;align-items:center;gap:.3rem;font-size:.77rem;font-weight:700;padding:.28rem .7rem;border-radius:20px;background:rgba(255,255,255,.15);color:#fff;border:1px solid rgba(255,255,255,.2)}
+.hero-actions{display:flex;gap:.5rem;flex-wrap:wrap}
+.hbtn{display:inline-flex;align-items:center;gap:.4rem;padding:.55rem 1.1rem;border-radius:9px;font-size:.83rem;font-weight:700;cursor:pointer;border:1px solid rgba(255,255,255,.3);background:rgba(255,255,255,.15);color:#fff;text-decoration:none}
+.hbtn:hover{background:rgba(255,255,255,.25);color:#fff}
+.hbtn-danger{background:rgba(239,68,68,.25);border-color:rgba(239,68,68,.4)}
+.hbtn-danger:hover{background:rgba(239,68,68,.4)}
+.info-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:1.25rem;margin-bottom:1.5rem}
+.icard{background:#fff;border-radius:14px;border:1px solid #e9eef4;box-shadow:0 1px 4px rgba(0,0,0,.04);overflow:hidden}
+.icard-hdr{display:flex;align-items:center;justify-content:space-between;gap:.5rem;padding:.8rem 1.2rem;border-bottom:1px solid #f1f5f9;background:#fafbfc}
+.icard-hdr-l{display:flex;align-items:center;gap:.5rem}
+.icard-hdr i{color:#667eea;font-size:.95rem}
+.icard-hdr span{font-size:.845rem;font-weight:800;color:#0f172a}
+.icard-body{padding:1rem 1.2rem}
+.drow{display:flex;justify-content:space-between;align-items:center;padding:.45rem 0;border-bottom:1px solid #f8fafc;gap:1rem}
+.drow:last-child{border-bottom:none;padding-bottom:0}
+.dlabel{font-size:.78rem;font-weight:600;color:#64748b;white-space:nowrap}
+.dval{font-size:.845rem;color:#1e293b;font-weight:500;text-align:right;word-break:break-word}
+.full-card{background:#fff;border-radius:14px;border:1px solid #e9eef4;box-shadow:0 1px 4px rgba(0,0,0,.04);overflow:hidden;margin-bottom:1.5rem}
+.mini-btn{width:30px;height:30px;border:1.5px solid #e2e8f0;border-radius:7px;background:#fff;color:#64748b;display:inline-flex;align-items:center;justify-content:center;cursor:pointer}
+.mini-btn:hover{background:#f8fafc}
+.site-item{border:1px solid #f1f5f9;border-radius:10px;padding:.75rem .9rem;margin-bottom:.6rem;display:flex;justify-content:space-between;align-items:flex-start;gap:.75rem}
+.dt2{width:100%;border-collapse:collapse}
+.dt2 thead th{padding:.7rem 1.2rem;font-size:.7rem;font-weight:700;color:#64748b;text-transform:uppercase;background:#f8fafc;border-bottom:1px solid #f0f4f8;text-align:left}
+.dt2 tbody td{padding:.75rem 1.2rem;font-size:.845rem;color:#374151;border-bottom:1px solid #f8fafc}
+.dt2 tbody tr:last-child td{border-bottom:none}
+.dt2 tbody tr:hover td{background:#fafbff}
+.s-badge{display:inline-flex;align-items:center;gap:.3rem;font-size:.72rem;font-weight:700;padding:.2rem .55rem;border-radius:20px}
+.s-active{background:#d1fae5;color:#065f46}
+.s-inactive{background:#fee2e2;color:#991b1b}
+.empty-mini{color:#94a3b8;font-size:.85rem;padding:1rem 0;text-align:center}
+.frow{margin-bottom:1rem}
+.frow label{display:block;font-size:.8rem;font-weight:600;color:#374151;margin-bottom:.375rem}
+.frow-2{display:grid;grid-template-columns:1fr 1fr;gap:.875rem}
+.finput{width:100%;padding:.65rem .875rem;border:1.5px solid #e2e8f0;border-radius:9px;font-size:.855rem;color:#1e293b;background:#fff;outline:none}
+.finput:focus{border-color:#667eea;box-shadow:0 0 0 3px rgba(102,126,234,.1)}
+.btn-cancel{padding:.6rem 1.1rem;background:#f1f5f9;color:#64748b;border:1.5px solid #e2e8f0;border-radius:9px;font-size:.83rem;font-weight:600;cursor:pointer}
+.btn-cancel:hover{background:#e2e8f0}
+.btn-primary{padding:.6rem 1.3rem;background:linear-gradient(135deg,#667eea,#764ba2);color:#fff;border:none;border-radius:9px;font-size:.83rem;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:.4rem}
+.btn-primary:disabled{opacity:.6;cursor:not-allowed}
+.modal-backdrop-custom{position:fixed;inset:0;background:rgba(15,23,42,.45);backdrop-filter:blur(3px);z-index:1050;display:none;align-items:center;justify-content:center;padding:1rem}
+.modal-backdrop-custom.open{display:flex}
+.modal-box{background:#fff;border-radius:16px;box-shadow:0 20px 60px rgba(0,0,0,.2);width:100%;max-width:520px;max-height:90vh;overflow-y:auto}
+.modal-hdr{display:flex;align-items:center;justify-content:space-between;padding:1.25rem 1.5rem;border-bottom:1px solid #f1f5f9}
+.modal-hdr h5{font-size:1rem;font-weight:800;color:#0f172a;margin:0;display:flex;align-items:center;gap:.5rem}
+.modal-close{width:30px;height:30px;border:none;background:#f1f5f9;border-radius:7px;color:#64748b;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:.9rem}
+.modal-close:hover{background:#e2e8f0}
+.modal-body{padding:1.375rem 1.5rem}
+.modal-foot{padding:1rem 1.5rem;border-top:1px solid #f1f5f9;display:flex;align-items:center;justify-content:flex-end;gap:.625rem}
+.del-icon{width:60px;height:60px;border-radius:50%;background:#fef2f2;display:flex;align-items:center;justify-content:center;margin:0 auto 1rem;font-size:1.5rem;color:#dc2626}
+.toast-wrap{position:fixed;bottom:1.75rem;right:1.75rem;z-index:9999;display:flex;flex-direction:column;gap:.5rem;pointer-events:none}
+.toast-msg{display:flex;align-items:center;gap:.625rem;padding:.875rem 1.25rem;border-radius:12px;font-size:.855rem;font-weight:600;box-shadow:0 8px 32px rgba(0,0,0,.15);pointer-events:all;transform:translateX(120%);transition:transform .3s cubic-bezier(.4,0,.2,1);max-width:320px}
+.toast-msg.show{transform:translateX(0)}
+.toast-success{background:#065f46;color:#fff}
+.toast-error{background:#991b1b;color:#fff}
+.spin{width:14px;height:14px;border:2px solid rgba(255,255,255,.35);border-top-color:#fff;border-radius:50%;animation:spin .65s linear infinite;flex-shrink:0}
+@@keyframes spin{to{transform:rotate(360deg)}}
+</style>
+<div class="toast-wrap" id="toastWrap"></div>
+
+@if (c == null) {
+  <div class="full-card"><div class="icard-body" style="text-align:center;padding:3rem 1rem">
+    <i class="bi bi-person-x" style="font-size:2.5rem;color:#cbd5e1;display:block;margin-bottom:1rem"></i>
+    <h3 style="color:#64748b">@(ViewBag.Error ?? "Customer not found")</h3>
+    <a href="@Url.Action("Index")" class="hbtn" style="background:#667eea;margin-top:1rem;display:inline-flex">Back to Customers</a>
+  </div></div>
+} else {
+  var ini = string.IsNullOrEmpty(c.FullName) ? "?" : c.FullName.Substring(0, 1).ToUpper();
+  <div class="cust-hero">
+    <a href="@Url.Action("Index")" class="hero-back"><i class="bi bi-arrow-left"></i> Back to Customers</a>
+    <div class="hero-content">
+      @if (!string.IsNullOrEmpty(c.Profile)) {
+        <img src="@c.Profile" class="hero-photo" />
+      } else {
+        <div class="hero-photo-ph">@ini</div>
+      }
+      <div class="hero-text">
+        <h1 class="hero-name">@c.FullName</h1>
+        <p class="hero-sub">@(string.IsNullOrEmpty(c.Email) ? "No email on file" : c.Email)</p>
+        <div class="hero-chips">
+          @if (!string.IsNullOrEmpty(c.Gender)) { <span class="hchip"><i class="bi bi-person"></i> @c.Gender</span> }
+          @if (!string.IsNullOrEmpty(c.CustomerCompanyName)) { <a class="hchip" href="@Url.Action("Index", "CustomerCompanies", new { open = c.CustomerCompanyId })" style="text-decoration:none"><i class="bi bi-buildings"></i> @c.CustomerCompanyName@(string.IsNullOrEmpty(c.JobTitle) ? "" : " · " + c.JobTitle)</a> }
+          <span class="hchip"><i class="bi bi-geo-alt"></i> @Model.Sites.Count site(s)</span>
+          <span class="hchip"><i class="bi bi-pin-map"></i> @Model.Deployments.Count(d => d.IsActive) active deployment(s)</span>
+          <span class="hchip"><i class="bi bi-heart"></i> @Model.OwnedDogs.Count dog(s) owned</span>
+        </div>
+      </div>
+      <div class="hero-actions">
+        @if (P.Can("customer.edit")) {
+          <button class="hbtn" onclick="openEdit()"><i class="bi bi-pencil-fill"></i> Edit</button>
+        }
+        @if (P.Can("customer.delete")) {
+          <button class="hbtn hbtn-danger" onclick="openDelete()"><i class="bi bi-trash3-fill"></i> Delete</button>
+        }
+      </div>
+    </div>
+  </div>
+
+  <div class="info-grid">
+    <div class="icard">
+      <div class="icard-hdr"><div class="icard-hdr-l"><i class="bi bi-person-vcard"></i><span>Contact Details</span></div></div>
+      <div class="icard-body">
+        <div class="drow"><span class="dlabel">Company</span><span class="dval">@if (!string.IsNullOrEmpty(c.CustomerCompanyName)) { <a href="@Url.Action("Index", "CustomerCompanies", new { open = c.CustomerCompanyId })" style="color:#4f46e5;font-weight:600;text-decoration:none"><i class="bi bi-buildings"></i> @c.CustomerCompanyName</a> } else { <span>Individual (no company)</span> }</span></div>
+        <div class="drow"><span class="dlabel">Job title / role</span><span class="dval">@(c.JobTitle ?? "—")</span></div>
+        <div class="drow"><span class="dlabel">First Name</span><span class="dval">@(c.FirstName ?? "—")</span></div>
+        <div class="drow"><span class="dlabel">Last Name</span><span class="dval">@(c.LastName ?? "—")</span></div>
+        <div class="drow"><span class="dlabel">Gender</span><span class="dval">@(c.Gender ?? "—")</span></div>
+        <div class="drow"><span class="dlabel">Date of Birth</span><span class="dval">@(c.Dob ?? "—")</span></div>
+        <div class="drow"><span class="dlabel">ID Number</span><span class="dval">@(c.IDnumber ?? "—")</span></div>
+        <div class="drow"><span class="dlabel">Cellphone</span><span class="dval">@(c.Cellphone ?? "—")</span></div>
+        <div class="drow"><span class="dlabel">Email</span><span class="dval">@(c.Email ?? "—")</span></div>
+        <div class="drow"><span class="dlabel">Address</span><span class="dval">@(c.Address ?? "—")</span></div>
+      </div>
+    </div>
+
+    <div class="icard">
+      <div class="icard-hdr"><div class="icard-hdr-l"><i class="bi bi-pin-map-fill"></i><span>Deployment Summary</span></div></div>
+      <div class="icard-body">
+        <div class="drow"><span class="dlabel">Total Deployment Records</span><span class="dval">@Model.Deployments.Count</span></div>
+        <div class="drow"><span class="dlabel">Currently Active</span><span class="dval">@Model.Deployments.Count(d => d.IsActive)</span></div>
+        <div class="drow"><span class="dlabel">Sites / Premises</span><span class="dval">@Model.Sites.Count</span></div>
+        <div class="drow"><span class="dlabel">Contracts</span><span class="dval">@Model.Contracts.Count</span></div>
+        <div class="drow"><span class="dlabel">Dogs Owned</span><span class="dval">@Model.OwnedDogs.Count</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SITES / PREMISES -->
+  <div class="full-card">
+    <div class="icard-hdr">
+      <div class="icard-hdr-l"><i class="bi bi-geo-alt-fill"></i><span>Sites / Premises</span></div>
+      @if (P.Can("customer.edit")) {
+        <button class="mini-btn" title="Add site" onclick="toggleSiteForm()"><i class="bi bi-plus-lg"></i></button>
+      }
+    </div>
+    <div class="icard-body">
+      <div id="s_list">
+        @if (Model.Sites.Count == 0) {
+          <div class="empty-mini">No sites/premises recorded for this customer yet.</div>
+        } else {
+          foreach (var s in Model.Sites) {
+            <div class="site-item" data-id="@s.Id">
+              <div>
+                <div style="font-weight:700;color:#1e293b;font-size:.9rem">@s.SiteName</div>
+                @if (!string.IsNullOrEmpty(s.Address)) { <div style="font-size:.8rem;color:#64748b;margin-top:.15rem">@s.Address</div> }
+                @if (s.Latitude != null && s.Longitude != null) { <div style="font-size:.75rem;color:#94a3b8;margin-top:.15rem">📌 @s.Latitude, @s.Longitude</div> }
+                @if (!string.IsNullOrEmpty(s.ContactPerson)) { <div style="font-size:.75rem;color:#94a3b8;margin-top:.15rem">Contact: @s.ContactPerson @(!string.IsNullOrEmpty(s.ContactPhone) ? " • " + s.ContactPhone : "")</div> }
+              </div>
+              @if (P.Can("customer.edit")) {
+                <div style="display:flex;gap:.375rem;flex-shrink:0">
+                  <button class="mini-btn" title="Edit" onclick='editSite(@Html.Raw(System.Text.Json.JsonSerializer.Serialize(s, new System.Text.Json.JsonSerializerOptions { PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase })))'><i class="bi bi-pencil-fill"></i></button>
+                  <button class="mini-btn" title="Delete" onclick="deleteSite(@s.Id)"><i class="bi bi-trash3-fill"></i></button>
+                </div>
+              }
+            </div>
+          }
+        }
+      </div>
+      <div id="s_form" style="display:none;border-top:1px solid #f1f5f9;padding-top:1rem;margin-top:.5rem">
+        <div style="font-size:.85rem;font-weight:700;color:#374151;margin-bottom:.75rem" id="s_formTitle">Add a Site</div>
+        <input type="hidden" id="s_editId">
+        <div class="frow"><label>Site Name <span style="color:#ef4444">*</span></label><input class="finput" id="s_siteName" placeholder="e.g. Warehouse B"></div>
+        <div class="frow"><label>Address</label><textarea class="finput" id="s_address" rows="2" placeholder="Physical address"></textarea></div>
+        <div class="frow-2">
+          <div class="frow"><label>Latitude</label><input class="finput" id="s_lat" type="number" step="any" placeholder="-17.824858"></div>
+          <div class="frow"><label>Longitude</label><input class="finput" id="s_lng" type="number" step="any" placeholder="31.053028"></div>
+        </div>
+        <div class="frow-2">
+          <div class="frow"><label>Contact Person</label><input class="finput" id="s_contactPerson" placeholder="On-site contact"></div>
+          <div class="frow"><label>Contact Phone</label><input class="finput" id="s_contactPhone" placeholder="+1 234 567 8900"></div>
+        </div>
+        <div style="display:flex;gap:.625rem;justify-content:flex-end">
+          <button class="btn-cancel" onclick="toggleSiteForm()">Cancel</button>
+          <button class="btn-primary" id="s_saveBtn" onclick="submitSite()"><i class="bi bi-plus-circle-fill"></i> Add Site</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- CONTRACTS -->
+  <div class="full-card">
+    <div class="icard-hdr">
+      <div class="icard-hdr-l"><i class="bi bi-file-earmark-text-fill"></i><span>Contracts</span></div>
+      @if (P.Can("customer.edit")) {
+        <button class="mini-btn" title="Add contract" onclick="toggleContractForm()"><i class="bi bi-plus-lg"></i></button>
+      }
+    </div>
+    <div class="icard-body">
+      <div id="k_list">
+        @if (Model.Contracts.Count == 0) {
+          <div class="empty-mini">No contracts recorded for this customer yet.</div>
+        } else {
+          foreach (var k in Model.Contracts) {
+            <div class="site-item" data-id="@k.Id">
+              <div>
+                <div style="font-weight:700;color:#1e293b;font-size:.9rem">@k.ContractDate.ToString("MMM dd, yyyy")</div>
+                @if (!string.IsNullOrEmpty(k.ContractDetails)) { <div style="font-size:.8rem;color:#64748b;margin-top:.15rem">@k.ContractDetails</div> }
+              </div>
+              @if (P.Can("customer.edit")) {
+                <div style="display:flex;gap:.375rem;flex-shrink:0">
+                  <button class="mini-btn" title="Edit" onclick='editContract(@Html.Raw(System.Text.Json.JsonSerializer.Serialize(k, new System.Text.Json.JsonSerializerOptions { PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase })))'><i class="bi bi-pencil-fill"></i></button>
+                  <button class="mini-btn" title="Delete" onclick="deleteContract(@k.Id)"><i class="bi bi-trash3-fill"></i></button>
+                </div>
+              }
+            </div>
+          }
+        }
+      </div>
+      <div id="k_form" style="display:none;border-top:1px solid #f1f5f9;padding-top:1rem;margin-top:.5rem">
+        <div style="font-size:.85rem;font-weight:700;color:#374151;margin-bottom:.75rem" id="k_formTitle">Add a Contract</div>
+        <input type="hidden" id="k_editId">
+        <div class="frow"><label>Date of Contract <span style="color:#ef4444">*</span></label><input class="finput" type="date" id="k_contractDate"></div>
+        <div class="frow"><label>Contract Details</label><textarea class="finput" id="k_contractDetails" rows="2" placeholder="e.g. Annual security contract, terms, renewal date..."></textarea></div>
+        <div style="display:flex;gap:.625rem;justify-content:flex-end">
+          <button class="btn-cancel" onclick="toggleContractForm()">Cancel</button>
+          <button class="btn-primary" id="k_saveBtn" onclick="submitContract()"><i class="bi bi-plus-circle-fill"></i> Add Contract</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- DOGS OWNED -->
+  <div class="full-card">
+    <div class="icard-hdr"><div class="icard-hdr-l"><i class="bi bi-heart-fill"></i><span>Dogs Owned (@Model.OwnedDogs.Count)</span></div></div>
+    @if (Model.OwnedDogs.Count == 0) {
+      <div class="icard-body"><div class="empty-mini">No dogs registered to this customer.</div></div>
+    } else {
+      <div style="overflow-x:auto">
+        <table class="dt2">
+          <thead><tr><th>Dog</th><th>Breed</th><th>Gender</th><th>Status</th><th></th></tr></thead>
+          <tbody>
+            @foreach (var d in Model.OwnedDogs) {
+              <tr>
+                <td style="font-weight:600;color:#1e293b">@d.Name</td>
+                <td>@d.Breed</td>
+                <td>@(d.Gender ?? "—")</td>
+                <td><span class="s-badge @(d.IsActive ? "s-active" : "s-inactive")">@(d.IsActive ? "Active" : "Inactive")</span></td>
+                <td><a href="@Url.Action("Details", "Dogs", new { id = d.Id })" class="mini-btn" title="View dog"><i class="bi bi-chevron-right"></i></a></td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+  </div>
+
+  <!-- DEPLOYMENT HISTORY -->
+  <div class="full-card">
+    <div class="icard-hdr"><div class="icard-hdr-l"><i class="bi bi-pin-map-fill"></i><span>Deployment History (@Model.Deployments.Count)</span></div></div>
+    @if (Model.Deployments.Count == 0) {
+      <div class="icard-body"><div class="empty-mini">No dogs have been deployed to this customer yet.</div></div>
+    } else {
+      <div style="overflow-x:auto">
+        <table class="dt2">
+          <thead><tr><th>Dog</th><th>Site / Location</th><th>Start</th><th>End</th><th>Status</th></tr></thead>
+          <tbody>
+            @foreach (var d in Model.Deployments) {
+              <tr>
+                <td style="font-weight:600;color:#1e293b"><a href="@Url.Action("Details", "Dogs", new { id = d.DogId })" style="color:inherit;text-decoration:none">@(d.DogName ?? ("#" + d.DogId))</a></td>
+                <td>@(d.CustomerSiteName ?? d.Location)</td>
+                <td>@d.StartDate.ToString("MMM dd, yyyy")</td>
+                <td>@(d.EndDate.HasValue ? d.EndDate.Value.ToString("MMM dd, yyyy") : "—")</td>
+                <td><span class="s-badge @(d.IsActive ? "s-active" : "s-inactive")">@(d.IsActive ? "Active" : "Ended")</span></td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+  </div>
+
+  <!-- EDIT MODAL -->
+  <div class="modal-backdrop-custom" id="editModal">
+    <div class="modal-box">
+      <div class="modal-hdr">
+        <h5><i class="bi bi-pencil-fill" style="color:#667eea"></i> Edit Customer</h5>
+        <button class="modal-close" onclick="closeModal('editModal')"><i class="bi bi-x-lg"></i></button>
+      </div>
+      <div class="modal-body">
+        <div class="frow-2">
+          <div class="frow"><label>First Name</label><input class="finput" id="e_firstName" value="@c.FirstName"></div>
+          <div class="frow"><label>Last Name</label><input class="finput" id="e_lastName" value="@c.LastName"></div>
+        </div>
+        <div class="frow"><label>Full Name</label><input class="finput" id="e_fullName" value="@c.FullName"></div>
+        <div class="frow-2">
+          <div class="frow"><label>Company</label><select class="finput" id="e_company"><option value="">— Individual (no company) —</option></select></div>
+          <div class="frow"><label>Job title / role</label><input class="finput" id="e_jobTitle" value="@c.JobTitle"></div>
+        </div>
+        <div class="frow-2">
+          <div class="frow"><label>Gender</label>
+            <select class="finput" id="e_gender">
+              <option value="">Select</option>
+              <option selected="@(c.Gender == "Male")">Male</option>
+              <option selected="@(c.Gender == "Female")">Female</option>
+              <option selected="@(c.Gender == "Other")">Other</option>
+            </select>
+          </div>
+          <div class="frow"><label>Date of Birth</label><input class="finput" type="date" id="e_dob" value="@c.Dob"></div>
+        </div>
+        <div class="frow-2">
+          <div class="frow"><label>ID Number</label><input class="finput" id="e_idNumber" value="@c.IDnumber"></div>
+          <div class="frow"><label>Cellphone</label><input class="finput" id="e_cellphone" value="@c.Cellphone"></div>
+        </div>
+        <div class="frow"><label>Email</label><input class="finput" type="email" id="e_email" value="@c.Email"></div>
+        <div class="frow"><label>Address</label><textarea class="finput" id="e_address" rows="2">@c.Address</textarea></div>
+        <div class="frow"><label>Profile Photo URL</label><input class="finput" id="e_profile" value="@c.Profile"></div>
+      </div>
+      <div class="modal-foot">
+        <button class="btn-cancel" onclick="closeModal('editModal')">Cancel</button>
+        <button class="btn-primary" id="editBtn" onclick="submitEdit()"><i class="bi bi-check2-circle"></i> Save Changes</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- DELETE MODAL -->
+  <div class="modal-backdrop-custom" id="deleteModal">
+    <div class="modal-box">
+      <div class="modal-hdr">
+        <h5><i class="bi bi-trash3-fill" style="color:#dc2626"></i> Delete Customer</h5>
+        <button class="modal-close" onclick="closeModal('deleteModal')"><i class="bi bi-x-lg"></i></button>
+      </div>
+      <div class="modal-body" style="text-align:center;padding-top:1.75rem">
+        <div class="del-icon"><i class="bi bi-person-x-fill"></i></div>
+        <p style="font-size:.9rem;color:#374151;margin-bottom:.5rem">Are you sure you want to delete</p>
+        <p style="font-weight:700;color:#1e293b;font-size:1rem;margin-bottom:.5rem">@c.FullName</p>
+        <p style="font-size:.82rem;color:#94a3b8;margin:0">This action cannot be undone.</p>
+      </div>
+      <div class="modal-foot">
+        <button class="btn-cancel" onclick="closeModal('deleteModal')">Cancel</button>
+        <button class="btn-primary" id="deleteBtn" style="background:linear-gradient(135deg,#ef4444,#dc2626)" onclick="submitDelete()"><i class="bi bi-trash3-fill"></i> Delete</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    var CUSTOMER_ID = @c.Id;
+
+    function openModal(id){document.getElementById(id).classList.add('open');document.body.style.overflow='hidden';}
+    function closeModal(id){document.getElementById(id).classList.remove('open');document.body.style.overflow='';}
+    document.querySelectorAll('.modal-backdrop-custom').forEach(function(bd){bd.addEventListener('click',function(e){if(e.target===bd)closeModal(bd.id);});});
+    document.addEventListener('keydown',function(e){if(e.key==='Escape'){document.querySelectorAll('.modal-backdrop-custom.open').forEach(function(m){closeModal(m.id);});}});
+
+    function setLoading(btnId,loading,restoreHtml){var btn=document.getElementById(btnId);btn.disabled=loading;if(loading)btn.innerHTML='<span class="spin"></span> Saving...';else if(restoreHtml)btn.innerHTML=restoreHtml;}
+    function showToast(msg,type){var wrap=document.getElementById('toastWrap');var el=document.createElement('div');el.className='toast-msg toast-'+type;el.innerHTML='<i class="bi '+(type==='success'?'bi-check-circle-fill':'bi-exclamation-circle-fill')+'"></i>'+msg;wrap.appendChild(el);requestAnimationFrame(function(){el.classList.add('show');});setTimeout(function(){el.classList.remove('show');setTimeout(function(){el.remove();},350);},3500);}
+
+    var CURRENT_COMPANY = '@(c.CustomerCompanyId?.ToString() ?? "")';
+    async function loadCompanies(){try{var r=await fetch('/CustomerCompanies/Lookup');var j=await r.json();var list=(j&&j.data)||j||[];var sel=document.getElementById('e_company');list.forEach(function(x){var o=document.createElement('option');o.value=x.id;o.textContent=x.name+(x.vatNumber?' · VAT '+x.vatNumber:'');sel.appendChild(o);});sel.value=CURRENT_COMPANY;}catch(e){}}
+    loadCompanies();
+    function openEdit(){openModal('editModal');}
+    function openDelete(){openModal('deleteModal');}
+
+    async function submitEdit(){
+      setLoading('editBtn',true);
+      try{
+        var res=await fetch('/Customers/Update',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
+          id:CUSTOMER_ID,
+          firstName:document.getElementById('e_firstName').value.trim(),
+          lastName:document.getElementById('e_lastName').value.trim(),
+          fullName:document.getElementById('e_fullName').value.trim(),
+          customerCompanyId:parseInt(document.getElementById('e_company').value)||null,
+          jobTitle:document.getElementById('e_jobTitle').value.trim()||null,
+          gender:document.getElementById('e_gender').value,
+          dob:document.getElementById('e_dob').value,
+          iDnumber:document.getElementById('e_idNumber').value.trim(),
+          cellphone:document.getElementById('e_cellphone').value.trim(),
+          email:document.getElementById('e_email').value.trim(),
+          address:document.getElementById('e_address').value.trim(),
+          profile:document.getElementById('e_profile').value.trim(),
+          isActive:true
+        })});
+        var data=await res.json();
+        if(data.success){showToast(data.message||'Customer updated!','success');closeModal('editModal');setTimeout(function(){location.reload();},900);}
+        else{showToast(data.message||'Failed to update customer.','error');}
+      }catch(e){showToast('Network error. Please try again.','error');}
+      finally{setLoading('editBtn',false,'<i class="bi bi-check2-circle"></i> Save Changes');}
+    }
+
+    async function submitDelete(){
+      setLoading('deleteBtn',true);
+      try{
+        var res=await fetch('/Customers/Delete/'+CUSTOMER_ID,{method:'POST'});
+        var data=await res.json();
+        if(data.success){showToast('Customer deleted.','success');setTimeout(function(){window.location.href='/Customers';},900);}
+        else{showToast(data.message||'Failed to delete customer.','error');}
+      }catch(e){showToast('Network error. Please try again.','error');}
+      finally{setLoading('deleteBtn',false,'<i class="bi bi-trash3-fill"></i> Delete');}
+    }
+
+    // ── Sites ──────────────────────────────────────────────────────────────
+    function toggleSiteForm(){
+      var form=document.getElementById('s_form');
+      var showing=form.style.display!=='none';
+      if(showing){form.style.display='none';}
+      else{resetSiteForm();form.style.display='block';}
+    }
+
+    function resetSiteForm(){
+      document.getElementById('s_editId').value='';
+      document.getElementById('s_siteName').value='';
+      document.getElementById('s_address').value='';
+      document.getElementById('s_lat').value='';
+      document.getElementById('s_lng').value='';
+      document.getElementById('s_contactPerson').value='';
+      document.getElementById('s_contactPhone').value='';
+      document.getElementById('s_formTitle').textContent='Add a Site';
+      document.getElementById('s_saveBtn').innerHTML='<i class="bi bi-plus-circle-fill"></i> Add Site';
+    }
+
+    function editSite(s){
+      document.getElementById('s_form').style.display='block';
+      document.getElementById('s_editId').value=s.id;
+      document.getElementById('s_siteName').value=s.siteName||'';
+      document.getElementById('s_address').value=s.address||'';
+      document.getElementById('s_lat').value=s.latitude!=null?s.latitude:'';
+      document.getElementById('s_lng').value=s.longitude!=null?s.longitude:'';
+      document.getElementById('s_contactPerson').value=s.contactPerson||'';
+      document.getElementById('s_contactPhone').value=s.contactPhone||'';
+      document.getElementById('s_formTitle').textContent='Edit Site';
+      document.getElementById('s_saveBtn').innerHTML='<i class="bi bi-check2-circle"></i> Save Changes';
+      document.getElementById('s_form').scrollIntoView({behavior:'smooth',block:'center'});
+    }
+
+    async function submitSite(){
+      var siteName=document.getElementById('s_siteName').value.trim();
+      if(!siteName){showToast('Site name is required.','error');return;}
+      var editId=document.getElementById('s_editId').value;
+      var payload={
+        id:editId?parseInt(editId):0,
+        customerId:CUSTOMER_ID,
+        siteName:siteName,
+        address:document.getElementById('s_address').value.trim()||null,
+        latitude:document.getElementById('s_lat').value?parseFloat(document.getElementById('s_lat').value):null,
+        longitude:document.getElementById('s_lng').value?parseFloat(document.getElementById('s_lng').value):null,
+        contactPerson:document.getElementById('s_contactPerson').value.trim()||null,
+        contactPhone:document.getElementById('s_contactPhone').value.trim()||null,
+      };
+      setLoading('s_saveBtn',true);
+      try{
+        var url=editId?'/CustomerSites/Update':'/CustomerSites/Create';
+        var res=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+        var data=await res.json();
+        if(data.success){showToast(data.message||'Site saved.','success');setTimeout(function(){location.reload();},700);}
+        else{showToast(data.message||'Failed to save site.','error');setLoading('s_saveBtn',false,editId?'<i class="bi bi-check2-circle"></i> Save Changes':'<i class="bi bi-plus-circle-fill"></i> Add Site');}
+      }catch(e){showToast('Network error. Please try again.','error');setLoading('s_saveBtn',false,editId?'<i class="bi bi-check2-circle"></i> Save Changes':'<i class="bi bi-plus-circle-fill"></i> Add Site');}
+    }
+
+    async function deleteSite(id){
+      if(!confirm('Delete this site?'))return;
+      try{
+        var res=await fetch('/CustomerSites/Delete/'+id,{method:'POST'});
+        var data=await res.json();
+        if(data.success){showToast('Site deleted.','success');setTimeout(function(){location.reload();},700);}
+        else{showToast(data.message||'Failed to delete site.','error');}
+      }catch(e){showToast('Network error. Please try again.','error');}
+    }
+
+    // ── Contracts ──────────────────────────────────────────────────────────
+    function toggleContractForm(){
+      var form=document.getElementById('k_form');
+      var showing=form.style.display!=='none';
+      if(showing){form.style.display='none';}
+      else{resetContractForm();form.style.display='block';}
+    }
+
+    function resetContractForm(){
+      document.getElementById('k_editId').value='';
+      document.getElementById('k_contractDate').value='';
+      document.getElementById('k_contractDetails').value='';
+      document.getElementById('k_formTitle').textContent='Add a Contract';
+      document.getElementById('k_saveBtn').innerHTML='<i class="bi bi-plus-circle-fill"></i> Add Contract';
+    }
+
+    function editContract(k){
+      document.getElementById('k_form').style.display='block';
+      document.getElementById('k_editId').value=k.id;
+      document.getElementById('k_contractDate').value=k.contractDate?k.contractDate.substring(0,10):'';
+      document.getElementById('k_contractDetails').value=k.contractDetails||'';
+      document.getElementById('k_formTitle').textContent='Edit Contract';
+      document.getElementById('k_saveBtn').innerHTML='<i class="bi bi-check2-circle"></i> Save Changes';
+      document.getElementById('k_form').scrollIntoView({behavior:'smooth',block:'center'});
+    }
+
+    async function submitContract(){
+      var contractDate=document.getElementById('k_contractDate').value;
+      if(!contractDate){showToast('Date of contract is required.','error');return;}
+      var editId=document.getElementById('k_editId').value;
+      var payload={
+        id:editId?parseInt(editId):0,
+        customerId:CUSTOMER_ID,
+        contractDate:contractDate,
+        contractDetails:document.getElementById('k_contractDetails').value.trim()||null,
+      };
+      setLoading('k_saveBtn',true);
+      try{
+        var url=editId?'/CustomerContracts/Update':'/CustomerContracts/Create';
+        var res=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+        var data=await res.json();
+        if(data.success){showToast(data.message||'Contract saved.','success');setTimeout(function(){location.reload();},700);}
+        else{showToast(data.message||'Failed to save contract.','error');setLoading('k_saveBtn',false,editId?'<i class="bi bi-check2-circle"></i> Save Changes':'<i class="bi bi-plus-circle-fill"></i> Add Contract');}
+      }catch(e){showToast('Network error. Please try again.','error');setLoading('k_saveBtn',false,editId?'<i class="bi bi-check2-circle"></i> Save Changes':'<i class="bi bi-plus-circle-fill"></i> Add Contract');}
+    }
+
+    async function deleteContract(id){
+      if(!confirm('Delete this contract?'))return;
+      try{
+        var res=await fetch('/CustomerContracts/Delete/'+id,{method:'POST'});
+        var data=await res.json();
+        if(data.success){showToast('Contract deleted.','success');setTimeout(function(){location.reload();},700);}
+        else{showToast(data.message||'Failed to delete contract.','error');}
+      }catch(e){showToast('Network error. Please try again.','error');}
+    }
+  </script>
+}

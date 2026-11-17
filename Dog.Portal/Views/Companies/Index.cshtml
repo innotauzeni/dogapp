@@ -387,6 +387,20 @@
                             <label class="form-label">Website</label>
                             <input type="text" id="fm-website" class="form-control" placeholder="www.company.com" />
                         </div>
+                        <div class="col-12">
+                            <label class="form-label">Company Logo</label>
+                            <input type="hidden" id="fm-logo" />
+                            <div style="display:flex;align-items:center;gap:.75rem;flex-wrap:wrap">
+                                <img id="fm-logo-preview" src="" alt="logo"
+                                     style="display:none;width:56px;height:56px;object-fit:contain;border:1px solid #e2e8f0;border-radius:10px;background:#fff" />
+                                <label class="btn btn-sm" style="background:#eef2ff;color:#4338ca;font-weight:600;cursor:pointer;border:1px solid #ddd6fe">
+                                    <i class="bi bi-upload"></i> <span id="fm-logo-btntext">Upload logo</span>
+                                    <input type="file" id="fm-logo-file" accept=".jpg,.jpeg,.png,.gif,.webp,.svg" style="display:none" onchange="uploadCompanyLogo(this)" />
+                                </label>
+                                <button type="button" id="fm-logo-clear" onclick="clearCompanyLogo()" style="display:none;background:none;border:none;color:#dc2626;font-size:.8rem;cursor:pointer"><i class="bi bi-x-circle"></i> Remove</button>
+                            </div>
+                            <div style="font-size:.72rem;color:#94a3b8;margin-top:.25rem">PNG/JPG/SVG, up to 3MB. Shown on invoices and certificates.</div>
+                        </div>
                     </div>
                 </div>
 
@@ -485,7 +499,7 @@
 
 <!-- Delete confirm modal -->
 <div class="modal fade" id="deleteModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered" style="max-width:420px;">
+    <div class="modal-dialog modal-dialog-centered" style="max-width:520px;">
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title" style="color:#991b1b;"><i class="bi bi-exclamation-triangle-fill me-2"></i>Delete Company</h5>
@@ -670,6 +684,7 @@
             document.getElementById('fm-phone').value   = get('phoneNumber')    || '';
             document.getElementById('fm-website').value = get('website')        || '';
             document.getElementById('fm-address').value = get('address')        || '';
+            setCompanyLogo(get('logo') || '');
             document.getElementById('fm-location').value= get('location')       || '';
             document.getElementById('fm-active').checked = !!get('isActive');
             document.getElementById('activeLabel').textContent = get('isActive') ? 'Active' : 'Inactive';
@@ -700,12 +715,65 @@
             const el = document.getElementById(id);
             if (el) el.value = id === 'fm-id' ? '0' : '';
         });
-        document.getElementById('fm-country').value  = '';
+        document.getElementById('fm-country').value  = '1'; // Default to Zimbabwe for new companies
         document.getElementById('fm-province').innerHTML = '<option value="">Select province…</option>';
         document.getElementById('fm-city').innerHTML     = '<option value="">Select city…</option>';
         document.getElementById('fm-currency').value = '';
         document.getElementById('fm-parent').value   = '';
         document.getElementById('fm-error').style.display = 'none';
+        setCompanyLogo('');
+    }
+
+    // ── Company logo upload ────────────────────────────────────
+    function setCompanyLogo(url) {
+        document.getElementById('fm-logo').value = url || '';
+        const img = document.getElementById('fm-logo-preview');
+        const clr = document.getElementById('fm-logo-clear');
+        const btn = document.getElementById('fm-logo-btntext');
+        if (url) {
+            img.src = url; img.style.display = 'inline-block';
+            clr.style.display = 'inline-block';
+            if (btn) btn.textContent = 'Change logo';
+        } else {
+            img.src = ''; img.style.display = 'none';
+            clr.style.display = 'none';
+            if (btn) btn.textContent = 'Upload logo';
+        }
+    }
+    function clearCompanyLogo() { setCompanyLogo(''); document.getElementById('fm-logo-file').value = ''; }
+    async function uploadCompanyLogo(input) {
+        const file = input.files && input.files[0];
+        if (!file) return;
+        const btn = document.getElementById('fm-logo-btntext');
+        const prev = btn ? btn.textContent : '';
+        if (btn) btn.textContent = 'Uploading…';
+        try {
+            if (file.size > 3 * 1024 * 1024) {
+                showToast('Logo file must be smaller than 3MB.', 'error');
+                if (btn) btn.textContent = prev;
+                return;
+            }
+            const fd = new FormData();
+            fd.append('file', file);
+            const res = await fetch('/Companies/UploadLogo', { method: 'POST', body: fd });
+            if (!res.ok) {
+                showToast(`Upload failed: HTTP ${res.status}`, 'error');
+                if (btn) btn.textContent = prev;
+                return;
+            }
+            const data = await res.json();
+            if (data.success) {
+                setCompanyLogo(data.url);
+                showToast(data.message || 'Logo uploaded successfully!', 'success');
+            } else {
+                showToast(data.message || 'Logo upload failed.', 'error');
+                if (btn) btn.textContent = prev;
+            }
+        } catch (error) {
+            console.error('Logo upload error:', error);
+            showToast(error.message || 'Logo upload failed.', 'error');
+            if (btn) btn.textContent = prev;
+        }
     }
 
     // ── Save (create or update) ────────────────────────────────
@@ -721,6 +789,7 @@
             phoneNumber:       document.getElementById('fm-phone').value.trim() || null,
             website:           document.getElementById('fm-website').value.trim() || null,
             address:           document.getElementById('fm-address').value.trim() || null,
+            logo:              document.getElementById('fm-logo').value || null,
             location:          document.getElementById('fm-location').value.trim() || null,
             countryId:         parseInt(document.getElementById('fm-country').value)  || 0,
             provinceId:        parseInt(document.getElementById('fm-province').value) || 0,

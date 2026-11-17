@@ -17,7 +17,7 @@ public class GetCustomersHandler : IRequestHandler<GetCustomersQuery, ApiRespons
     public async Task<ApiResponse<List<CustomerDto>>> Handle(GetCustomersQuery request, CancellationToken ct)
     {
         var list = await _uow.Repository<Customer>()
-            .TableNoTracking
+            .TableNoTracking.Include(p => p.CustomerCompany)
             .ToListAsync(ct);
 
         return ApiResponse<List<CustomerDto>>.Ok(list.Select(CustomerMapper.MapCustomer).ToList());
@@ -31,9 +31,13 @@ public class GetCustomersByCompanyHandler : IRequestHandler<GetCustomerByCompany
 
     public async Task<ApiResponse<List<CustomerDto>>> Handle(GetCustomerByCompanyQuery request, CancellationToken ct)
     {
+        // A head-office user's default (no branch switched) view sees itself plus
+        // every branch's own customers; a branch only ever sees its own.
+        var companyIds = await CompanyScopeResolver.ResolveAsync(_uow, request.CompanyId, ct);
+
         var list = await _uow.Repository<Customer>()
-            .TableNoTracking
-            .Where(p => p.CompanyId == request.CompanyId)
+            .TableNoTracking.Include(p => p.CustomerCompany)
+            .Where(p => companyIds.Contains(p.CompanyId))
             .OrderBy(p => p.FullName)
             .ToListAsync(ct);
 
@@ -49,7 +53,7 @@ public class GetCustomersByIdHandler : IRequestHandler<GetCustomerByIdQuery, Api
     public async Task<ApiResponse<CustomerDto>> Handle(GetCustomerByIdQuery request, CancellationToken ct)
     {
         var list = await _uow.Repository<Customer>()
-            .TableNoTracking
+            .TableNoTracking.Include(p => p.CustomerCompany)
             .FirstOrDefaultAsync(d => d.Id == request.Id, ct);
 
         return ApiResponse<CustomerDto>.Ok(CustomerMapper.MapCustomer(list));
@@ -87,6 +91,8 @@ public class CreateCustomerHandler : IRequestHandler<CreateCustomerCommand, ApiR
             Gender = d.Gender,
             IsActive = d.IsActive,
             CompanyId = d.CompanyId,
+            JobTitle = d.JobTitle,
+            CustomerCompanyId = d.CustomerCompanyId is > 0 ? d.CustomerCompanyId : null,
         };
         await _uow.Repository<Customer>().AddAsync(entity, ct);
         return ApiResponse<CustomerDto>.Ok(CustomerMapper.MapCustomer(entity), "Customer method created.");
@@ -114,7 +120,8 @@ public class UpdateCustomerHandler : IRequestHandler<UpdateCustomerCommand, ApiR
         entity.Email = request.Dto.Email;
         entity.Profile = request.Dto.Profile;
         entity.Gender = request.Dto.Gender;
-        entity.CompanyId = entity.CompanyId;
+        entity.JobTitle = request.Dto.JobTitle;
+        entity.CustomerCompanyId = request.Dto.CustomerCompanyId is > 0 ? request.Dto.CustomerCompanyId : null;
         await repo.UpdateAsync(entity, ct);
         return ApiResponse<CustomerDto>.Ok(CustomerMapper.MapCustomer(entity), "Customer method updated.");
     }
@@ -166,7 +173,10 @@ internal static class CustomerMapper
         Address = d.Address,
         Profile = d.Profile,
         Gender = d.Gender,
-        CompanyId = d.CompanyId
+        CompanyId = d.CompanyId,
+        JobTitle = d.JobTitle,
+        CustomerCompanyId = d.CustomerCompanyId,
+        CustomerCompanyName = d.CustomerCompany?.Name
     };
 }
 

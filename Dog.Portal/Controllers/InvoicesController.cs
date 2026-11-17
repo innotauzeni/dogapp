@@ -11,13 +11,98 @@ namespace Dog.Portal.Controllers
         private readonly ICurrentUserInfoService _currentUserService;
         private static readonly JsonSerializerOptions Opts = new() { PropertyNameCaseInsensitive = true };
 
-        public InvoicesController(IApiClient apiClient, ICurrentUserInfoService currentUserService)
+        private readonly Dog.Application.Contracts.IFileStorageService _storage;
+
+        public InvoicesController(IApiClient apiClient, ICurrentUserInfoService currentUserService, Dog.Application.Contracts.IFileStorageService storage)
         {
             _apiClient = apiClient;
             _currentUserService = currentUserService;
+            _storage = storage;
+        }
+
+        // ── PROOF OF PAYMENT (screenshot / slip / PDF) — stored, and its URL is saved on the payment ──
+        [HttpPost]
+        [RequestSizeLimit(15 * 1024 * 1024)]
+        public async Task<IActionResult> UploadProof(IFormFile file)
+        {
+            if (!await IsAuthenticated()) return Json(new { success = false, message = "Session expired." });
+            var p = Dog.Portal.Helpers.PermHelper.For(HttpContext);
+            if (!p.Can("invoice.pay") && !p.Can("training.payment.record"))
+                return Json(new { success = false, message = "You do not have permission to do this." });
+            if (file == null || file.Length == 0) return Json(new { success = false, message = "No file selected." });
+            var ext = (Path.GetExtension(file.FileName) ?? "").ToLowerInvariant();
+            if (ext is not (".jpg" or ".jpeg" or ".png" or ".webp" or ".pdf"))
+                return Json(new { success = false, message = "Only JPG, PNG, WebP or PDF files are allowed." });
+            if (file.Length > 12 * 1024 * 1024) return Json(new { success = false, message = "That file is too large (limit 12 MB)." });
+            try
+            {
+                using var ms = new MemoryStream();
+                await file.CopyToAsync(ms);
+                var contentType = string.IsNullOrEmpty(file.ContentType) ? "application/octet-stream" : file.ContentType;
+                string url;
+                if (_storage.IsEnabled) url = await _storage.UploadBytesAsync(ms.ToArray(), file.FileName, contentType, "payment-proofs");
+                else
+                {
+                    var dir = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "uploads", "payment-proofs");
+                    Directory.CreateDirectory(dir);
+                    var stored = $"{Guid.NewGuid()}{ext}";
+                    await System.IO.File.WriteAllBytesAsync(Path.Combine(dir, stored), ms.ToArray());
+                    url = $"/uploads/payment-proofs/{stored}";
+                }
+                return Json(new { success = true, url });
+            }
+            catch (Exception ex) { return Json(new { success = false, message = $"Upload failed: {ex.Message}" }); }
         }
 
         private async Task<bool> IsAuthenticated() => await _currentUserService.IsAuthenticated();
+
+        private static readonly HttpClient _http = new() { Timeout = TimeSpan.FromSeconds(10) };
+
+        // ── BRANDED PDF ───────────────────────────────────────────────────────
+        // GET /Invoices/Pdf/{id} — QuestPDF-generated invoice with company logo + bill-to.
+        public async Task<IActionResult> Pdf(int id)
+        {
+            if (!await IsAuthenticated()) return RedirectToAction("Login", "Auth");
+            try
+            {
+                var invResp = await _apiClient.GetAsync<ApiResponse<object>>($"api/Invoice/{id}");
+                if (invResp?.Success != true || invResp.Data == null)
+                    return NotFound(invResp?.Message ?? "Invoice not found.");
+
+                var inv = JsonSerializer.Deserialize<Dog.Application.Features.Invoices.DTOs.InvoiceDto>(JsonSerializer.Serialize(invResp.Data), Opts);
+                if (inv == null) return NotFound("Invoice not found.");
+
+                // Company branding (optional — never blocks the PDF)
+                Dog.Application.Features.Companies.DTOs.CompanyDto? company = null;
+                try
+                {
+                    var companyId = inv.CompanyId > 0 ? inv.CompanyId : await _currentUserService.GetActiveCompanyId();
+                    var compResp = await _apiClient.GetAsync<ApiResponse<object>>($"api/companies/{companyId}");
+                    if (compResp?.Data != null)
+                        company = JsonSerializer.Deserialize<Dog.Application.Features.Companies.DTOs.CompanyDto>(JsonSerializer.Serialize(compResp.Data), Opts);
+                }
+                catch { /* branding is optional */ }
+
+                var logo = await TryLoadLogoAsync(company?.Logo);
+                Dog.Application.Features.BillingSetup.PdfInfoDto? info = null;
+                try
+                {
+                    var infoResp = await _apiClient.GetAsync<ApiResponse<object>>($"api/BillingSetup/pdf-info?CompanyId={inv.CompanyId}");
+                    if (infoResp?.Data != null) info = JsonSerializer.Deserialize<Dog.Application.Features.BillingSetup.PdfInfoDto>(JsonSerializer.Serialize(infoResp.Data), Opts);
+                }
+                catch { /* tax profile and bank details are optional on the printout */ }
+                var pdf = Dog.Application.Common.Pdf.InvoicePdfBuilder.Build(inv, company, logo, info?.Profile, info?.Banks);
+                return File(pdf, "application/pdf", $"Invoice_{inv.InvoiceNumber}.pdf");
+            }
+            catch (Exception ex)
+            {
+                return BadRequest($"Failed to generate invoice PDF: {ex.Message}");
+            }
+        }
+
+        /// <summary>Best-effort logo fetch. Absolute URLs are downloaded; anything else / any failure → null.</summary>
+        private Task<byte[]?> TryLoadLogoAsync(string? logo)
+            => Dog.Portal.Services.PdfImageLoader.LoadAsync(logo, $"{Request.Scheme}://{Request.Host}");
 
         // ── INDEX ─────────────────────────────────────────────────────────────
         public async Task<IActionResult> Index(string? search, string? status, int page = 1, int pageSize = 15)
@@ -28,7 +113,7 @@ namespace Dog.Portal.Controllers
 
             try
             {
-                var companyId = await _currentUserService.GetUserCompanyId();
+                var companyId = await _currentUserService.GetActiveCompanyId();
 
                 // Load invoices
                 var resp = await _apiClient.GetAsync<ApiResponse<object>>($"api/Invoice?CompanyId={companyId}");
@@ -66,6 +151,18 @@ namespace Dog.Portal.Controllers
                     {
                         var json = JsonSerializer.Serialize(custResp.Data);
                         vm.Customers = JsonSerializer.Deserialize<List<CustomerDropdown>>(json, Opts) ?? new();
+                    }
+                }
+                catch { }
+
+                // Load dogs — invoice line items can be linked to one of our dogs
+                try
+                {
+                    var dogsResp = await _apiClient.GetAsync<ApiResponse<object>>($"api/Animal/GetPets?CompanyId={companyId}");
+                    if (dogsResp?.Success == true && dogsResp.Data != null)
+                    {
+                        var json = JsonSerializer.Serialize(dogsResp.Data);
+                        vm.Dogs = JsonSerializer.Deserialize<List<AnimalListDto>>(json, Opts) ?? new();
                     }
                 }
                 catch { }
@@ -149,7 +246,7 @@ namespace Dog.Portal.Controllers
             var vm = new SuspenseListViewModel { SearchTerm = search, Page = page, PageSize = pageSize };
             try
             {
-                var companyId = await _currentUserService.GetUserCompanyId();
+                var companyId = await _currentUserService.GetActiveCompanyId();
                 var resp = await _apiClient.GetAsync<ApiResponse<object>>($"api/Invoice/suspense?CompanyId={companyId}");
                 if (resp?.Success == true && resp.Data != null)
                 {
@@ -183,7 +280,7 @@ namespace Dog.Portal.Controllers
             var vm = new ReceiptListViewModel { SearchTerm = search, Page = page, PageSize = pageSize };
             try
             {
-                var companyId = await _currentUserService.GetUserCompanyId();
+                var companyId = await _currentUserService.GetActiveCompanyId();
                 var resp = await _apiClient.GetAsync<ApiResponse<object>>($"api/Invoice/receipts?CompanyId={companyId}");
                 if (resp?.Success == true && resp.Data != null)
                 {
@@ -210,7 +307,7 @@ namespace Dog.Portal.Controllers
             if (!await IsAuthenticated()) return Json(new { success = false, message = "Not authenticated" });
             try
             {
-                var companyId = await _currentUserService.GetUserCompanyId();
+                var companyId = await _currentUserService.GetActiveCompanyId();
                 var dto = new
                 {
                     companyId,
@@ -274,7 +371,7 @@ namespace Dog.Portal.Controllers
             if (!await IsAuthenticated()) return Json(new { success = false, message = "Not authenticated" });
             try
             {
-                var companyId = await _currentUserService.GetUserCompanyId();
+                var companyId = await _currentUserService.GetActiveCompanyId();
                 var dto = new { req.InvoiceId, companyId, req.Amount, req.PaymentMethod, req.ReferenceNumber, req.Notes, paymentDate = DateTime.UtcNow };
                 var resp = await _apiClient.PostAsync<ApiResponse<object>>("api/Invoice/pay", dto);
                 return Json(new { success = resp?.Success ?? false, message = resp?.Message ?? "Payment recorded." });
@@ -288,7 +385,7 @@ namespace Dog.Portal.Controllers
             if (!await IsAuthenticated()) return Json(new { success = false, message = "Not authenticated" });
             try
             {
-                var companyId = await _currentUserService.GetUserCompanyId();
+                var companyId = await _currentUserService.GetActiveCompanyId();
                 var dto = new
                 {
                     req.InvoiceId,
@@ -316,7 +413,7 @@ namespace Dog.Portal.Controllers
             if (!await IsAuthenticated()) return Json(new { success = false, message = "Not authenticated" });
             try
             {
-                var companyId = await _currentUserService.GetUserCompanyId();
+                var companyId = await _currentUserService.GetActiveCompanyId();
                 var dto = new { req.BankTransactionId, req.InvoiceId, companyId, req.CustomerId, req.CurrencyId };
                 var resp = await _apiClient.PostAsync<ApiResponse<object>>("api/Invoice/claim-bank", dto);
                 return Json(new { success = resp?.Success ?? false, message = resp?.Message ?? "Claimed." });
@@ -330,7 +427,7 @@ namespace Dog.Portal.Controllers
             if (!await IsAuthenticated()) return Json(new { success = false, message = "Not authenticated" });
             try
             {
-                var companyId = await _currentUserService.GetUserCompanyId();
+                var companyId = await _currentUserService.GetActiveCompanyId();
                 var dto = new { req.SuspenseId, req.InvoiceId, companyId, req.Amount, req.ExchangeRateId };
                 var resp = await _apiClient.PostAsync<ApiResponse<object>>("api/Invoice/apply-suspense", dto);
                 return Json(new { success = resp?.Success ?? false, message = resp?.Message ?? "Applied." });

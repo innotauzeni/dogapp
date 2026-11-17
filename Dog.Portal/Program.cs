@@ -1,3 +1,4 @@
+using Dog.Application;
 using Dog.Application.Authorization;
 using Dog.Portal.Services;
 using Microsoft.AspNetCore.Authentication.Cookies;
@@ -6,12 +7,27 @@ using Microsoft.AspNetCore.HttpOverrides;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// QuestPDF free Community license (valid for organisations under ~US$1M annual revenue).
+QuestPDF.Settings.License = QuestPDF.Infrastructure.LicenseType.Community;
+// Use only QuestPDF's bundled fonts (Lato) so PDFs render the same on any server — system fonts
+// such as Arial may be missing on the host, which made certificate text disappear.
+QuestPDF.Settings.UseEnvironmentFonts = false;
+
 // Add services to the container.
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddControllersWithViews();
 
+// Increase file upload size limit (default is 30MB, we need 500MB)
+builder.Services.Configure<Microsoft.AspNetCore.Http.Features.FormOptions>(options =>
+{
+    options.MultipartBodyLengthLimit = 500 * 1024 * 1024; // 500MB
+});
+
 // Register custom services
 builder.Services.AddScoped<ICurrentUserInfoService, CurrentUserInfoService>();
+
+// Cloudflare R2 file storage (dog photos)
+builder.Services.AddFileStorage(builder.Configuration);
 
 // Permission policy provider — reads "permission" claims from the cookie principal.
 // Only register the policy infrastructure, NOT the full Application services
@@ -83,12 +99,18 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllerRoute(
+    name: "landing",
+    pattern: "",
+    defaults: new { controller = "Landing", action = "Index" });
+
+app.MapControllerRoute(
     name: "controller-only",
     pattern: "{controller}",
     defaults: new { action = "Index" });
 
 app.MapControllerRoute(
     name: "default",
-    pattern: "{controller=Auth}/{action=Login}/{id?}");
+    pattern: "{controller}/{action}/{id?}",
+    defaults: new { action = "Index" });
 
 app.Run();

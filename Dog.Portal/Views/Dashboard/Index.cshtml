@@ -73,8 +73,67 @@
     </div>
 }
 
-<!-- Hero -->
-<div class="dash-hero">
+@if (userSession?.IsDogHandler == true) {
+    <!-- Handler Dashboard -->
+    <div class="dashboard-header">
+        <h2>👋 Welcome, Handler!</h2>
+        <p>Here's your quick overview of assigned dogs and care tasks</p>
+    </div>
+
+    <style>
+        .handler-stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1.5rem; margin-bottom: 2rem; }
+        .handler-stat-card { background: white; border-radius: 12px; padding: 1.5rem; border: 1px solid #e2e8f0; display: flex; align-items: center; gap: 1rem; transition: all 0.3s; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+        .handler-stat-card:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
+        .handler-icon { font-size: 2rem; width: 50px; height: 50px; border-radius: 10px; display: flex; align-items: center; justify-content: center; }
+        .handler-stat-content h3 { margin: 0; font-size: 1.8rem; font-weight: 800; color: #0f172a; }
+        .handler-stat-content p { margin: 0.25rem 0 0 0; font-size: 0.9rem; color: #64748b; }
+        .handler-dogs-section { background: white; border-radius: 12px; padding: 1.5rem; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+        .handler-empty { text-align: center; padding: 2rem; color: #94a3b8; }
+    </style>
+
+    <div class="handler-stat-grid">
+        <div class="handler-stat-card">
+            <div class="handler-icon" style="background: #ede9fe; color: #667eea;"><i class="bi bi-dog"></i></div>
+            <div class="handler-stat-content">
+                <h3>0</h3>
+                <p>Assigned Dogs</p>
+            </div>
+        </div>
+        <div class="handler-stat-card">
+            <div class="handler-icon" style="background: #d1fae5; color: #059669;"><i class="bi bi-collection"></i></div>
+            <div class="handler-stat-content">
+                <h3>0</h3>
+                <p>Litters</p>
+            </div>
+        </div>
+        <div class="handler-stat-card">
+            <div class="handler-icon" style="background: #fef3c7; color: #d97706;"><i class="bi bi-heart"></i></div>
+            <div class="handler-stat-content">
+                <h3>0</h3>
+                <p>Puppies</p>
+            </div>
+        </div>
+        <div class="handler-stat-card">
+            <div class="handler-icon" style="background: #fee2e2; color: #dc2626;"><i class="bi bi-heart-fill"></i></div>
+            <div class="handler-stat-content">
+                <h3>0</h3>
+                <p>Active Matings</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="handler-dogs-section">
+        <h3 style="margin-top: 0; margin-bottom: 1.5rem; font-size: 1.3rem; font-weight: 800; color: #0f172a;">Your Assigned Dogs</h3>
+        <div class="handler-empty">
+            <div style="font-size: 2rem; margin-bottom: 1rem;">🐕</div>
+            <p style="margin: 0;"><strong>No dogs assigned yet</strong></p>
+            <p style="margin: 0.5rem 0 0 0; font-size: 0.9rem;">Dogs assigned to you will appear here with their mating and litter information.</p>
+        </div>
+    </div>
+} else {
+    <!-- Admin Dashboard -->
+    <!-- Hero -->
+    <div class="dash-hero">
     <div class="d-flex justify-content-between align-items-start">
         <div>
             <h2 class="dash-hero-title">@greeting, @firstName! 👋</h2>
@@ -162,7 +221,7 @@
 </div>
 
 <!-- Main panels -->
-<div class="row g-3 mb-3">
+<div class="row g-3 mb-3" @(userSession?.IsDogHandler == true ? "style=\"display:none;\"" : "")>
     <!-- Quick Actions -->
     <div class="col-lg-3 col-md-6">
         <div class="section-card">
@@ -399,10 +458,11 @@
         </div>
     </div>
 </div>
+}
 
 <!-- ADD EVENT MODAL -->
 <div class="modal-backdrop-custom" id="eventModal">
-  <div class="modal-box" style="max-width:480px">
+  <div class="modal-box" style="max-width:640px">
     <div class="modal-hdr">
       <h5><i class="bi bi-calendar-plus" style="color:#667eea"></i> Add Event</h5>
       <button class="modal-close" onclick="closeModal('eventModal')"><i class="bi bi-x-lg"></i></button>

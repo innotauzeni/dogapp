@@ -1,0 +1,377 @@
+@model Dog.Portal.Models.HandlerActivityViewModel
+@using Dog.Portal.Helpers
+@{
+    Layout = "_AdminLayout";
+    ViewData["Title"] = "My Activity";
+
+    var eventIcons = new Dictionary<string, (string icon, string color, string bg)>(StringComparer.OrdinalIgnoreCase) {
+        ["Feeding"]      = ("bi-egg-fried",                 "#059669", "#d1fae5"),
+        ["Vaccinated"]   = ("bi-shield-fill-check",         "#0369a1", "#dbeafe"),
+        ["Illness"]      = ("bi-thermometer-high",          "#b45309", "#fef3c7"),
+        ["Injured"]      = ("bi-bandaid-fill",              "#dc2626", "#fee2e2"),
+        ["Bite someone"] = ("bi-exclamation-triangle-fill", "#92400e", "#fef3c7"),
+        ["Heat"]         = ("bi-fire",                      "#e11d48", "#ffe4e6"),
+        ["Mating"]       = ("bi-heart-fill",                "#be185d", "#fce7f3"),
+        ["Birth"]        = ("bi-stars",                     "#7c3aed", "#ede9fe"),
+        ["Other"]        = ("bi-three-dots",                "#475569", "#f1f5f9"),
+    };
+    (string icon, string color, string bg) IconFor(string type) =>
+        eventIcons.TryGetValue(type ?? "", out var v) ? v : ("bi-activity", "#667eea", "#ede9fe");
+
+    var byYear = Model.Activities
+        .GroupBy(a => a.OccurredOn.Year)
+        .OrderByDescending(g => g.Key)
+        .ToList();
+}
+<style>
+.act-hdr{display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;flex-wrap:wrap;margin-bottom:1.25rem}
+.act-hdr h4{font-size:1.15rem;font-weight:800;color:#0f172a;margin:0 0 .25rem;display:flex;align-items:center;gap:.5rem}
+.act-hdr h4 i{color:#667eea}
+.act-hdr p{font-size:.845rem;color:#64748b;margin:0}
+.btn-back{display:inline-flex;align-items:center;gap:.4rem;padding:.6rem 1rem;background:#f1f5f9;color:#374151;border:1.5px solid #e2e8f0;border-radius:9px;font-size:.845rem;font-weight:500;text-decoration:none}
+.btn-back:hover{background:#e2e8f0;color:#1e293b}
+.astat-row{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:.875rem;margin-bottom:1.25rem}
+.astat{background:#fff;border-radius:12px;border:1px solid #e9eef4;box-shadow:0 1px 4px rgba(0,0,0,.04);padding:.9rem 1.1rem;display:flex;align-items:center;gap:.75rem}
+.astat .ic{width:40px;height:40px;border-radius:11px;display:flex;align-items:center;justify-content:center;font-size:1.05rem;flex-shrink:0}
+.astat .val{font-size:1.3rem;font-weight:800;color:#0f172a;line-height:1}
+.astat .lbl{font-size:.72rem;color:#94a3b8;font-weight:600;margin-top:.15rem;text-transform:uppercase;letter-spacing:.03em}
+.ic-total{background:linear-gradient(135deg,#ede9fe,#ddd6fe);color:#7c3aed}
+.ic-dogs{background:linear-gradient(135deg,#dbeafe,#bfdbfe);color:#1d4ed8}
+.ic-attn{background:linear-gradient(135deg,#fee2e2,#fecaca);color:#991b1b}
+
+.act-layout{display:grid;grid-template-columns:260px 1fr;gap:1.25rem;align-items:start}
+@@media(max-width:860px){.act-layout{grid-template-columns:1fr}}
+
+/* Archive sidebar */
+.archive{background:#fff;border-radius:14px;border:1px solid #e9eef4;box-shadow:0 1px 4px rgba(0,0,0,.04);overflow:hidden;position:sticky;top:1rem}
+.archive-hdr{padding:.9rem 1.1rem;border-bottom:1px solid #f1f5f9;background:#fafbfc;display:flex;align-items:center;gap:.5rem;font-size:.8rem;font-weight:800;color:#0f172a}
+.archive-hdr i{color:#667eea}
+.archive-body{padding:.5rem;max-height:70vh;overflow-y:auto}
+.arch-all{display:flex;align-items:center;justify-content:space-between;gap:.5rem;width:100%;padding:.55rem .7rem;border:none;background:linear-gradient(135deg,#667eea,#764ba2);color:#fff;border-radius:9px;font-size:.82rem;font-weight:700;cursor:pointer;margin-bottom:.4rem}
+.arch-all .cnt{background:rgba(255,255,255,.25);padding:.05rem .5rem;border-radius:20px;font-size:.72rem}
+.arch-year{margin-bottom:.15rem}
+.arch-year-btn{display:flex;align-items:center;gap:.5rem;width:100%;padding:.5rem .7rem;border:none;background:transparent;color:#334155;border-radius:8px;font-size:.84rem;font-weight:700;cursor:pointer;text-align:left}
+.arch-year-btn:hover{background:#f8fafc}
+.arch-year-btn .chev{margin-left:auto;transition:transform .18s;font-size:.7rem;color:#94a3b8}
+.arch-year.open .chev{transform:rotate(90deg)}
+.arch-year-btn .yr-cnt{font-size:.7rem;color:#94a3b8;font-weight:600}
+.arch-months{display:none;padding:.15rem 0 .35rem .9rem;margin-left:.35rem;border-left:1.5px solid #eef2f7}
+.arch-year.open .arch-months{display:block}
+.arch-month{display:flex;align-items:center;justify-content:space-between;gap:.5rem;width:100%;padding:.4rem .7rem;border:none;background:transparent;color:#64748b;border-radius:7px;font-size:.8rem;font-weight:600;cursor:pointer;text-align:left}
+.arch-month:hover{background:#f8fafc;color:#334155}
+.arch-month.active{background:#ede9fe;color:#6d28d9;font-weight:700}
+.arch-month .m-cnt{font-size:.7rem;color:#94a3b8}
+.arch-month.active .m-cnt{color:#7c3aed}
+
+/* Activity feed */
+.feed{min-height:200px}
+.feed-toolbar{display:flex;align-items:center;justify-content:space-between;gap:.75rem;margin-bottom:.9rem;flex-wrap:wrap}
+.feed-scope{font-size:.9rem;font-weight:800;color:#0f172a;display:flex;align-items:center;gap:.5rem}
+.feed-scope .badge-scope{font-size:.72rem;font-weight:700;color:#6d28d9;background:#ede9fe;padding:.15rem .6rem;border-radius:20px}
+.feed-count{font-size:.8rem;color:#94a3b8}
+.acard{display:flex;gap:.9rem;background:#fff;border:1px solid #e9eef4;border-radius:14px;padding:1rem 1.1rem;margin-bottom:.8rem;box-shadow:0 1px 3px rgba(0,0,0,.03);transition:box-shadow .16s,transform .16s}
+.acard:hover{box-shadow:0 6px 20px rgba(0,0,0,.07);transform:translateY(-1px)}
+.acard.attn{border-color:#fecaca;background:#fffafa}
+.acard .ev-ic{width:44px;height:44px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:1.15rem;flex-shrink:0}
+.acard .body{flex:1;min-width:0}
+.acard .top{display:flex;align-items:center;justify-content:space-between;gap:.5rem;flex-wrap:wrap}
+.acard .ev-badge{display:inline-flex;align-items:center;gap:.35rem;font-size:.78rem;font-weight:700;padding:.2rem .65rem;border-radius:20px}
+.acard .dog-link{font-size:.82rem;font-weight:700;color:#1e293b;text-decoration:none}
+.acard .dog-link:hover{color:#667eea;text-decoration:underline}
+.acard .when{font-size:.75rem;color:#94a3b8;white-space:nowrap}
+.acard .det{font-size:.85rem;color:#475569;margin-top:.45rem;line-height:1.5;word-break:break-word}
+.acard .out{display:inline-flex;align-items:center;gap:.3rem;font-size:.78rem;font-weight:600;color:#667eea;margin-top:.35rem}
+.acard .foot{display:flex;align-items:center;justify-content:space-between;gap:.5rem;flex-wrap:wrap;margin-top:.6rem;padding-top:.55rem;border-top:1px solid #f4f6fa}
+.acard .meta{font-size:.72rem;color:#94a3b8;display:flex;align-items:center;gap:.65rem;flex-wrap:wrap}
+.acard .attn-chip{font-size:.7rem;font-weight:700;background:#fee2e2;color:#dc2626;padding:.12rem .5rem;border-radius:8px}
+.acard .edited{font-style:italic}
+.btn-edit-a{display:inline-flex;align-items:center;gap:.35rem;padding:.4rem .8rem;background:#f1f5f9;color:#475569;border:1.5px solid #e2e8f0;border-radius:8px;font-size:.78rem;font-weight:600;cursor:pointer;white-space:nowrap}
+.btn-edit-a:hover{background:#ede9fe;color:#6d28d9;border-color:#ddd6fe}
+.feed-empty{text-align:center;padding:3.5rem 2rem;color:#94a3b8}
+.feed-empty i{font-size:2.75rem;color:#e2e8f0;display:block;margin-bottom:.75rem}
+.feed-empty h6{font-weight:700;color:#64748b;margin:0 0 .3rem}
+.feed-empty p{font-size:.85rem;margin:0}
+
+/* Modal + toast */
+.modal-backdrop-custom{position:fixed;inset:0;background:rgba(15,23,42,.45);backdrop-filter:blur(3px);z-index:1050;display:none;align-items:center;justify-content:center;padding:1rem}
+.modal-backdrop-custom.open{display:flex}
+.modal-box{background:#fff;border-radius:16px;box-shadow:0 20px 60px rgba(0,0,0,.2);width:100%;max-width:520px;max-height:90vh;overflow-y:auto}
+.modal-hdr{display:flex;align-items:center;justify-content:space-between;padding:1.1rem 1.375rem;border-bottom:1px solid #f1f5f9}
+.modal-hdr h5{font-size:.98rem;font-weight:800;color:#0f172a;margin:0;display:flex;align-items:center;gap:.5rem}
+.modal-close{width:30px;height:30px;border:none;background:#f1f5f9;border-radius:7px;color:#64748b;cursor:pointer}
+.modal-body-p{padding:1.2rem 1.375rem}
+.modal-foot{padding:.9rem 1.375rem;border-top:1px solid #f1f5f9;display:flex;justify-content:flex-end;gap:.5rem}
+.frow{margin-bottom:.9rem}
+.frow label{display:block;font-size:.78rem;font-weight:600;color:#374151;margin-bottom:.35rem}
+.finput{width:100%;padding:.6rem .875rem;border:1.5px solid #e2e8f0;border-radius:9px;font-size:.845rem;color:#1e293b;background:#fff;outline:none}
+.finput:focus{border-color:#667eea;box-shadow:0 0 0 3px rgba(102,126,234,.1)}
+.btn-cancel{padding:.6rem 1.15rem;background:#f1f5f9;color:#64748b;border:1.5px solid #e2e8f0;border-radius:9px;font-size:.84rem;font-weight:600;cursor:pointer}
+.btn-save{padding:.6rem 1.4rem;background:linear-gradient(135deg,#667eea,#764ba2);color:#fff;border:none;border-radius:9px;font-size:.84rem;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:.4rem;min-width:120px;justify-content:center}
+.btn-save:disabled{opacity:.6;cursor:not-allowed}
+.spin{width:14px;height:14px;border:2px solid rgba(255,255,255,.35);border-top-color:#fff;border-radius:50%;animation:spin .65s linear infinite}
+@@keyframes spin{to{transform:rotate(360deg)}}
+.toast-wrap{position:fixed;bottom:1.75rem;right:1.75rem;z-index:9999;display:flex;flex-direction:column;gap:.5rem;pointer-events:none}
+.toast-msg{display:flex;align-items:center;gap:.625rem;padding:.875rem 1.25rem;border-radius:12px;font-size:.855rem;font-weight:600;box-shadow:0 8px 32px rgba(0,0,0,.15);pointer-events:all;transform:translateX(120%);transition:transform .3s cubic-bezier(.4,0,.2,1);max-width:320px}
+.toast-msg.show{transform:translateX(0)}
+.toast-success{background:#065f46;color:#fff}
+.toast-error{background:#991b1b;color:#fff}
+</style>
+
+<div class="toast-wrap" id="toastWrap"></div>
+
+<div class="act-hdr">
+    <div>
+        <h4><i class="bi bi-journal-medical"></i> My Care Activity</h4>
+        <p>Every care record you have logged — browse by date and fix mistakes anytime.</p>
+    </div>
+    <div style="display:flex;gap:.6rem;flex-wrap:wrap">
+        <a href="/DogHandler" class="btn-back"><i class="bi bi-grid-fill"></i> My Dogs</a>
+        <a href="/Dogs" class="btn-back"><i class="bi bi-arrow-left"></i> Back to Dogs</a>
+    </div>
+</div>
+
+<div class="astat-row">
+    <div class="astat"><div class="ic ic-total"><i class="bi bi-clipboard2-check-fill"></i></div><div><div class="val">@Model.TotalCount</div><div class="lbl">Activities</div></div></div>
+    <div class="astat"><div class="ic ic-dogs"><i class="bi bi-shield-dog"></i></div><div><div class="val">@Model.DogCount</div><div class="lbl">Dogs Cared</div></div></div>
+    <div class="astat"><div class="ic ic-attn"><i class="bi bi-exclamation-circle-fill"></i></div><div><div class="val">@Model.AttentionCount</div><div class="lbl">Need Attention</div></div></div>
+</div>
+
+@if (!Model.Activities.Any())
+{
+    <div class="archive" style="max-width:640px;margin:0 auto">
+        <div class="feed-empty" style="padding:4rem 2rem">
+            <i class="bi bi-journal-x"></i>
+            <h6>No activity yet</h6>
+            <p>When you record care for your assigned dogs, it will appear here — grouped by month so you can look back easily.</p>
+        </div>
+    </div>
+}
+else
+{
+    <div class="act-layout">
+        <!-- ARCHIVE SIDEBAR -->
+        <aside class="archive">
+            <div class="archive-hdr"><i class="bi bi-archive-fill"></i> Archive</div>
+            <div class="archive-body">
+                <button type="button" class="arch-all" onclick="filterActivities(null,null,this)">
+                    <span><i class="bi bi-collection-fill" style="margin-right:.35rem"></i>All Activities</span>
+                    <span class="cnt">@Model.TotalCount</span>
+                </button>
+                @foreach (var year in byYear)
+                {
+                    var months = year.GroupBy(a => a.OccurredOn.Month).OrderByDescending(m => m.Key).ToList();
+                    <div class="arch-year @(year == byYear.First() ? "open" : "")">
+                        <button type="button" class="arch-year-btn" onclick="toggleYear(this)">
+                            <i class="bi bi-folder-fill" style="color:#f59e0b"></i>
+                            <span>@year.Key</span>
+                            <span class="yr-cnt">@year.Count()</span>
+                            <i class="bi bi-chevron-right chev"></i>
+                        </button>
+                        <div class="arch-months">
+                            @foreach (var month in months)
+                            {
+                                var mName = System.Globalization.CultureInfo.CurrentCulture.DateTimeFormat.GetMonthName(month.Key);
+                                <button type="button" class="arch-month" data-year="@year.Key" data-month="@month.Key"
+                                        onclick="filterActivities(@year.Key,@month.Key,this)">
+                                    <span><i class="bi bi-folder2 me-1"></i>@mName</span>
+                                    <span class="m-cnt">@month.Count()</span>
+                                </button>
+                            }
+                        </div>
+                    </div>
+                }
+            </div>
+        </aside>
+
+        <!-- ACTIVITY FEED -->
+        <section class="feed">
+            <div class="feed-toolbar">
+                <div class="feed-scope">
+                    <i class="bi bi-list-ul" style="color:#667eea"></i>
+                    <span id="scopeLabel">All Activities</span>
+                    <span class="badge-scope" id="scopeBadge" style="display:none"></span>
+                </div>
+                <div class="feed-count"><span id="visibleCount">@Model.TotalCount</span> shown</div>
+            </div>
+
+            <div id="cardList">
+                @foreach (var a in Model.Activities)
+                {
+                    var (ico, clr, bg) = IconFor(a.EventType);
+                    var edited = a.UpdatedAt.HasValue && a.UpdatedAt.Value > a.CreatedAt.AddSeconds(2);
+                    <div class="acard @(a.RequiresAttention ? "attn" : "")"
+                         data-year="@a.OccurredOn.Year" data-month="@a.OccurredOn.Month">
+                        <div class="ev-ic" style="background:@bg;color:@clr"><i class="bi @ico"></i></div>
+                        <div class="body">
+                            <div class="top">
+                                <span class="ev-badge" style="background:@bg;color:@clr">@a.EventType</span>
+                                <span class="when"><i class="bi bi-clock" style="margin-right:.25rem"></i>@DateDisplay.EventWhen(a.OccurredOn)</span>
+                            </div>
+                            <div style="margin-top:.4rem">
+                                <a href="/Dogs/Details/@a.DogId" class="dog-link"><i class="bi bi-shield-dog" style="margin-right:.3rem;color:#667eea"></i>@a.DogName</a>
+                            </div>
+                            @if (!string.IsNullOrWhiteSpace(a.Details))
+                            {
+                                <div class="det">@a.Details</div>
+                            }
+                            @if (!string.IsNullOrWhiteSpace(a.QuantityOrOutcome))
+                            {
+                                <div class="out"><i class="bi bi-check2-circle"></i>@a.QuantityOrOutcome</div>
+                            }
+                            <div class="foot">
+                                <div class="meta">
+                                    <span><i class="bi bi-plus-circle" style="margin-right:.25rem"></i>Logged @a.CreatedAt.ToString("MMM dd, yyyy")</span>
+                                    @if (edited)
+                                    {
+                                        <span class="edited"><i class="bi bi-pencil" style="margin-right:.2rem"></i>edited @a.UpdatedAt!.Value.ToString("MMM dd")</span>
+                                    }
+                                    @if (a.RequiresAttention)
+                                    {
+                                        <span class="attn-chip"><i class="bi bi-exclamation-circle-fill"></i> Needs attention</span>
+                                    }
+                                </div>
+                                @if (a.CanEdit)
+                                {
+                                    <button class="btn-edit-a"
+                                            data-id="@a.Id"
+                                            data-event="@a.EventType"
+                                            data-occurred="@a.OccurredOn.ToString("yyyy-MM-ddTHH:mm")"
+                                            data-details="@a.Details"
+                                            data-outcome="@a.QuantityOrOutcome"
+                                            data-attention="@(a.RequiresAttention ? "1" : "0")"
+                                            data-dog="@a.DogName"
+                                            onclick="openEdit(this)">
+                                        <i class="bi bi-pencil-fill"></i> Edit
+                                    </button>
+                                }
+                            </div>
+                        </div>
+                    </div>
+                }
+            </div>
+
+            <div class="feed-empty" id="noMatch" style="display:none">
+                <i class="bi bi-calendar-x"></i>
+                <h6>Nothing in this period</h6>
+                <p>Pick another month or view all activities.</p>
+            </div>
+        </section>
+    </div>
+}
+
+<!-- EDIT MODAL -->
+<div class="modal-backdrop-custom" id="editModal">
+    <div class="modal-box">
+        <div class="modal-hdr">
+            <h5><i class="bi bi-pencil-square" style="color:#667eea"></i> Edit Care Record</h5>
+            <button class="modal-close" onclick="closeModal('editModal')"><i class="bi bi-x-lg"></i></button>
+        </div>
+        <div class="modal-body-p">
+            <input type="hidden" id="e_id">
+            <div style="font-size:.78rem;color:#94a3b8;margin-bottom:1rem">
+                <i class="bi bi-shield-dog"></i> Editing record for <strong id="e_dog" style="color:#475569"></strong>
+            </div>
+            <div class="frow">
+                <label>Event Type <span style="color:#ef4444">*</span></label>
+                <select class="finput" id="e_event">
+                    @foreach (var et in new[] { "Feeding", "Vaccinated", "Illness", "Injured", "Bite someone", "Heat", "Mating", "Birth", "Other" })
+                    {
+                        <option value="@et">@et</option>
+                    }
+                </select>
+            </div>
+            <div class="frow">
+                <label>Date &amp; Time <span style="color:#ef4444">*</span></label>
+                <input class="finput" type="datetime-local" id="e_occurred">
+            </div>
+            <div class="frow">
+                <label>Details / Notes</label>
+                <textarea class="finput" id="e_details" rows="3" placeholder="Food given, symptoms, observations..."></textarea>
+            </div>
+            <div class="frow">
+                <label>Quantity / Outcome</label>
+                <input class="finput" id="e_outcome" placeholder="e.g. 2 cups, medication given, 6 puppies">
+            </div>
+            <div style="display:flex;align-items:center;gap:.5rem">
+                <input type="checkbox" id="e_attention" style="width:16px;height:16px;cursor:pointer">
+                <label for="e_attention" style="margin:0;font-size:.84rem;font-weight:600;color:#dc2626;cursor:pointer">
+                    <i class="bi bi-exclamation-circle-fill"></i> Requires attention or follow-up
+                </label>
+            </div>
+        </div>
+        <div class="modal-foot">
+            <button class="btn-cancel" onclick="closeModal('editModal')">Cancel</button>
+            <button class="btn-save" id="editSaveBtn" onclick="saveEdit()"><i class="bi bi-check2-circle"></i> Save Changes</button>
+        </div>
+    </div>
+</div>
+
+<script>
+function openModal(id){document.getElementById(id).classList.add('open');document.body.style.overflow='hidden';}
+function closeModal(id){document.getElementById(id).classList.remove('open');document.body.style.overflow='';}
+document.querySelectorAll('.modal-backdrop-custom').forEach(function(bd){bd.addEventListener('click',function(e){if(e.target===bd)closeModal(bd.id);});});
+document.addEventListener('keydown',function(e){if(e.key==='Escape')document.querySelectorAll('.modal-backdrop-custom.open').forEach(function(m){closeModal(m.id);});});
+
+function showToast(msg,type){var w=document.getElementById('toastWrap');var el=document.createElement('div');el.className='toast-msg toast-'+type;el.innerHTML='<i class="bi '+(type==='success'?'bi-check-circle-fill':'bi-exclamation-circle-fill')+'"></i>'+msg;w.appendChild(el);requestAnimationFrame(function(){el.classList.add('show');});setTimeout(function(){el.classList.remove('show');setTimeout(function(){el.remove();},350);},3500);}
+function setLoading(id,on,html){var b=document.getElementById(id);if(!b)return;b.disabled=on;if(on)b.innerHTML='<span class="spin"></span> Saving...';else if(html)b.innerHTML=html;}
+
+function toggleYear(btn){ btn.closest('.arch-year').classList.toggle('open'); }
+
+function filterActivities(year, month, el){
+    var monthNames=['January','February','March','April','May','June','July','August','September','October','November','December'];
+    document.querySelectorAll('.arch-month').forEach(function(m){m.classList.remove('active');});
+    var cards = document.querySelectorAll('.acard');
+    var shown = 0;
+    cards.forEach(function(c){
+        var match = (year===null) || (parseInt(c.dataset.year,10)===year && parseInt(c.dataset.month,10)===month);
+        c.style.display = match ? '' : 'none';
+        if(match) shown++;
+    });
+    // scope label
+    var label = document.getElementById('scopeLabel');
+    var badge = document.getElementById('scopeBadge');
+    if(year===null){ label.textContent='All Activities'; badge.style.display='none'; }
+    else {
+        label.textContent = monthNames[month-1]+' '+year;
+        badge.style.display='inline-flex'; badge.textContent = shown + (shown===1?' record':' records');
+        if(el && el.classList.contains('arch-month')) el.classList.add('active');
+    }
+    document.getElementById('visibleCount').textContent = shown;
+    document.getElementById('noMatch').style.display = shown===0 ? 'block' : 'none';
+    document.getElementById('cardList').style.display = shown===0 ? 'none' : 'block';
+}
+
+function openEdit(btn){
+    var d = btn.dataset;
+    document.getElementById('e_id').value = d.id;
+    document.getElementById('e_dog').textContent = d.dog || '';
+    document.getElementById('e_event').value = d.event || 'Feeding';
+    document.getElementById('e_occurred').value = d.occurred || '';
+    document.getElementById('e_details').value = d.details || '';
+    document.getElementById('e_outcome').value = d.outcome || '';
+    document.getElementById('e_attention').checked = d.attention === '1';
+    openModal('editModal');
+}
+
+async function saveEdit(){
+    var id = parseInt(document.getElementById('e_id').value,10);
+    var occurredOn = document.getElementById('e_occurred').value;
+    if(!id || !occurredOn){ showToast('Date and time is required.','error'); return; }
+    var payload = {
+        id: id,
+        eventType: document.getElementById('e_event').value,
+        occurredOn: occurredOn,
+        details: document.getElementById('e_details').value.trim() || null,
+        quantityOrOutcome: document.getElementById('e_outcome').value.trim() || null,
+        requiresAttention: document.getElementById('e_attention').checked
+    };
+    setLoading('editSaveBtn', true);
+    try{
+        var r = await fetch('/DogHandler/UpdateCareRecord',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+        var res = await r.json();
+        if(res.success){ showToast(res.message||'Record updated!','success'); closeModal('editModal'); setTimeout(function(){location.reload();},800); }
+        else showToast(res.message||'Failed to update.','error');
+    }catch(e){ showToast('Network error.','error'); }
+    finally{ setLoading('editSaveBtn', false, '<i class="bi bi-check2-circle"></i> Save Changes'); }
+}
+</script>

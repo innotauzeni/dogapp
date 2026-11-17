@@ -1,4 +1,4 @@
-﻿using Dog.Portal.Models;
+using Dog.Portal.Models;
 using Dog.Portal.Services;
 using Microsoft.AspNetCore.Mvc;
 using System.Text.Json;
@@ -34,7 +34,7 @@ namespace Dog.Portal.Controllers
 
             try
             {
-                var companyId = await _currentUserService.GetUserCompanyId();
+                var companyId = await _currentUserService.GetActiveCompanyId();
                 var resp = await _apiClient.GetAsync<ApiResponse<object>>($"api/Bank?CompanyId={companyId}");
 
                 if (resp?.Success == true && resp.Data != null)
@@ -84,7 +84,7 @@ namespace Dog.Portal.Controllers
 
             try
             {
-                var companyId = await _currentUserService.GetUserCompanyId();
+                var companyId = await _currentUserService.GetActiveCompanyId();
                 var dto = new CreateBankDto
                 {
                     CompanyId = companyId,
@@ -116,7 +116,7 @@ namespace Dog.Portal.Controllers
 
             try
             {
-                var companyId = await _currentUserService.GetUserCompanyId();
+                var companyId = await _currentUserService.GetActiveCompanyId();
                 var dto = new CreateBankDto
                 {
                     CompanyId = companyId,
@@ -201,7 +201,7 @@ namespace Dog.Portal.Controllers
 
             try
             {
-                var companyId = await _currentUserService.GetUserCompanyId();
+                var companyId = await _currentUserService.GetActiveCompanyId();
                 
                 // Get bank accounts
                 var accountsResp = await _apiClient.GetAsync<ApiResponse<object>>($"api/BankAccount/GetAccountByCompany?CompanyId={companyId}");
@@ -271,7 +271,7 @@ namespace Dog.Portal.Controllers
 
             try
             {
-                var companyId = await _currentUserService.GetUserCompanyId();
+                var companyId = await _currentUserService.GetActiveCompanyId();
                 var dto = new CreateBankAccountDto
                 {
                     CompanyId = companyId,
@@ -308,7 +308,7 @@ namespace Dog.Portal.Controllers
 
             try
             {
-                var companyId = await _currentUserService.GetUserCompanyId();
+                var companyId = await _currentUserService.GetActiveCompanyId();
                 var dto = new CreateBankAccountDto
                 {
                     CompanyId = companyId,

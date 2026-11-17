@@ -1,4 +1,5 @@
 @model Dog.Portal.Models.UsersListViewModel
+@using System.Text.Json
 @{
     Layout = "_AdminLayout";
     ViewData["Title"] = "Users";
@@ -6,6 +7,12 @@
     var activeCount   = Model.Users.Count(u => string.Equals(u.Status,"ACTIVE",StringComparison.OrdinalIgnoreCase));
     var inactiveCount = Model.Users.Count(u => !string.Equals(u.Status,"ACTIVE",StringComparison.OrdinalIgnoreCase));
     var roleCount     = Model.AllRoles.Count;
+    var userSessionJson = Context.Session.GetString("UserSession");
+    var userSession = string.IsNullOrEmpty(userSessionJson) ? null : JsonSerializer.Deserialize<Dog.Portal.Models.UserSessionModel>(userSessionJson);
+    var perms = new HashSet<string>(userSession?.Permissions ?? new List<string>(), StringComparer.OrdinalIgnoreCase);
+    bool canCreate = perms.Contains("users.create");
+    bool canEdit   = perms.Contains("users.edit");
+    bool canDelete = perms.Contains("users.delete");
 }
 <style>
 .page-hdr h4{font-size:1.15rem;font-weight:800;color:#0f172a;margin:0 0 .25rem;letter-spacing:-.02em}
@@ -105,8 +112,8 @@
 /* ── Modals ──────────────────────────────────────── */
 .modal-backdrop-custom{position:fixed;inset:0;background:rgba(15,23,42,.45);backdrop-filter:blur(3px);z-index:1050;display:none;align-items:center;justify-content:center;padding:1rem}
 .modal-backdrop-custom.open{display:flex}
-.modal-box{background:#fff;border-radius:16px;box-shadow:0 20px 60px rgba(0,0,0,.2);width:100%;max-width:480px;max-height:90vh;overflow-y:auto;animation:mslide .22s ease}
-.modal-box.wide{max-width:560px}
+.modal-box{background:#fff;border-radius:16px;box-shadow:0 20px 60px rgba(0,0,0,.2);width:100%;max-width:640px;max-height:90vh;overflow-y:auto;animation:mslide .22s ease}
+.modal-box.wide{max-width:780px}
 @@keyframes mslide{from{opacity:0;transform:translateY(-16px)}to{opacity:1;transform:translateY(0)}}
 .modal-hdr{display:flex;align-items:center;justify-content:space-between;padding:1.25rem 1.5rem;border-bottom:1px solid #f1f5f9}
 .modal-hdr h5{font-size:1rem;font-weight:800;color:#0f172a;margin:0;display:flex;align-items:center;gap:.5rem}
@@ -173,9 +180,12 @@
         {
             <span class="total-chip"><i class="bi bi-people"></i> @Model.TotalCount user@(Model.TotalCount != 1 ? "s" : "")</span>
         }
-        <button class="btn-add" onclick="openModal('createModal')">
-            <i class="bi bi-person-plus-fill"></i> Add User
-        </button>
+        @if (canCreate)
+        {
+            <button class="btn-add" onclick="openModal('createModal')">
+                <i class="bi bi-person-plus-fill"></i> Add User
+            </button>
+        }
     </div>
 </div>
 
@@ -300,27 +310,38 @@
                                          data-name="@u.FullName"
                                          data-firstname="@u.Name"
                                          data-lastname="@u.Surname"
+                                         data-username="@u.Username"
                                          data-email="@u.Email"
                                          data-phone="@u.PhoneNumber"
                                          data-status="@u.Status"
                                          data-role="@u.RoleName"
                                          data-company="@u.CompanyId">
-                                        <button class="act-item" onclick="openEdit(this.closest('.act-menu'))">
-                                            <i class="bi bi-pencil-fill" style="color:#667eea;"></i> Edit User
-                                        </button>
-                                        <button class="act-item" onclick="openChangeRole(this.closest('.act-menu'))">
-                                            <i class="bi bi-person-badge-fill" style="color:#7c3aed;"></i> Change Role
-                                        </button>
-                                        <button class="act-item" onclick="openChangeCompany(this.closest('.act-menu'))">
-                                            <i class="bi bi-building-fill" style="color:#1d4ed8;"></i> Change Branch
-                                        </button>
-                                        <button class="act-item" onclick="openResetPw(this.closest('.act-menu'))">
-                                            <i class="bi bi-key-fill" style="color:#f59e0b;"></i> Change Password
-                                        </button>
-                                        <div class="act-divider"></div>
-                                        <button class="act-item danger" onclick="openDelete(this.closest('.act-menu'))">
-                                            <i class="bi bi-trash3-fill"></i> Delete User
-                                        </button>
+                                        @if (canEdit)
+                                        {
+                                            <button class="act-item" onclick="openEdit(this.closest('.act-menu'))">
+                                                <i class="bi bi-pencil-fill" style="color:#667eea;"></i> Edit User
+                                            </button>
+                                            <button class="act-item" onclick="openChangeRole(this.closest('.act-menu'))">
+                                                <i class="bi bi-person-badge-fill" style="color:#7c3aed;"></i> Change Role
+                                            </button>
+                                            <button class="act-item" onclick="openChangeCompany(this.closest('.act-menu'))">
+                                                <i class="bi bi-building-fill" style="color:#1d4ed8;"></i> Change Branch
+                                            </button>
+                                            <button class="act-item" onclick="openResetPw(this.closest('.act-menu'))">
+                                                <i class="bi bi-key-fill" style="color:#f59e0b;"></i> Change Password
+                                            </button>
+                                        }
+                                        @if (canDelete)
+                                        {
+                                            <div class="act-divider"></div>
+                                            <button class="act-item danger" onclick="openDelete(this.closest('.act-menu'))">
+                                                <i class="bi bi-trash3-fill"></i> Delete User
+                                            </button>
+                                        }
+                                        @if (!canEdit && !canDelete)
+                                        {
+                                            <div style="padding:.5rem .75rem;font-size:.8rem;color:#94a3b8">No actions available</div>
+                                        }
                                     </div>
                                 </div>
                             </td>
@@ -404,6 +425,16 @@
                 </div>
             </div>
             <div class="frow">
+                <label>Username <span class="req">*</span></label>
+                <input class="finput" id="c_username" type="text" placeholder="johndoe" oninput="validateUsernameAvailability()" />
+                <div class="ferr" id="c_username_err"></div>
+                <div id="c_username_check" style="font-size:.75rem;margin-top:.3rem;display:none;padding:.3rem;border-radius:6px;">
+                    <i id="c_username_icon" class="bi" style="margin-right:.3rem;"></i>
+                    <span id="c_username_msg"></span>
+                </div>
+                <div class="fhint">Choose a unique username for login</div>
+            </div>
+            <div class="frow">
                 <label>Email Address <span class="req">*</span></label>
                 <input class="finput" id="c_email" type="email" placeholder="john@example.com" />
                 <div class="ferr" id="c_email_err"></div>
@@ -440,9 +471,14 @@
                     <label>Company / Branch <span class="req">*</span></label>
                     <select class="finput filter-sel" id="c_company" style="width:100%;">
                         <option value="">— Select Company —</option>
+                        @{ var defaultCo = ViewBag.DefaultCompanyId as int? ?? 0; }
                         @foreach (var c in Model.AllCompanies)
                         {
-                            <option value="@c.Id">[@c.CompanyType] @c.CompanyName</option>
+                            if (c.Id == defaultCo) {
+                                <option value="@c.Id" selected>[@c.CompanyType] @c.CompanyName</option>
+                            } else {
+                                <option value="@c.Id">[@c.CompanyType] @c.CompanyName</option>
+                            }
                         }
                     </select>
                     <div class="ferr" id="c_company_err"></div>
@@ -476,6 +512,10 @@
                     <label>Last Name <span class="req">*</span></label>
                     <input class="finput" id="e_lastName" type="text" />
                 </div>
+            </div>
+            <div class="frow">
+                <label>Username</label>
+                <input class="finput" id="e_username" type="text" />
             </div>
             <div class="frow">
                 <label>Phone Number</label>
@@ -738,6 +778,7 @@
         document.getElementById('e_id').value        = menu.dataset.id;
         document.getElementById('e_firstName').value = menu.dataset.firstname || '';
         document.getElementById('e_lastName').value  = menu.dataset.lastname  || '';
+        document.getElementById('e_username').value  = menu.dataset.username  || '';
         document.getElementById('e_phone').value     = menu.dataset.phone     || '';
         document.getElementById('e_status').value    = menu.dataset.status    || 'ACTIVE';
         document.getElementById('e_role').value      = menu.dataset.role      || '';
@@ -838,11 +879,83 @@
     }
     function clearErrs(...ids) { ids.forEach(id => showErr(id, '')); }
 
+    // ── Username Validation ───────────────────────────────────
+    let usernameCheckTimeout;
+    let usernameAvailable = false;
+
+    async function validateUsernameAvailability() {
+        const usernameInput = document.getElementById('c_username');
+        const username = usernameInput.value.trim();
+        const checkDiv = document.getElementById('c_username_check');
+        const msgSpan = document.getElementById('c_username_msg');
+        const iconSpan = document.getElementById('c_username_icon');
+
+        // Clear previous timeout
+        clearTimeout(usernameCheckTimeout);
+
+        // Hide check message if empty
+        if (!username) {
+            checkDiv.style.display = 'none';
+            usernameAvailable = false;
+            return;
+        }
+
+        // Basic validation: no spaces, min 3 chars, alphanumeric + underscore
+        if (!/^[a-zA-Z0-9_]{3,}$/.test(username)) {
+            checkDiv.style.display = 'block';
+            checkDiv.style.background = '#fee2e2';
+            checkDiv.style.color = '#991b1b';
+            iconSpan.className = 'bi bi-exclamation-circle-fill';
+            msgSpan.textContent = 'Username must be 3+ characters (letters, numbers, underscore only)';
+            usernameAvailable = false;
+            return;
+        }
+
+        // Show loading state
+        checkDiv.style.display = 'block';
+        checkDiv.style.background = '#fef3c7';
+        checkDiv.style.color = '#92400e';
+        iconSpan.className = 'bi bi-hourglass-split';
+        msgSpan.textContent = 'Checking availability...';
+
+        // Debounce the API call (wait 800ms after user stops typing)
+        usernameCheckTimeout = setTimeout(async () => {
+            try {
+                const response = await fetch(`/Users/CheckUsername?username=${encodeURIComponent(username)}`);
+                const data = await response.json();
+
+                if (data.available) {
+                    checkDiv.style.display = 'block';
+                    checkDiv.style.background = '#d1fae5';
+                    checkDiv.style.color = '#065f46';
+                    iconSpan.className = 'bi bi-check-circle-fill';
+                    msgSpan.textContent = '✓ Username is available';
+                    usernameAvailable = true;
+                } else {
+                    checkDiv.style.display = 'block';
+                    checkDiv.style.background = '#fee2e2';
+                    checkDiv.style.color = '#991b1b';
+                    iconSpan.className = 'bi bi-x-circle-fill';
+                    msgSpan.textContent = '✗ Username is already taken';
+                    usernameAvailable = false;
+                }
+            } catch (error) {
+                checkDiv.style.display = 'block';
+                checkDiv.style.background = '#fee2e2';
+                checkDiv.style.color = '#991b1b';
+                iconSpan.className = 'bi bi-exclamation-circle-fill';
+                msgSpan.textContent = 'Error checking username. Please try again.';
+                usernameAvailable = false;
+            }
+        }, 800);
+    }
+
     // ── Submit Create ─────────────────────────────────────────
     async function submitCreate() {
-        clearErrs('c_firstName_err','c_lastName_err','c_email_err','c_password_err','c_role_err','c_company_err');
+        clearErrs('c_firstName_err','c_lastName_err','c_username_err','c_email_err','c_password_err','c_role_err','c_company_err');
         const fn  = document.getElementById('c_firstName').value.trim();
         const ln  = document.getElementById('c_lastName').value.trim();
+        const un  = document.getElementById('c_username').value.trim();
         const em  = document.getElementById('c_email').value.trim();
         const pw  = document.getElementById('c_password').value;
         const rl  = document.getElementById('c_role').value;
@@ -852,6 +965,8 @@
         let valid = true;
         if (!fn) { showErr('c_firstName_err','First name is required'); valid = false; }
         if (!ln) { showErr('c_lastName_err','Last name is required'); valid = false; }
+        if (!un) { showErr('c_username_err','Username is required'); valid = false; }
+        if (!usernameAvailable) { showErr('c_username_err','Username is not available or invalid'); valid = false; }
         if (!em || !/^[^\s@@]+@@[^\s@@]+\.[^\s@@]+$/.test(em)) { showErr('c_email_err','Valid email is required'); valid = false; }
         if (!pw || pw.length < 8) { showErr('c_password_err','Password must be at least 8 characters'); valid = false; }
         if (!rl) { showErr('c_role_err','Please select a role'); valid = false; }
@@ -863,7 +978,7 @@
             const res  = await fetch('/Users/Create', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ firstName: fn, lastName: ln, email: em, password: pw, phoneNumber: ph || null, roleName: rl, companyId: parseInt(co) })
+                body: JSON.stringify({ firstName: fn, lastName: ln, username: un, email: em, password: pw, phoneNumber: ph || null, roleName: rl, companyId: parseInt(co) })
             });
             const data = await res.json();
             if (data.success) {
@@ -882,6 +997,7 @@
         const id = document.getElementById('e_id').value;
         const fn = document.getElementById('e_firstName').value.trim();
         const ln = document.getElementById('e_lastName').value.trim();
+        const un = document.getElementById('e_username').value.trim();
         const ph = document.getElementById('e_phone').value.trim();
         const st = document.getElementById('e_status').value;
         const rl = document.getElementById('e_role').value;
@@ -894,7 +1010,7 @@
             const res  = await fetch(`/Users/Update/${id}`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ firstName: fn, lastName: ln, phoneNumber: ph || null, status: st, roleName: rl, companyId: parseInt(co) || 0 })
+                body: JSON.stringify({ firstName: fn, lastName: ln, username: un || null, phoneNumber: ph || null, status: st, roleName: rl, companyId: parseInt(co) || 0 })
             });
             const data = await res.json();
             if (data.success) {

@@ -17,6 +17,8 @@ namespace Dog.Application.Features.Auth.DTOs
         public List<string> Permissions { get; set; } = new();
         public List<BranchDto> Branches { get; set; } = new();
         public bool IsHeadOffice { get; set; }
+        /// The signed-in user's company brand color (hex, e.g. "#1D4ED8"), used to theme the mobile app's welcome screen.
+        public string? BrandColor { get; set; }
     }
 
     public class BranchDto

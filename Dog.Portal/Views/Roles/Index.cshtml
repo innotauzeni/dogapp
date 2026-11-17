@@ -1,83 +1,103 @@
 @model Dog.Portal.Models.RolesListViewModel
+@using System.Text.Json
 @{
     Layout = "_AdminLayout";
     ViewData["Title"] = "Roles";
+    var userSessionJson = Context.Session.GetString("UserSession");
+    var userSession = string.IsNullOrEmpty(userSessionJson) ? null : JsonSerializer.Deserialize<Dog.Portal.Models.UserSessionModel>(userSessionJson);
+    var perms = new HashSet<string>(userSession?.Permissions ?? new List<string>(), StringComparer.OrdinalIgnoreCase);
+    bool canCreate = perms.Contains("roles.create");
+    bool canEdit   = perms.Contains("roles.edit");
+    bool canDelete = perms.Contains("roles.delete");
+    bool canAssign = perms.Contains("roleaccess.assignpermission") || perms.Contains("roleaccess.assignmenu");
 }
+<style>
+.page-hdr h4{font-size:1.15rem;font-weight:800;color:#0f172a;margin:0 0 .25rem}
+.page-hdr p{font-size:.845rem;color:#64748b;margin:0}
+.page-hdr-row{display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;flex-wrap:wrap;margin-bottom:1.5rem}
+.hdr-actions{display:flex;align-items:center;gap:.625rem;flex-wrap:wrap}
+.total-chip{display:inline-flex;align-items:center;gap:.375rem;background:#ede9fe;color:#6d28d9;font-size:.8rem;font-weight:700;padding:.35rem .875rem;border-radius:20px;white-space:nowrap}
+.btn-add{display:inline-flex;align-items:center;gap:.4rem;padding:.6rem 1.25rem;background:linear-gradient(135deg,#667eea,#764ba2);color:#fff;border:none;border-radius:9px;font-size:.845rem;font-weight:600;cursor:pointer;transition:all .2s;box-shadow:0 2px 8px rgba(102,126,234,.3)}
+.btn-add:hover{opacity:.9;transform:translateY(-1px)}
+.dc{background:#fff;border-radius:14px;border:1px solid #e9eef4;box-shadow:0 1px 4px rgba(0,0,0,.04),0 6px 20px rgba(0,0,0,.04);overflow:hidden}
+.dc-head{padding:1rem 1.375rem;border-bottom:1px solid #f1f5f9;background:#fafbfc;display:flex;align-items:center;justify-content:space-between;gap:1rem;flex-wrap:wrap}
+.srch-wrap{position:relative}
+.srch-wrap i{position:absolute;left:.875rem;top:50%;transform:translateY(-50%);color:#94a3b8;font-size:.9rem;pointer-events:none}
+.srch-input{width:280px;padding:.6rem .875rem .6rem 2.375rem;border:1.5px solid #e2e8f0;border-radius:9px;font-size:.845rem;color:#1e293b;background:#fff;outline:none;transition:border-color .2s,box-shadow .2s}
+.srch-input:focus{border-color:#667eea;box-shadow:0 0 0 3px rgba(102,126,234,.1)}
+.btn-srch{padding:.6rem 1.125rem;background:linear-gradient(135deg,#667eea,#764ba2);color:#fff;border:none;border-radius:9px;font-size:.845rem;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:.375rem}
+.btn-clr{padding:.6rem .875rem;background:#f1f5f9;color:#64748b;border:1.5px solid #e2e8f0;border-radius:9px;font-size:.845rem;cursor:pointer;text-decoration:none;display:inline-flex;align-items:center;gap:.3rem}
+.tbl-wrap{overflow-x:auto}
+.dt{width:100%;border-collapse:collapse}
+.dt thead th{padding:.75rem 1.125rem;font-size:.7rem;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.09em;background:#f8fafc;border-bottom:1px solid #f0f4f8;white-space:nowrap}
+.dt tbody td{padding:.9rem 1.125rem;font-size:.855rem;color:#374151;border-bottom:1px solid #f8fafc;vertical-align:middle}
+.dt tbody tr:last-child td{border-bottom:none}
+.dt tbody tr:hover td{background:#fafbff}
+.rn{color:#cbd5e1;font-size:.8rem;font-weight:600}
+.role-avatar{width:38px;height:38px;border-radius:10px;background:linear-gradient(135deg,#667eea,#764ba2);display:flex;align-items:center;justify-content:center;color:#fff;font-size:.85rem;font-weight:800;flex-shrink:0;box-shadow:0 2px 8px rgba(102,126,234,.25)}
+.role-name{font-weight:700;color:#1e293b}
+.role-id{font-size:.72rem;color:#94a3b8;font-family:monospace}
+.type-chip{display:inline-block;background:#f1f5f9;color:#475569;border:1px solid #e2e8f0;font-size:.74rem;font-weight:600;padding:.2rem .55rem;border-radius:6px}
+.level-chip{display:inline-block;font-size:.74rem;font-weight:600;padding:.2rem .55rem;border-radius:6px}
+.lc-system{background:#ede9fe;color:#6d28d9}
+.lc-company{background:#dbeafe;color:#1d4ed8}
+.lc-default{background:#f1f5f9;color:#475569}
+.cnt{display:inline-flex;align-items:center;gap:.35rem;font-size:.835rem;font-weight:600;color:#374151}
+.btn-assign{display:inline-flex;align-items:center;gap:.375rem;padding:.4rem 1rem;background:linear-gradient(135deg,#667eea,#764ba2);color:#fff;border:none;border-radius:8px;font-size:.8rem;font-weight:600;text-decoration:none;transition:all .18s;box-shadow:0 2px 8px rgba(102,126,234,.25);cursor:pointer}
+.btn-assign:hover{opacity:.9;color:#fff}
+.act-wrap{position:relative;display:inline-block}
+.act-btn{width:32px;height:32px;border:1.5px solid #e2e8f0;border-radius:8px;background:#fff;color:#64748b;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all .18s;font-size:.9rem}
+.act-btn:hover{background:#f8fafc;border-color:#cbd5e1}
+.act-menu{position:fixed;background:#fff;border:1px solid #e2e8f0;border-radius:11px;box-shadow:0 12px 40px rgba(0,0,0,.18);min-width:190px;z-index:1045;padding:.375rem;display:none}
+.act-menu.open{display:block}
+.act-item{display:flex;align-items:center;gap:.625rem;padding:.5rem .75rem;border-radius:7px;font-size:.835rem;font-weight:500;color:#374151;cursor:pointer;transition:background .15s;border:none;background:none;width:100%;text-align:left}
+.act-item:hover{background:#f8fafc}
+.act-item.danger{color:#dc2626}
+.act-item.danger:hover{background:#fef2f2}
+.act-item i{width:16px;text-align:center}
+.act-divider{height:1px;background:#f1f5f9;margin:.25rem 0}
+</style>
 
 <style>
-    .page-hdr h4 { font-size:1.15rem; font-weight:800; color:#0f172a; margin:0 0 .25rem; letter-spacing:-.02em; }
-    .page-hdr p  { font-size:.845rem; color:#64748b; margin:0; }
-    .page-hdr-row { display:flex; align-items:flex-start; justify-content:space-between; gap:1rem; flex-wrap:wrap; margin-bottom:1.5rem; }
-
-    .total-chip { display:inline-flex; align-items:center; gap:.375rem; background:#ede9fe; color:#6d28d9; font-size:.8rem; font-weight:700; padding:.35rem .875rem; border-radius:20px; white-space:nowrap; }
-
-    /* Data card */
-    .dc { background:#fff; border-radius:14px; border:1px solid #e9eef4; box-shadow:0 1px 4px rgba(0,0,0,.04),0 6px 20px rgba(0,0,0,.04); overflow:hidden; }
-    .dc-head { padding:1rem 1.375rem; border-bottom:1px solid #f1f5f9; background:#fafbfc; display:flex; align-items:center; justify-content:space-between; gap:1rem; flex-wrap:wrap; }
-
-    /* Search */
-    .srch-wrap { position:relative; }
-    .srch-wrap i { position:absolute; left:.875rem; top:50%; transform:translateY(-50%); color:#94a3b8; font-size:.9rem; pointer-events:none; }
-    .srch-input { width:280px; padding:.6rem .875rem .6rem 2.375rem; border:1.5px solid #e2e8f0; border-radius:9px; font-size:.845rem; color:#1e293b; background:#fff; outline:none; transition:border-color .2s,box-shadow .2s; }
-    .srch-input:focus { border-color:#667eea; box-shadow:0 0 0 3px rgba(102,126,234,.1); }
-    .srch-input::placeholder { color:#cbd5e1; }
-    .btn-srch { padding:.6rem 1.125rem; background:linear-gradient(135deg,#667eea 0%,#764ba2 100%); color:#fff; border:none; border-radius:9px; font-size:.845rem; font-weight:600; cursor:pointer; transition:opacity .2s; display:inline-flex; align-items:center; gap:.375rem; }
-    .btn-srch:hover { opacity:.9; }
-    .btn-clr { padding:.6rem .875rem; background:#f1f5f9; color:#64748b; border:1.5px solid #e2e8f0; border-radius:9px; font-size:.845rem; font-weight:500; cursor:pointer; text-decoration:none; display:inline-flex; align-items:center; gap:.3rem; transition:all .18s; }
-    .btn-clr:hover { background:#e2e8f0; color:#334155; }
-
-    /* Table */
-    .tbl-wrap { overflow-x:auto; }
-    .dt { width:100%; border-collapse:collapse; }
-    .dt thead th { padding:.75rem 1.125rem; font-size:.7rem; font-weight:700; color:#64748b; text-transform:uppercase; letter-spacing:.09em; background:#f8fafc; border-bottom:1px solid #f0f4f8; white-space:nowrap; }
-    .dt tbody td { padding:.9rem 1.125rem; font-size:.855rem; color:#374151; border-bottom:1px solid #f8fafc; vertical-align:middle; }
-    .dt tbody tr:last-child td { border-bottom:none; }
-    .dt tbody tr { transition:background .15s; }
-    .dt tbody tr:hover td { background:#fafbff; }
-    .rn { color:#cbd5e1; font-size:.8rem; font-weight:600; }
-
-    /* Role avatar chip */
-    .role-avatar { width:38px; height:38px; border-radius:10px; background:linear-gradient(135deg,#667eea,#764ba2); display:flex; align-items:center; justify-content:center; color:#fff; font-size:.85rem; font-weight:800; flex-shrink:0; box-shadow:0 2px 8px rgba(102,126,234,.25); }
-    .role-name  { font-weight:700; color:#1e293b; }
-    .role-id    { font-size:.72rem; color:#94a3b8; font-family:'Consolas','Monaco',monospace; }
-
-    /* Type / Level badges */
-    .type-chip  { display:inline-block; background:#f1f5f9; color:#475569; border:1px solid #e2e8f0; font-size:.74rem; font-weight:600; padding:.2rem .55rem; border-radius:6px; }
-    .level-chip { display:inline-block; font-size:.74rem; font-weight:600; padding:.2rem .55rem; border-radius:6px; }
-    .lc-system  { background:#ede9fe; color:#6d28d9; }
-    .lc-company { background:#dbeafe; color:#1d4ed8; }
-    .lc-default { background:#f1f5f9; color:#475569; }
-
-    /* Count cells */
-    .cnt { display:inline-flex; align-items:center; gap:.35rem; font-size:.835rem; font-weight:600; color:#374151; }
-    .cnt i { font-size:.85rem; }
-
-    /* Assign button */
-    .btn-assign { display:inline-flex; align-items:center; gap:.375rem; padding:.4rem 1rem; background:linear-gradient(135deg,#667eea,#764ba2); color:#fff; border:none; border-radius:8px; font-size:.8rem; font-weight:600; text-decoration:none; transition:all .18s; box-shadow:0 2px 8px rgba(102,126,234,.25); cursor:pointer; }
-    .btn-assign:hover { opacity:.9; transform:translateY(-1px); box-shadow:0 4px 14px rgba(102,126,234,.35); color:#fff; }
-
-    /* Footer */
-    .dc-foot { padding:.9rem 1.375rem; border-top:1px solid #f1f5f9; background:#fafbfc; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:.75rem; }
-    .ri { font-size:.82rem; color:#94a3b8; }
-    .ri strong { color:#374151; }
-    .pgn { display:flex; align-items:center; gap:.25rem; }
-    .pb { display:flex; align-items:center; justify-content:center; min-width:32px; height:32px; padding:0 .5rem; border:1.5px solid #e2e8f0; border-radius:7px; font-size:.8rem; font-weight:500; color:#64748b; text-decoration:none; transition:all .18s; background:#fff; }
-    .pb:hover { background:#f8fafc; color:#334155; border-color:#cbd5e1; }
-    .pb.cur   { background:linear-gradient(135deg,#667eea,#764ba2); color:#fff; border-color:transparent; font-weight:700; }
-    .pb.off   { opacity:.35; pointer-events:none; }
-    .pb.wide  { padding:0 .875rem; }
-    .pgn-dots { padding:0 .25rem; color:#cbd5e1; font-size:.82rem; }
-
-    /* Empty state */
-    .es { text-align:center; padding:4rem 2rem; }
-    .es-icon { font-size:3rem; color:#e2e8f0; margin-bottom:1rem; display:block; }
-    .es h6 { font-weight:600; color:#64748b; margin:0 0 .375rem; }
-    .es p  { font-size:.845rem; color:#94a3b8; margin:0; }
-
-    .alert-err { background:#fef2f2; border:1px solid #fecaca; border-radius:10px; padding:.875rem 1.125rem; color:#dc2626; font-size:.845rem; display:flex; align-items:center; gap:.625rem; margin-bottom:1.25rem; }
-
-    @@media (max-width:576px) { .srch-input { width:100%; } .dc-head { flex-direction:column; align-items:stretch; } }
+.dc-foot{padding:.9rem 1.375rem;border-top:1px solid #f1f5f9;background:#fafbfc;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.75rem}
+.ri{font-size:.82rem;color:#94a3b8}
+.ri strong{color:#374151}
+.pgn{display:flex;align-items:center;gap:.25rem}
+.pb{display:flex;align-items:center;justify-content:center;min-width:32px;height:32px;padding:0 .5rem;border:1.5px solid #e2e8f0;border-radius:7px;font-size:.8rem;font-weight:500;color:#64748b;text-decoration:none;background:#fff}
+.pb.cur{background:linear-gradient(135deg,#667eea,#764ba2);color:#fff;border-color:transparent;font-weight:700}
+.pb.off{opacity:.35;pointer-events:none}
+.pb.wide{padding:0 .875rem}
+.es{text-align:center;padding:4rem 2rem}
+.es-icon{font-size:3rem;color:#e2e8f0;margin-bottom:1rem;display:block}
+.es h6{font-weight:600;color:#64748b;margin:0 0 .375rem}
+.es p{font-size:.845rem;color:#94a3b8;margin:0}
+.alert-err{background:#fef2f2;border:1px solid #fecaca;border-radius:10px;padding:.875rem 1.125rem;color:#dc2626;font-size:.845rem;display:flex;align-items:center;gap:.625rem;margin-bottom:1.25rem}
+.modal-backdrop-custom{position:fixed;inset:0;background:rgba(15,23,42,.45);backdrop-filter:blur(3px);z-index:1050;display:none;align-items:center;justify-content:center;padding:1rem}
+.modal-backdrop-custom.open{display:flex}
+.modal-box{background:#fff;border-radius:16px;box-shadow:0 20px 60px rgba(0,0,0,.2);width:100%;max-width:580px;overflow:hidden;animation:mslide .22s ease}
+@@keyframes mslide{from{opacity:0;transform:translateY(-16px)}to{opacity:1;transform:translateY(0)}}
+.modal-hdr{display:flex;align-items:center;justify-content:space-between;padding:1.25rem 1.5rem;border-bottom:1px solid #f1f5f9}
+.modal-hdr h5{font-size:1rem;font-weight:800;color:#0f172a;margin:0;display:flex;align-items:center;gap:.5rem}
+.modal-close{width:30px;height:30px;border:none;background:#f1f5f9;border-radius:7px;color:#64748b;cursor:pointer;display:flex;align-items:center;justify-content:center}
+.modal-body{padding:1.375rem 1.5rem}
+.modal-foot{padding:1rem 1.5rem;border-top:1px solid #f1f5f9;display:flex;align-items:center;justify-content:flex-end;gap:.625rem}
+.frow{margin-bottom:1rem}
+.frow label{display:block;font-size:.8rem;font-weight:600;color:#374151;margin-bottom:.375rem}
+.finput{width:100%;padding:.65rem .875rem;border:1.5px solid #e2e8f0;border-radius:9px;font-size:.855rem;color:#1e293b;background:#fff;outline:none}
+.finput:focus{border-color:#667eea;box-shadow:0 0 0 3px rgba(102,126,234,.1)}
+.btn-cancel{padding:.65rem 1.25rem;background:#f1f5f9;color:#64748b;border:1.5px solid #e2e8f0;border-radius:9px;font-size:.855rem;font-weight:600;cursor:pointer}
+.btn-pm{padding:.65rem 1.5rem;background:linear-gradient(135deg,#667eea,#764ba2);color:#fff;border:none;border-radius:9px;font-size:.855rem;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:.4rem;min-width:120px;justify-content:center}
+.btn-dm{padding:.65rem 1.5rem;background:linear-gradient(135deg,#ef4444,#dc2626);color:#fff;border:none;border-radius:9px;font-size:.855rem;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:.4rem;min-width:120px;justify-content:center}
+.del-icon{width:60px;height:60px;border-radius:50%;background:#fef2f2;display:flex;align-items:center;justify-content:center;margin:0 auto 1rem;font-size:1.5rem;color:#dc2626}
+.toast-wrap{position:fixed;bottom:1.75rem;right:1.75rem;z-index:9999;display:flex;flex-direction:column;gap:.5rem;pointer-events:none}
+.toast-msg{display:flex;align-items:center;gap:.625rem;padding:.875rem 1.25rem;border-radius:12px;font-size:.855rem;font-weight:600;box-shadow:0 8px 32px rgba(0,0,0,.15);pointer-events:all;transform:translateX(120%);transition:transform .3s cubic-bezier(.4,0,.2,1);max-width:320px}
+.toast-msg.show{transform:translateX(0)}
+.toast-success{background:#065f46;color:#fff}
+.toast-error{background:#991b1b;color:#fff}
+.spin{width:14px;height:14px;border:2px solid rgba(255,255,255,.35);border-top-color:#fff;border-radius:50%;animation:spin .65s linear infinite;flex-shrink:0}
+@@keyframes spin{to{transform:rotate(360deg)}}
 </style>
+<div class="toast-wrap" id="toastWrap"></div>
 
 <!-- Page header -->
 <div class="page-hdr-row">
@@ -85,14 +105,17 @@
         <h4><i class="bi bi-person-badge-fill me-2" style="color:#667eea;"></i>Roles</h4>
         <p>Manage roles, assign permissions and menu access.</p>
     </div>
-    @if (Model.TotalCount > 0)
-    {
-        <span class="total-chip"><i class="bi bi-person-badge"></i> @Model.TotalCount role@(Model.TotalCount != 1 ? "s" : "")</span>
-    }
+    <div class="hdr-actions">
+        @if (Model.TotalCount > 0) {
+            <span class="total-chip"><i class="bi bi-person-badge"></i> @Model.TotalCount role@(Model.TotalCount != 1 ? "s" : "")</span>
+        }
+        @if (canCreate) {
+            <button class="btn-add" onclick="openModal('createModal')"><i class="bi bi-plus-lg"></i> Add Role</button>
+        }
+    </div>
 </div>
 
-@if (!string.IsNullOrEmpty(ViewBag.FetchError as string))
-{
+@if (!string.IsNullOrEmpty(ViewBag.FetchError as string)) {
     <div class="alert-err"><i class="bi bi-exclamation-circle-fill"></i>@ViewBag.FetchError</div>
 }
 
@@ -101,13 +124,11 @@
         <form method="get" class="d-flex align-items-center gap-2 flex-wrap">
             <div class="srch-wrap">
                 <i class="bi bi-search"></i>
-                <input class="srch-input" type="text" name="search"
-                       value="@Model.SearchTerm" placeholder="Search roles…" autocomplete="off" />
+                <input class="srch-input" type="text" name="search" value="@Model.SearchTerm" placeholder="Search roles…" autocomplete="off" />
             </div>
             <input type="hidden" name="page" value="1" />
             <button type="submit" class="btn-srch"><i class="bi bi-search"></i> Search</button>
-            @if (!string.IsNullOrEmpty(Model.SearchTerm))
-            {
+            @if (!string.IsNullOrEmpty(Model.SearchTerm)) {
                 <a href="/Roles" class="btn-clr"><i class="bi bi-x-circle"></i> Clear</a>
             }
         </form>
@@ -117,28 +138,21 @@
         <table class="dt">
             <thead>
                 <tr>
-                    <th style="width:48px;">#</th>
+                    <th style="width:48px">#</th>
                     <th>Role</th>
-                    <th style="width:120px;">Type</th>
-                    <th style="width:120px;">Level</th>
-                    <th style="width:100px;" class="d-none d-md-table-cell">Users</th>
-                    <th style="width:120px;" class="d-none d-lg-table-cell">Permissions</th>
-                    <th style="width:110px;">Actions</th>
+                    <th style="width:120px">Type</th>
+                    <th style="width:120px">Level</th>
+                    <th style="width:100px" class="d-none d-md-table-cell">Users</th>
+                    <th style="width:120px" class="d-none d-lg-table-cell">Permissions</th>
+                    <th style="width:90px;text-align:center">Actions</th>
                 </tr>
             </thead>
             <tbody>
-                @if (Model.Roles.Any())
-                {
-                    @for (int i = 0; i < Model.Roles.Count; i++)
-                    {
+                @if (Model.Roles.Any()) {
+                    @for (int i = 0; i < Model.Roles.Count; i++) {
                         var r = Model.Roles[i];
                         var initial = r.Name.Length > 0 ? r.Name[0].ToString().ToUpper() : "R";
-                        var levelClass = r.Level?.ToLower() switch
-                        {
-                            "system"  => "lc-system",
-                            "company" => "lc-company",
-                            _         => "lc-default"
-                        };
+                        var levelClass = r.Level?.ToLower() switch { "system" => "lc-system", "company" => "lc-company", _ => "lc-default" };
                         <tr>
                             <td><span class="rn">@(Model.From + i)</span></td>
                             <td>
@@ -150,87 +164,208 @@
                                     </div>
                                 </div>
                             </td>
-                            <td>
-                                @if (!string.IsNullOrEmpty(r.Type))
-                                {
-                                    <span class="type-chip">@r.Type</span>
-                                }
-                                else { <span style="color:#e2e8f0;">—</span> }
-                            </td>
-                            <td>
-                                @if (!string.IsNullOrEmpty(r.Level))
-                                {
-                                    <span class="level-chip @levelClass">@r.Level</span>
-                                }
-                                else { <span style="color:#e2e8f0;">—</span> }
-                            </td>
-                            <td class="d-none d-md-table-cell">
-                                <span class="cnt">
-                                    <i class="bi bi-people" style="color:#667eea;"></i> @r.UserCount
-                                </span>
-                            </td>
-                            <td class="d-none d-lg-table-cell">
-                                <span class="cnt">
-                                    <i class="bi bi-shield-check" style="color:#10b981;"></i> @r.PermissionCount
-                                </span>
-                            </td>
-                            <td>
-                                <a href="/Roles/Assign/@r.Id" class="btn-assign">
-                                    <i class="bi bi-sliders"></i> Assign
-                                </a>
+                            <td>@if (!string.IsNullOrEmpty(r.Type)) { <span class="type-chip">@r.Type</span> } else { <span style="color:#e2e8f0">—</span> }</td>
+                            <td>@if (!string.IsNullOrEmpty(r.Level)) { <span class="level-chip @levelClass">@r.Level</span> } else { <span style="color:#e2e8f0">—</span> }</td>
+                            <td class="d-none d-md-table-cell"><span class="cnt"><i class="bi bi-people" style="color:#667eea"></i> @r.UserCount</span></td>
+                            <td class="d-none d-lg-table-cell"><span class="cnt"><i class="bi bi-shield-check" style="color:#10b981"></i> @r.PermissionCount</span></td>
+                            <td style="text-align:center">
+                                <div class="act-wrap">
+                                    <button class="act-btn" onclick="toggleActMenu(this)"><i class="bi bi-three-dots-vertical"></i></button>
+                                    <div class="act-menu"
+                                         data-id="@r.Id"
+                                         data-name="@r.Name"
+                                         data-type="@r.Type"
+                                         data-level="@r.Level">
+                                        @if (canAssign) {
+                                            <a href="/Roles/Assign/@r.Id" class="act-item" style="text-decoration:none;color:inherit">
+                                                <i class="bi bi-sliders" style="color:#667eea"></i> Assign Permissions
+                                            </a>
+                                        }
+                                        @if (canEdit) {
+                                            <button class="act-item" onclick="openEdit(this.closest('.act-menu'))">
+                                                <i class="bi bi-pencil-fill" style="color:#667eea"></i> Edit Role
+                                            </button>
+                                        }
+                                        @if (canDelete) {
+                                            <div class="act-divider"></div>
+                                            <button class="act-item danger" onclick="openDelete(this.closest('.act-menu'))">
+                                                <i class="bi bi-trash3-fill"></i> Delete Role
+                                            </button>
+                                        }
+                                        @if (!canAssign && !canEdit && !canDelete) {
+                                            <div style="padding:.5rem .75rem;font-size:.8rem;color:#94a3b8">No actions available</div>
+                                        }
+                                    </div>
+                                </div>
                             </td>
                         </tr>
                     }
-                }
-                else
-                {
-                    <tr>
-                        <td colspan="7">
-                            <div class="es">
-                                <i class="bi bi-person-badge es-icon"></i>
-                                <h6>@(string.IsNullOrEmpty(Model.SearchTerm) ? "No roles found" : "No roles match your search")</h6>
-                                <p>@(string.IsNullOrEmpty(Model.SearchTerm) ? "Roles will appear here once created." : "Try a different keyword or clear the filter.")</p>
-                            </div>
-                        </td>
-                    </tr>
+                } else {
+                    <tr><td colspan="7"><div class="es"><i class="bi bi-person-badge es-icon"></i><h6>@(string.IsNullOrEmpty(Model.SearchTerm) ? "No roles found" : "No roles match your search")</h6></div></td></tr>
                 }
             </tbody>
         </table>
     </div>
 
-    @if (Model.TotalCount > 0)
-    {
+    @if (Model.TotalCount > 0) {
         <div class="dc-foot">
-            <div class="ri">Showing <strong>@Model.From</strong>–<strong>@Model.To</strong> of <strong>@Model.TotalCount</strong> role@(Model.TotalCount != 1 ? "s" : "")</div>
-            @if (Model.TotalPages > 1)
-            {
+            <div class="ri">Showing <strong>@Model.From</strong>–<strong>@Model.To</strong> of <strong>@Model.TotalCount</strong></div>
+            @if (Model.TotalPages > 1) {
                 <nav class="pgn">
-                    <a class="pb wide @(Model.Page <= 1 ? "off" : "")" href="?search=@Model.SearchTerm&page=@(Model.Page-1)">
-                        <i class="bi bi-chevron-left" style="font-size:.7rem;"></i> Prev
-                    </a>
-                    @{
-                        int tp = Model.TotalPages, cp = Model.Page;
-                        var pages = new List<int?>();
-                        if (tp <= 7) { for (int p = 1; p <= tp; p++) pages.Add(p); }
-                        else
-                        {
-                            pages.Add(1);
-                            if (cp > 3) pages.Add(null);
-                            for (int p = Math.Max(2,cp-1); p <= Math.Min(tp-1,cp+1); p++) pages.Add(p);
-                            if (cp < tp-2) pages.Add(null);
-                            pages.Add(tp);
-                        }
-                    }
-                    @foreach (var pn in pages)
-                    {
-                        if (pn == null) { <span class="pgn-dots">…</span> }
-                        else { <a class="pb @(pn==Model.Page?"cur":"")" href="?search=@Model.SearchTerm&page=@pn">@pn</a> }
-                    }
-                    <a class="pb wide @(Model.Page >= Model.TotalPages ? "off" : "")" href="?search=@Model.SearchTerm&page=@(Model.Page+1)">
-                        Next <i class="bi bi-chevron-right" style="font-size:.7rem;"></i>
-                    </a>
+                    <a class="pb wide @(Model.Page<=1?"off":"")" href="?search=@Model.SearchTerm&page=@(Model.Page-1)"><i class="bi bi-chevron-left" style="font-size:.7rem"></i> Prev</a>
+                    @for (int p=1;p<=Model.TotalPages;p++) { <a class="pb @(p==Model.Page?"cur":"")" href="?search=@Model.SearchTerm&page=@p">@p</a> }
+                    <a class="pb wide @(Model.Page>=Model.TotalPages?"off":"")" href="?search=@Model.SearchTerm&page=@(Model.Page+1)">Next <i class="bi bi-chevron-right" style="font-size:.7rem"></i></a>
                 </nav>
             }
         </div>
     }
 </div>
+
+@if (canCreate) {
+<!-- CREATE MODAL -->
+<div class="modal-backdrop-custom" id="createModal">
+    <div class="modal-box">
+        <div class="modal-hdr">
+            <h5><i class="bi bi-plus-circle-fill" style="color:#667eea"></i> Add Role</h5>
+            <button class="modal-close" onclick="closeModal('createModal')"><i class="bi bi-x-lg"></i></button>
+        </div>
+        <div class="modal-body">
+            <div class="frow"><label>Role Name <span style="color:#ef4444">*</span></label><input class="finput" id="c_name" placeholder="e.g. Manager"></div>
+            <div class="frow"><label>Type</label><input class="finput" id="c_type" placeholder="e.g. Internal"></div>
+            <div class="frow"><label>Level</label>
+                <select class="finput" id="c_level">
+                    <option value="">— Select —</option>
+                    <option value="system">System</option>
+                    <option value="company">Company</option>
+                </select>
+            </div>
+        </div>
+        <div class="modal-foot">
+            <button class="btn-cancel" onclick="closeModal('createModal')">Cancel</button>
+            <button class="btn-pm" id="createBtn" onclick="submitCreate()"><i class="bi bi-plus-lg"></i> Create Role</button>
+        </div>
+    </div>
+</div>
+}
+
+@if (canEdit) {
+<!-- EDIT MODAL -->
+<div class="modal-backdrop-custom" id="editModal">
+    <div class="modal-box">
+        <div class="modal-hdr">
+            <h5><i class="bi bi-pencil-fill" style="color:#667eea"></i> Edit Role</h5>
+            <button class="modal-close" onclick="closeModal('editModal')"><i class="bi bi-x-lg"></i></button>
+        </div>
+        <div class="modal-body">
+            <input type="hidden" id="e_id">
+            <div class="frow"><label>Role Name <span style="color:#ef4444">*</span></label><input class="finput" id="e_name"></div>
+            <div class="frow"><label>Type</label><input class="finput" id="e_type"></div>
+            <div class="frow"><label>Level</label>
+                <select class="finput" id="e_level">
+                    <option value="">— Select —</option>
+                    <option value="system">System</option>
+                    <option value="company">Company</option>
+                </select>
+            </div>
+        </div>
+        <div class="modal-foot">
+            <button class="btn-cancel" onclick="closeModal('editModal')">Cancel</button>
+            <button class="btn-pm" id="editBtn" onclick="submitEdit()"><i class="bi bi-check2-circle"></i> Save Changes</button>
+        </div>
+    </div>
+</div>
+}
+
+@if (canDelete) {
+<!-- DELETE MODAL -->
+<div class="modal-backdrop-custom" id="deleteModal">
+    <div class="modal-box">
+        <div class="modal-hdr">
+            <h5><i class="bi bi-trash3-fill" style="color:#dc2626"></i> Delete Role</h5>
+            <button class="modal-close" onclick="closeModal('deleteModal')"><i class="bi bi-x-lg"></i></button>
+        </div>
+        <div class="modal-body" style="text-align:center">
+            <div class="del-icon"><i class="bi bi-trash3-fill"></i></div>
+            <p style="font-size:.9rem;color:#374151;margin-bottom:.5rem">Delete role <strong id="d_name"></strong>?</p>
+            <p style="font-size:.82rem;color:#94a3b8">This action cannot be undone. Users with this role may lose access.</p>
+            <input type="hidden" id="d_id">
+        </div>
+        <div class="modal-foot">
+            <button class="btn-cancel" onclick="closeModal('deleteModal')">Cancel</button>
+            <button class="btn-dm" id="deleteBtn" onclick="submitDelete()"><i class="bi bi-trash3-fill"></i> Delete</button>
+        </div>
+    </div>
+</div>
+}
+
+<script>
+function openModal(id){document.getElementById(id).classList.add('open');document.body.style.overflow='hidden';}
+function closeModal(id){document.getElementById(id).classList.remove('open');document.body.style.overflow='';}
+document.querySelectorAll('.modal-backdrop-custom').forEach(bd=>{bd.addEventListener('click',e=>{if(e.target===bd)closeModal(bd.id);});});
+document.addEventListener('keydown',e=>{if(e.key==='Escape')document.querySelectorAll('.modal-backdrop-custom.open').forEach(m=>closeModal(m.id));});
+
+function toggleActMenu(btn){var menu=btn.nextElementSibling;var isOpen=menu.classList.contains('open');closeAllActMenus();if(!isOpen){positionActMenu(btn,menu);menu.classList.add('open');}}
+function closeAllActMenus(){document.querySelectorAll('.act-menu.open').forEach(m=>{m.classList.remove('open');m.style.top='';m.style.left='';m.style.right='';});}
+function positionActMenu(btn,menu){menu.style.visibility='hidden';menu.style.display='block';var mr=menu.getBoundingClientRect();menu.style.display='';menu.style.visibility='';var br=btn.getBoundingClientRect();var right=window.innerWidth-br.right;if(right<8)right=8;var top=br.bottom+4;if(top+mr.height>window.innerHeight-8){top=br.top-mr.height-4;if(top<8)top=8;}menu.style.top=top+'px';menu.style.right=right+'px';menu.style.left='auto';}
+document.addEventListener('click',e=>{if(!e.target.closest('.act-wrap'))closeAllActMenus();});
+window.addEventListener('scroll',closeAllActMenus,true);
+window.addEventListener('resize',closeAllActMenus);
+
+function setLoading(id,on,html){var b=document.getElementById(id);if(!b)return;b.disabled=on;if(on)b.innerHTML='<span class="spin"></span> Saving...';else if(html)b.innerHTML=html;}
+function showToast(msg,type){var w=document.getElementById('toastWrap');var el=document.createElement('div');el.className='toast-msg toast-'+type;el.innerHTML='<i class="bi '+(type==='success'?'bi-check-circle-fill':'bi-exclamation-circle-fill')+'"></i>'+msg;w.appendChild(el);requestAnimationFrame(function(){el.classList.add('show');});setTimeout(function(){el.classList.remove('show');setTimeout(function(){el.remove();},350);},3500);}
+
+function openEdit(menu){
+    closeAllActMenus();
+    document.getElementById('e_id').value = menu.dataset.id;
+    document.getElementById('e_name').value = menu.dataset.name || '';
+    document.getElementById('e_type').value = menu.dataset.type || '';
+    document.getElementById('e_level').value = menu.dataset.level || '';
+    openModal('editModal');
+}
+
+function openDelete(menu){
+    closeAllActMenus();
+    document.getElementById('d_id').value = menu.dataset.id;
+    document.getElementById('d_name').textContent = menu.dataset.name;
+    openModal('deleteModal');
+}
+
+async function submitCreate(){
+    var name = document.getElementById('c_name').value.trim();
+    if(!name){showToast('Role name is required','error');return;}
+    setLoading('createBtn',true);
+    try{
+        var r=await fetch('/Roles/Create',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:name,type:document.getElementById('c_type').value.trim()||null,level:document.getElementById('c_level').value||null})});
+        var d=await r.json();
+        if(d.success){showToast(d.message||'Role created!','success');closeModal('createModal');setTimeout(()=>location.reload(),900);}
+        else showToast(d.message||'Failed','error');
+    }catch{showToast('Network error','error');}
+    finally{setLoading('createBtn',false,'<i class="bi bi-plus-lg"></i> Create Role');}
+}
+
+async function submitEdit(){
+    var id = document.getElementById('e_id').value;
+    var name = document.getElementById('e_name').value.trim();
+    if(!name){showToast('Role name is required','error');return;}
+    setLoading('editBtn',true);
+    try{
+        var r=await fetch('/Roles/Edit',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:id,name:name,type:document.getElementById('e_type').value.trim()||null,level:document.getElementById('e_level').value||null})});
+        var d=await r.json();
+        if(d.success){showToast(d.message||'Role updated!','success');closeModal('editModal');setTimeout(()=>location.reload(),900);}
+        else showToast(d.message||'Failed','error');
+    }catch{showToast('Network error','error');}
+    finally{setLoading('editBtn',false,'<i class="bi bi-check2-circle"></i> Save Changes');}
+}
+
+async function submitDelete(){
+    var id = document.getElementById('d_id').value;
+    setLoading('deleteBtn',true);
+    try{
+        var r=await fetch('/Roles/Delete/'+id,{method:'POST'});
+        var d=await r.json();
+        if(d.success){showToast(d.message||'Role deleted!','success');closeModal('deleteModal');setTimeout(()=>location.reload(),900);}
+        else showToast(d.message||'Failed','error');
+    }catch{showToast('Network error','error');}
+    finally{setLoading('deleteBtn',false,'<i class="bi bi-trash3-fill"></i> Delete');}
+}
+</script>

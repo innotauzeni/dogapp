@@ -1,0 +1,170 @@
+@{
+    Layout = "_AdminLayout";
+    ViewData["Title"] = "Billing & Email";
+    var P = PermHelper.For(Context);
+    var canEdit = P.Can("billingsettings.edit");
+}
+<style>
+.bs-hdr h4{font-size:1.15rem;font-weight:800;color:#0f172a;margin:0 0 .25rem}.bs-hdr p{font-size:.845rem;color:#64748b;margin:0 0 1.1rem}
+.bs-tabs{display:flex;gap:.25rem;border-bottom:1px solid #e9eef4;margin-bottom:1.1rem;flex-wrap:wrap}
+.bs-tab{padding:.6rem 1.1rem;border:none;background:none;font-size:.85rem;font-weight:700;color:#94a3b8;cursor:pointer;border-bottom:2.5px solid transparent;margin-bottom:-1px}
+.bs-tab.on{color:#4f46e5;border-bottom-color:#4f46e5}
+.bs-card{background:#fff;border:1px solid #e9eef4;border-radius:14px;padding:1.3rem 1.4rem;max-width:860px}
+.bs-card h6{font-size:.74rem;font-weight:800;color:#6366f1;text-transform:uppercase;letter-spacing:.06em;margin:1.1rem 0 .6rem;padding-bottom:.3rem;border-bottom:1px solid #eef2ff}.bs-card h6:first-child{margin-top:0}
+.bs-g2{display:grid;grid-template-columns:1fr 1fr;gap:.8rem}.bs-g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:.8rem}
+@@media(max-width:700px){.bs-g2,.bs-g3{grid-template-columns:1fr}}
+.bs-f{margin-bottom:.75rem}.bs-f label{display:block;font-size:.77rem;font-weight:700;color:#374151;margin-bottom:.28rem}.bs-f small{color:#94a3b8;font-weight:500}
+.bs-i{width:100%;padding:.58rem .8rem;border:1.5px solid #e2e8f0;border-radius:9px;font-size:.85rem;outline:none;background:#fff}
+.bs-i:focus{border-color:#6366f1;box-shadow:0 0 0 3px rgba(99,102,241,.12)}.bs-i:disabled{background:#f8fafc}
+.bs-btn{padding:.6rem 1.3rem;border:none;border-radius:9px;font-size:.85rem;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:.4rem;background:linear-gradient(135deg,#667eea,#764ba2);color:#fff}
+.bs-btn.sec{background:#f1f5f9;color:#475569;border:1.5px solid #e2e8f0}.bs-btn.red{background:#fee2e2;color:#b91c1c}.bs-btn:disabled{opacity:.6;cursor:not-allowed}
+.bs-note{background:#f8fafc;border-left:3px solid #6366f1;border-radius:6px;padding:.6rem .85rem;font-size:.8rem;color:#475569;margin-bottom:.9rem}
+.bs-note.warn{border-left-color:#f59e0b;background:#fffbeb;color:#92400e}
+.bs-status{display:inline-flex;align-items:center;gap:.35rem;padding:.2rem .7rem;border-radius:20px;font-size:.74rem;font-weight:800}
+.bs-status.ok{background:#d1fae5;color:#047857}.bs-status.bad{background:#fee2e2;color:#b91c1c}.bs-status.none{background:#e2e8f0;color:#64748b}
+table.bs-t{width:100%;border-collapse:collapse;font-size:.83rem}.bs-t th{padding:.55rem .7rem;text-align:left;font-size:.68rem;text-transform:uppercase;color:#64748b;background:#f8fafc;border-bottom:1px solid #e2e8f0}
+.bs-t td{padding:.6rem .7rem;border-bottom:1px solid #f1f5f9;vertical-align:top}.bs-t .num{text-align:right}
+.bs-toast{position:fixed;bottom:1.5rem;right:1.5rem;z-index:9999;padding:.8rem 1.2rem;border-radius:11px;font-size:.85rem;font-weight:600;color:#fff;box-shadow:0 8px 28px rgba(0,0,0,.18);display:none;max-width:360px}
+.bs-toast.ok{background:#065f46}.bs-toast.err{background:#991b1b}
+</style>
+<div class="bs-hdr"><h4><i class="bi bi-envelope-paper" style="color:#667eea"></i> Billing &amp; Email</h4><p>The legal details printed on invoices, the mail account invoices are sent from, and the items you invoice most often.</p></div>
+<div class="bs-tabs">
+  <button class="bs-tab on" data-t="profile" onclick="bsTab('profile')">Invoice details</button>
+  <button class="bs-tab" data-t="email" onclick="bsTab('email')">Email (SMTP)</button>
+  <button class="bs-tab" data-t="catalog" onclick="bsTab('catalog')">Saved items</button>
+  <button class="bs-tab" data-t="log" onclick="bsTab('log')">Email log</button>
+</div>
+
+<!-- Invoice details -->
+<div class="bs-card" id="t_profile">
+  <h6>Your company on every invoice</h6>
+  <div class="bs-g3">
+    <div class="bs-f"><label>Registration number</label><input class="bs-i" id="p_reg"></div>
+    <div class="bs-f"><label>TIN / BP number</label><input class="bs-i" id="p_tax"></div>
+    <div class="bs-f"><label>VAT number</label><input class="bs-i" id="p_vat"></div>
+  </div>
+  <div class="bs-note">The company's name, logo, address, phone and email come from <b>Configuration → Companies</b>. Bank accounts printed under "How to pay" come from your bank accounts list.</div>
+  <h6>Defaults for new invoices</h6>
+  <div class="bs-g3"><div class="bs-f"><label>Default VAT rate (%) <small>pre-filled on new invoice lines</small></label><input class="bs-i" id="p_rate" type="number" min="0" max="100" step="0.1"></div></div>
+  <div class="bs-g2">
+    <div class="bs-f"><label>Standard terms &amp; conditions</label><textarea class="bs-i" id="p_terms" rows="3" placeholder="e.g. Payment is due within 30 days. Goods remain the property of ... until paid in full."></textarea></div>
+    <div class="bs-f"><label>Invoice footer</label><textarea class="bs-i" id="p_footer" rows="3" placeholder="e.g. Thank you for your business."></textarea></div>
+  </div>
+  <h6>Fiscal invoices</h6>
+  <div class="bs-note warn"><b>Please read:</b> turning this on lets you mark an invoice as <i>fiscal</i> and record the fiscal invoice number, verification code and date from your fiscal device. They are printed on the PDF with a QR code. The portal does <b>not</b> connect to the fiscal device or ZIMRA itself — the fiscalisation is still done on the device (or your fiscal service provider) and you copy the result across.</div>
+  <label style="display:flex;gap:.5rem;align-items:center;font-weight:700;cursor:pointer;margin-bottom:.7rem"><input type="checkbox" id="p_fisc" onchange="document.getElementById('p_serialBox').style.display=this.checked?'':'none'"> We issue fiscal invoices</label>
+  <div id="p_serialBox" style="display:none;max-width:340px"><div class="bs-f"><label>Fiscal device serial number</label><input class="bs-i" id="p_serial"></div></div>
+  @if (canEdit) { <button class="bs-btn" onclick="saveProfile()"><i class="bi bi-check2-circle"></i> Save invoice details</button> }
+</div>
+
+<!-- Email -->
+<div class="bs-card" id="t_email" style="display:none">
+  <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:.5rem;margin-bottom:.8rem"><h6 style="margin:0;border:none;padding:0">Send invoices from your own domain</h6><span id="e_status" class="bs-status none">Not set up</span></div>
+  <div class="bs-note">Use the mailbox your hosting provider gave you for your domain, e.g. <b>billing@yourcompany.co.zw</b>. Ask your provider for the <b>SMTP server</b>, port, and the mailbox password. Most providers use port <b>587 with STARTTLS</b> (or <b>465 with SSL</b>). Invoices are then sent <i>as you</i>, with the PDF attached.</div>
+  <div class="bs-g3">
+    <div class="bs-f"><label>SMTP server</label><input class="bs-i" id="e_host" placeholder="mail.yourcompany.co.zw"></div>
+    <div class="bs-f"><label>Port</label><input class="bs-i" id="e_port" type="number" value="587"></div>
+    <div class="bs-f"><label>Security</label><select class="bs-i" id="e_sec"><option value="StartTls">STARTTLS (587)</option><option value="SslOnConnect">SSL / TLS (465)</option><option value="None">None (25)</option></select></div>
+  </div>
+  <div class="bs-g2">
+    <div class="bs-f"><label>Username <small>(usually the full email address)</small></label><input class="bs-i" id="e_user" autocomplete="off"></div>
+    <div class="bs-f"><label>Password <small id="e_pwNote"></small></label><input class="bs-i" id="e_pass" type="password" autocomplete="new-password" placeholder="••••••••"></div>
+  </div>
+  <h6>Sender</h6>
+  <div class="bs-g2">
+    <div class="bs-f"><label>From address</label><input class="bs-i" id="e_from" placeholder="billing@yourcompany.co.zw"></div>
+    <div class="bs-f"><label>From name</label><input class="bs-i" id="e_name" placeholder="Your Company Accounts"></div>
+    <div class="bs-f"><label>Reply-to <small>(optional)</small></label><input class="bs-i" id="e_reply"></div>
+    <div class="bs-f"><label>Copy every invoice to <small>(optional BCC)</small></label><input class="bs-i" id="e_bcc"></div>
+  </div>
+  <div class="bs-f"><label>Signature <small>(added under every email)</small></label><textarea class="bs-i" id="e_sig" rows="3"></textarea></div>
+  @if (canEdit) {
+  <div style="display:flex;gap:.6rem;flex-wrap:wrap;align-items:end">
+    <button class="bs-btn" onclick="saveEmail()"><i class="bi bi-check2-circle"></i> Save email settings</button>
+    <div style="margin-left:auto;display:flex;gap:.5rem;align-items:end"><div class="bs-f" style="margin:0"><label>Send a test to</label><input class="bs-i" id="e_testTo" placeholder="you@example.com" style="min-width:220px"></div><button class="bs-btn sec" id="e_testBtn" onclick="testEmail()"><i class="bi bi-send"></i> Send test</button></div>
+  </div>
+  <div id="e_testMsg" style="margin-top:.7rem;font-size:.82rem"></div>
+  }
+</div>
+
+<!-- Catalogue -->
+<div class="bs-card" id="t_catalog" style="display:none">
+  <h6>Saved items for the invoice builder</h6>
+  <p style="font-size:.82rem;color:#64748b;margin:0 0 .8rem">Services and products you invoice often. In the invoice builder choose "Add from saved items" to fill a line in one click.</p>
+  @if (canEdit) {
+  <div class="bs-g3" style="align-items:end;margin-bottom:.8rem">
+    <div class="bs-f" style="margin:0;grid-column:1/3"><label>Name / description</label><input class="bs-i" id="c_name" placeholder="e.g. Guard dog – monthly lease"></div>
+    <div class="bs-f" style="margin:0"><label>Unit price</label><input class="bs-i" id="c_price" type="number" min="0" step="0.01"></div>
+    <div class="bs-f" style="margin:0"><label>VAT %</label><input class="bs-i" id="c_tax" type="number" min="0" max="100" step="0.1" value="0"></div>
+    <div class="bs-f" style="margin:0;grid-column:1/3"><label>Details (optional)</label><input class="bs-i" id="c_desc"></div>
+    <div><button class="bs-btn" onclick="saveItem()"><i class="bi bi-plus-lg"></i> <span id="c_btn">Add item</span></button></div>
+  </div>
+  <input type="hidden" id="c_id">
+  }
+  <table class="bs-t"><thead><tr><th>Item</th><th class="num">Price</th><th class="num">VAT</th><th style="width:130px"></th></tr></thead><tbody id="c_rows"></tbody></table>
+</div>
+
+<!-- Log -->
+<div class="bs-card" id="t_log" style="display:none;max-width:1000px">
+  <h6>Every email the portal tried to send</h6>
+  <table class="bs-t"><thead><tr><th>When</th><th>To</th><th>Subject</th><th>By</th><th>Result</th></tr></thead><tbody id="l_rows"></tbody></table>
+</div>
+<div class="bs-toast" id="bsToast"></div>
+
+<script>
+var CAN_EDIT = @(canEdit ? "true" : "false"), catalog = [];
+function $(i){return document.getElementById(i);}
+function esc(s){return (s==null?'':String(s)).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
+function toast(m,ok){var t=$('bsToast');t.textContent=m;t.className='bs-toast '+(ok?'ok':'err');t.style.display='block';clearTimeout(t._h);t._h=setTimeout(function(){t.style.display='none';},4500);}
+async function api(method,path,body){try{var r=await fetch('/BillingApi/BillingSetup/'+path,{method:method,headers:{'Content-Type':'application/json'},body:body?JSON.stringify(body):undefined});return await r.json();}catch(e){return {success:false,message:'Network error.'};}}
+function bsTab(t){document.querySelectorAll('.bs-tab').forEach(function(b){b.classList.toggle('on',b.dataset.t===t);});['profile','email','catalog','log'].forEach(function(x){$('t_'+x).style.display=x===t?'':'none';});if(t==='log')loadLog();}
+
+async function loadProfile(){
+  var j=await api('GET','profile'); if(!j.success){toast(j.message||'Could not load.',false);return;} var p=j.data;
+  $('p_reg').value=p.registrationNumber||'';$('p_tax').value=p.taxNumber||'';$('p_vat').value=p.vatNumber||'';$('p_rate').value=p.defaultVatRate||0;
+  $('p_terms').value=p.invoiceTerms||'';$('p_footer').value=p.invoiceFooter||'';$('p_fisc').checked=!!p.fiscalEnabled;$('p_serial').value=p.fiscalDeviceSerial||'';
+  $('p_serialBox').style.display=p.fiscalEnabled?'':'none';
+  if(!CAN_EDIT) document.querySelectorAll('#t_profile .bs-i,#t_profile input[type=checkbox]').forEach(function(e){e.disabled=true;});
+}
+async function saveProfile(){
+  var companyId=undefined;
+  var j=await api('PUT','profile',{registrationNumber:$('p_reg').value.trim()||null,taxNumber:$('p_tax').value.trim()||null,vatNumber:$('p_vat').value.trim()||null,defaultVatRate:parseFloat($('p_rate').value)||0,
+    invoiceTerms:$('p_terms').value.trim()||null,invoiceFooter:$('p_footer').value.trim()||null,fiscalEnabled:$('p_fisc').checked,fiscalDeviceSerial:$('p_serial').value.trim()||null});
+  toast(j.message||(j.success?'Saved.':'Could not save.'),j.success);
+}
+async function loadEmail(){
+  var j=await api('GET','email'); if(!j.success){toast(j.message||'Could not load.',false);return;} var e=j.data;
+  $('e_host').value=e.host||'';$('e_port').value=e.port||587;$('e_sec').value=e.security||'StartTls';$('e_user').value=e.username||'';$('e_from').value=e.fromAddress||'';$('e_name').value=e.fromName||'';
+  $('e_reply').value=e.replyTo||'';$('e_bcc').value=e.bccAddress||'';$('e_sig').value=e.signature||'';$('e_pwNote').textContent=e.hasPassword?'(saved — leave blank to keep it)':'';
+  var s=$('e_status'); if(!e.configured){s.className='bs-status none';s.textContent='Not set up';} else if(e.lastTestOk===true){s.className='bs-status ok';s.innerHTML='<i class="bi bi-check-circle-fill"></i> Working — tested '+new Date(e.lastTestAt).toLocaleDateString();}
+  else if(e.lastTestOk===false){s.className='bs-status bad';s.innerHTML='<i class="bi bi-x-circle-fill"></i> Last test failed';$('e_testMsg').innerHTML='<span style="color:#b91c1c">'+esc(e.lastTestMessage||'')+'</span>';} else {s.className='bs-status none';s.textContent='Saved — not tested yet';}
+  if(!CAN_EDIT) document.querySelectorAll('#t_email .bs-i').forEach(function(x){x.disabled=true;});
+}
+async function saveEmail(){
+  var j=await api('PUT','email',{host:$('e_host').value.trim(),port:parseInt($('e_port').value)||587,security:$('e_sec').value,username:$('e_user').value.trim()||null,password:$('e_pass').value||null,
+    fromAddress:$('e_from').value.trim(),fromName:$('e_name').value.trim()||null,replyTo:$('e_reply').value.trim()||null,bccAddress:$('e_bcc').value.trim()||null,signature:$('e_sig').value.trim()||null});
+  toast(j.message||(j.success?'Saved.':'Could not save.'),j.success); if(j.success){$('e_pass').value='';loadEmail();}
+}
+async function testEmail(){
+  var to=$('e_testTo').value.trim(); if(!to){toast('Enter the address to send the test to.',false);return;}
+  var b=$('e_testBtn'); b.disabled=true; $('e_testMsg').innerHTML='<span style="color:#64748b">Sending…</span>';
+  var j=await api('POST','email/test',{toAddress:to}); b.disabled=false;
+  $('e_testMsg').innerHTML=j.success?'<span style="color:#047857"><i class="bi bi-check-circle-fill"></i> '+esc(j.message)+'</span>':'<span style="color:#b91c1c"><i class="bi bi-x-circle-fill"></i> '+esc(j.message)+'</span>';
+  loadEmail();
+}
+async function loadCatalog(){
+  var j=await api('GET','catalog'); catalog=j.data||[];
+  $('c_rows').innerHTML=catalog.length?catalog.map(function(c){return '<tr><td><b>'+esc(c.name)+'</b><div style="font-size:.74rem;color:#94a3b8">'+esc(c.description||'')+'</div></td><td class="num">'+Number(c.unitPrice).toFixed(2)+'</td><td class="num">'+(c.taxRate||0)+'%</td><td class="num">'+(CAN_EDIT?'<button class="bs-btn sec" style="padding:.3rem .7rem;font-size:.75rem" onclick="editItem('+c.id+')">Edit</button> <button class="bs-btn red" style="padding:.3rem .7rem;font-size:.75rem" onclick="delItem('+c.id+')">Delete</button>':'')+'</td></tr>';}).join(''):'<tr><td colspan="4" style="text-align:center;color:#94a3b8;padding:1.5rem">No saved items yet.</td></tr>';
+}
+function editItem(id){var c=catalog.find(function(x){return x.id===id;});$('c_id').value=c.id;$('c_name').value=c.name;$('c_desc').value=c.description||'';$('c_price').value=c.unitPrice;$('c_tax').value=c.taxRate;$('c_btn').textContent='Update item';}
+async function saveItem(){
+  var j=await api('POST','catalog',{id:parseInt($('c_id').value)||0,name:$('c_name').value.trim(),description:$('c_desc').value.trim()||null,unitPrice:parseFloat($('c_price').value)||0,taxRate:parseFloat($('c_tax').value)||0});
+  toast(j.message||(j.success?'Saved.':'Could not save.'),j.success); if(j.success){['c_id','c_name','c_desc','c_price'].forEach(function(i){$(i).value='';});$('c_tax').value='0';$('c_btn').textContent='Add item';loadCatalog();}
+}
+async function delItem(id){if(!confirm('Delete this saved item?'))return;var j=await api('DELETE','catalog/'+id);toast(j.message||'Done.',j.success);loadCatalog();}
+async function loadLog(){
+  var j=await api('GET','email/logs'); var l=j.data||[];
+  $('l_rows').innerHTML=l.length?l.map(function(x){return '<tr><td style="white-space:nowrap">'+new Date(x.createdAt).toLocaleString()+'</td><td>'+esc(x.toAddresses)+'</td><td>'+esc(x.subject)+(x.hasAttachment?' <i class="bi bi-paperclip" style="color:#94a3b8"></i>':'')+'</td><td>'+esc(x.sentByName||'—')+'</td><td>'+(x.success?'<span class="bs-status ok">Sent</span>':'<span class="bs-status bad" title="'+esc(x.error||'')+'">Failed</span><div style="font-size:.72rem;color:#b91c1c;max-width:260px">'+esc(x.error||'')+'</div>')+'</td></tr>';}).join(''):'<tr><td colspan="5" style="text-align:center;color:#94a3b8;padding:1.5rem">Nothing sent yet.</td></tr>';
+}
+loadProfile();loadEmail();loadCatalog();
+</script>

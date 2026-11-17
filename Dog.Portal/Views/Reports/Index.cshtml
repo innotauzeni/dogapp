@@ -41,6 +41,9 @@
 .btn-export.csv:hover{background:#d1fae5;border-color:#047857}
 .btn-export.pdf{border-color:#dc2626;color:#dc2626}
 .btn-export.pdf:hover{background:#fee2e2;border-color:#b91c1c}
+.btn-export.view{border-color:#667eea;color:#667eea}
+.btn-export.view:hover{background:#ede9fe;border-color:#4f46e5}
+.ri-puppies{background:linear-gradient(135deg,#fce7f3,#fbcfe8);color:#be185d}
 
 /* Certificate section */
 .cert-section{background:#fff;border-radius:14px;border:1px solid #e9eef4;box-shadow:0 1px 4px rgba(0,0,0,.04);padding:1.5rem;margin-top:1.5rem}
@@ -90,22 +93,30 @@
 
 <!-- Statistics -->
 <div class="stats-row">
-    <div class="stat-card">
-        <div class="stat-icon si-dogs"><i class="bi bi-people-fill"></i></div>
-        <div class="stat-body"><div class="val">@Model.TotalDogs</div><div class="lbl">Total Dogs</div></div>
-    </div>
-    <div class="stat-card">
-        <div class="stat-icon si-vaccinated"><i class="bi bi-shield-fill-check"></i></div>
-        <div class="stat-body"><div class="val">@Model.VaccinatedDogs</div><div class="lbl">Vaccinated Dogs</div></div>
-    </div>
-    <div class="stat-card">
-        <div class="stat-icon si-litters"><i class="bi bi-heart-eyes-fill"></i></div>
-        <div class="stat-body"><div class="val">@Model.TotalLitters</div><div class="lbl">Total Litters</div></div>
-    </div>
-    <div class="stat-card">
-        <div class="stat-icon si-mating"><i class="bi bi-heart-fill"></i></div>
-        <div class="stat-body"><div class="val">@Model.TotalMatingRecords</div><div class="lbl">Mating Records</div></div>
-    </div>
+    <a href="/Reports/DetailReport?eventType=" style="text-decoration:none;color:inherit;">
+        <div class="stat-card" style="cursor:pointer;">
+            <div class="stat-icon si-dogs"><i class="bi bi-people-fill"></i></div>
+            <div class="stat-body"><div class="val">@Model.TotalDogs</div><div class="lbl">Total Dogs</div></div>
+        </div>
+    </a>
+    <a href="/Reports/Vaccinated" style="text-decoration:none;color:inherit;">
+        <div class="stat-card" style="cursor:pointer;">
+            <div class="stat-icon si-vaccinated"><i class="bi bi-shield-fill-check"></i></div>
+            <div class="stat-body"><div class="val">@Model.VaccinatedDogs</div><div class="lbl">Vaccinated Dogs</div></div>
+        </div>
+    </a>
+    <a href="/Reports/Litters" style="text-decoration:none;color:inherit;">
+        <div class="stat-card" style="cursor:pointer;">
+            <div class="stat-icon si-litters"><i class="bi bi-heart-eyes-fill"></i></div>
+            <div class="stat-body"><div class="val">@Model.TotalLitters</div><div class="lbl">Total Litters</div></div>
+        </div>
+    </a>
+    <a href="/Reports/Matings" style="text-decoration:none;color:inherit;">
+        <div class="stat-card" style="cursor:pointer;">
+            <div class="stat-icon si-mating"><i class="bi bi-heart-fill"></i></div>
+            <div class="stat-body"><div class="val">@Model.TotalMatingRecords</div><div class="lbl">Mating Records</div></div>
+        </div>
+    </a>
 </div>
 
 <!-- Reports Grid -->
@@ -144,10 +155,38 @@
         <div class="report-body">
             <p class="report-text">Track vaccination records, due dates, and compliance status. Includes vaccine types, clinic information, and next scheduled vaccinations for proper health management.</p>
             <div class="export-btns">
+                <a href="/Reports/Vaccinated" class="btn-export view">
+                    <i class="bi bi-eye-fill"></i> View
+                </a>
                 <a href="/Reports/ExportVaccinatedDogs?format=csv" class="btn-export csv">
                     <i class="bi bi-filetype-csv"></i> Export CSV
                 </a>
                 <a href="/Reports/ExportVaccinatedDogs?format=pdf" class="btn-export pdf">
+                    <i class="bi bi-filetype-pdf"></i> Export PDF
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Puppies Report -->
+    <div class="report-card">
+        <div class="report-hdr">
+            <div class="report-icon ri-puppies"><i class="bi bi-emoji-smile-fill"></i></div>
+            <div>
+                <h3 class="report-title">Puppies</h3>
+                <p class="report-desc">Every puppy across all litters</p>
+            </div>
+        </div>
+        <div class="report-body">
+            <p class="report-text">Individual puppy records including color, gender, birth date, parentage, and survival status — useful for tracking a litter down to each puppy.</p>
+            <div class="export-btns">
+                <a href="/Reports/Puppies" class="btn-export view">
+                    <i class="bi bi-eye-fill"></i> View
+                </a>
+                <a href="/Reports/ExportPuppies?format=csv" class="btn-export csv">
+                    <i class="bi bi-filetype-csv"></i> Export CSV
+                </a>
+                <a href="/Reports/ExportPuppies?format=pdf" class="btn-export pdf">
                     <i class="bi bi-filetype-pdf"></i> Export PDF
                 </a>
             </div>
@@ -166,6 +205,9 @@
         <div class="report-body">
             <p class="report-text">Detailed breeding results including litter sizes, survival rates, and puppy information. Essential for tracking breeding program success and genetic lineage.</p>
             <div class="export-btns">
+                <a href="/Reports/Litters" class="btn-export view">
+                    <i class="bi bi-eye-fill"></i> View
+                </a>
                 <a href="/Reports/ExportLitters?format=csv" class="btn-export csv">
                     <i class="bi bi-filetype-csv"></i> Export CSV
                 </a>
@@ -188,6 +230,9 @@
         <div class="report-body">
             <p class="report-text">Complete breeding history with sire and dam information, mating dates, locations, and expected due dates. Critical for breeding program management and planning.</p>
             <div class="export-btns">
+                <a href="/Reports/Matings" class="btn-export view">
+                    <i class="bi bi-eye-fill"></i> View
+                </a>
                 <a href="/Reports/ExportMatingRecords?format=csv" class="btn-export csv">
                     <i class="bi bi-filetype-csv"></i> Export CSV
                 </a>
@@ -219,6 +264,40 @@
         </button>
     </div>
 </div>
+
+@if (ViewBag.CanGenerateHandlerCert == true)
+{
+    <!-- Handler Training Certificate Section -->
+    <div class="cert-section">
+        <div class="cert-hdr">
+            <div class="cert-icon"><i class="bi bi-patch-check-fill"></i></div>
+            <h3 class="cert-title">Handler Training Certificate</h3>
+        </div>
+        <p class="cert-desc">Award a K9 handler training certificate after a handler completes training with a dog. Includes a QR code, gold seal and CEO / trainer signature lines.</p>
+
+        <div class="cert-form">
+            <div class="cert-input">
+                <label for="handlerSelect">Handler</label>
+                <select id="handlerSelect" class="cert-select">
+                    <option value="">-- Select a Handler --</option>
+                </select>
+            </div>
+            <div class="cert-input">
+                <label for="handlerDogSelect">Dog (optional)</label>
+                <select id="handlerDogSelect" class="cert-select">
+                    <option value="">-- Select a Dog --</option>
+                </select>
+            </div>
+            <div class="cert-input">
+                <label for="trainerName">Trainer Full Name</label>
+                <input type="text" id="trainerName" class="cert-select" placeholder="e.g. John Moyo" />
+            </div>
+            <button id="handlerCertBtn" class="btn-cert" onclick="generateHandlerCertificate()" disabled>
+                <i class="bi bi-patch-check-fill"></i> Generate Certificate
+            </button>
+        </div>
+    </div>
+}
 
 <script>
 // Load dogs for certificate dropdown
@@ -277,6 +356,83 @@ async function generateCertificate() {
     }
 }
 
+// Load handlers + dogs for the handler certificate form
+async function loadHandlerCertificateOptions() {
+    const handlerSelect = document.getElementById('handlerSelect');
+    if (!handlerSelect) return; // section hidden for this role
+
+    try {
+        const response = await fetch('/Reports/GetHandlersForDropdown');
+        if (!response.ok) throw new Error('Failed to load handlers');
+        const data = await response.json();
+        const handlers = Array.isArray(data) ? data : (data.data || []);
+
+        handlerSelect.innerHTML = '<option value="">-- Select a Handler --</option>';
+        handlers.forEach(h => {
+            const option = document.createElement('option');
+            option.value = h.name;
+            option.textContent = h.name;
+            handlerSelect.appendChild(option);
+        });
+    } catch (error) {
+        console.error('Error loading handlers:', error);
+        showToast('Failed to load handlers for certificate generation', 'error');
+    }
+
+    try {
+        const response = await fetch('/Dogs/GetAnimalsForDropdown');
+        const data = await response.json();
+        const dogs = Array.isArray(data) ? data : (data.data || []);
+        const dogSelect = document.getElementById('handlerDogSelect');
+        dogSelect.innerHTML = '<option value="">-- Select a Dog --</option>';
+        dogs.forEach(dog => {
+            const option = document.createElement('option');
+            option.value = dog.name;
+            option.textContent = `${dog.name} (${dog.breed || 'Unknown breed'})`;
+            dogSelect.appendChild(option);
+        });
+    } catch (error) {
+        console.error('Error loading dogs:', error);
+    }
+
+    const trainerName = document.getElementById('trainerName');
+    const updateHandlerCertBtn = () => {
+        document.getElementById('handlerCertBtn').disabled = !handlerSelect.value || !trainerName.value.trim();
+    };
+    handlerSelect.addEventListener('change', updateHandlerCertBtn);
+    trainerName.addEventListener('input', updateHandlerCertBtn);
+}
+
+// Generate handler training certificate
+async function generateHandlerCertificate() {
+    const handlerName = document.getElementById('handlerSelect').value;
+    const dogName = document.getElementById('handlerDogSelect').value;
+    const trainerName = document.getElementById('trainerName').value.trim();
+
+    if (!handlerName || !trainerName) {
+        showToast('Please select a handler and enter the trainer name', 'error');
+        return;
+    }
+
+    const btn = document.getElementById('handlerCertBtn');
+    const originalHtml = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spin"></span> Generating...';
+
+    try {
+        const params = new URLSearchParams({ handlerName, trainerName });
+        if (dogName) params.set('dogName', dogName);
+        window.open(`/Reports/HandlerCertificate?${params.toString()}`, '_blank');
+        showToast('Certificate generated successfully!', 'success');
+    } catch (error) {
+        console.error('Error generating handler certificate:', error);
+        showToast('Failed to generate certificate', 'error');
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = originalHtml;
+    }
+}
+
 // Toast notification
 function showToast(msg, type) {
     const wrap = document.getElementById('toastWrap');
@@ -293,4 +449,5 @@ function showToast(msg, type) {
 
 // Load dogs on page load
 document.addEventListener('DOMContentLoaded', loadDogsForCertificate);
+document.addEventListener('DOMContentLoaded', loadHandlerCertificateOptions);
 </script>

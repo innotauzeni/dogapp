@@ -27,14 +27,14 @@ namespace Dog.Api.Controllers
         [HttpPost]
         [HasPermission("users.create")]
         public async Task<IActionResult> Create([FromBody] CreateUserDto dto, CancellationToken ct)
-            => Ok(await _mediator.Send(new CreateUserCommand(dto), ct));
+            => Ok(await _mediator.Send(new CreateUserCommand(dto, User.IsInRole("SystemOwner")), ct));
 
         [HttpPut("{id}")]
         [HasPermission("users.edit")]
         public async Task<IActionResult> Update(string id, [FromBody] UpdateUserDto dto, CancellationToken ct)
         {
             dto.Id = id;
-            return Ok(await _mediator.Send(new UpdateUserCommand(dto), ct));
+            return Ok(await _mediator.Send(new UpdateUserCommand(dto, User.IsInRole("SystemOwner")), ct));
         }
 
         [HttpDelete("{id}")]

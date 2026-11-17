@@ -1,0 +1,118 @@
+@{
+    Layout = "_AdminLayout";
+    ViewData["Title"] = "Training Invoices & Payments";
+}
+<partial name="_TrainingShared" />
+<div class="tr">
+    <div class="tr-head">
+        <div><h4><i class="bi bi-receipt me-2" style="color:#667eea"></i>Invoices &amp; Payments</h4><p>Training fees and the money received &ndash; kept separate from the company's own invoices</p></div>
+    </div>
+
+    <div class="tr-grid" id="kpis"></div>
+
+    <div class="tr-filters">
+        <div class="tr-field" style="flex:1;min-width:200px"><label>Search</label><input class="tr-in" id="fSearch" placeholder="Invoice no. or customer"></div>
+        <div class="tr-field"><label>Status</label><select class="tr-in" id="fStatus"><option value="">All</option><option value="SENT">Unpaid</option><option value="PARTIAL">Part paid</option><option value="PAID">Paid</option><option value="CANCELLED">Cancelled</option></select></div>
+        <button class="tr-btn btn-primary-t" id="fGo"><i class="bi bi-search"></i> Search</button>
+    </div>
+
+    <div class="tr-tablewrap"><table class="tr-table">
+        <thead><tr><th>Invoice</th><th>Customer</th><th>Dog / Enrolment</th><th>Date</th><th>Total</th><th>Paid</th><th>Balance</th><th>Status</th></tr></thead>
+        <tbody id="rows"><tr><td colspan="8"><div class="tr-empty">Loading…</div></td></tr></tbody>
+    </table></div>
+</div>
+
+<div class="tr-modal" id="mInv"><div class="tr-box wide">
+    <div class="tr-box-h"><h5 id="iTitle">Invoice</h5><button class="tr-x" onclick="T.close('mInv')"><i class="bi bi-x-lg"></i></button></div>
+    <div class="tr-box-b" id="iBody"></div>
+    <div class="tr-box-f" id="iFoot"></div>
+</div></div>
+
+@await Html.PartialAsync("_PaymentForm")
+<script>
+(function () {
+    var list = [], cur = null, canPay = T.can('training.payment.record'), canCancel = T.can('training.invoice.generate');
+    var LABEL = { SENT: ['Unpaid', 'b-amber'], PARTIAL: ['Part paid', 'b-blue'], PAID: ['Paid', 'b-green'], CANCELLED: ['Cancelled', 'b-gray'], DRAFT: ['Draft', 'b-gray'] };
+    function st(s) { var l = LABEL[s] || [s, 'b-gray']; return '<span class="tr-badge ' + l[1] + '">' + l[0] + '</span>'; }
+
+    async function load() {
+        var p = []; if (fSearch.value.trim()) p.push('search=' + encodeURIComponent(fSearch.value.trim())); if (fStatus.value) p.push('status=' + fStatus.value);
+        var r = await T.api('GET', 'invoices' + (p.length ? '?' + p.join('&') : ''));
+        if (!r.success) { rows.innerHTML = '<tr><td colspan="8"><div class="tr-empty"><i class="bi bi-exclamation-circle"></i>' + T.esc(r.message || 'Could not load.') + '</div></td></tr>'; return; }
+        list = r.data;
+        var live = list.filter(function (i) { return i.status !== 'CANCELLED'; });
+        var billed = live.reduce(function (a, i) { return a + i.totalAmount; }, 0), paid = live.reduce(function (a, i) { return a + i.paidAmount; }, 0);
+        kpis.innerHTML = [['Invoiced', T.money(billed), 'bi-receipt', '#2563eb'], ['Received', T.money(paid), 'bi-cash-coin', '#059669'], ['Outstanding', T.money(billed - paid), 'bi-hourglass-split', '#d97706'], ['Unpaid invoices', live.filter(function (i) { return i.balanceAmount > 0; }).length, 'bi-exclamation-circle', '#dc2626']]
+            .map(function (k) { return '<div class="tr-stat"><i class="bi ' + k[2] + ' i" style="color:' + k[3] + '"></i><div class="n">' + k[1] + '</div><div class="l">' + k[0] + '</div></div>'; }).join('');
+        rows.innerHTML = list.length === 0 ? '<tr><td colspan="8"><div class="tr-empty"><i class="bi bi-inbox"></i>No invoices yet. They are created from an enrolment once the dog passes its health assessment.</div></td></tr>' : list.map(function (i) {
+            return '<tr class="click" data-id="' + i.id + '"><td><b>' + T.esc(i.invoiceNumber) + '</b></td><td>' + T.esc(i.customerName || '—') + '</td><td>' + T.esc(i.dogName || '—') + '<div class="tr-note" style="margin:0">' + T.esc(i.enrollmentNumber || '') + '</div></td><td>' + T.date(i.invoiceDate) + '</td><td>' + T.money(i.totalAmount) + '</td><td>' + T.money(i.paidAmount) + '</td><td><b>' + T.money(i.balanceAmount) + '</b></td><td>' + st(i.status) + '</td></tr>';
+        }).join('');
+        rows.querySelectorAll('tr.click').forEach(function (tr) { tr.onclick = function () { show(+tr.dataset.id); }; });
+        var pre = T.qs('open'); if (pre && !load.once) { load.once = 1; show(+pre); }
+    }
+
+    var canVerify = T.can('training.payment.verify'), canEmail = T.can('training.invoice.email');
+
+    function ledger(i) {
+        if (!i.payments.length) return '<div class="tr-note">No payments yet.</div>';
+        return '<div class="tr-tablewrap"><table class="tr-table"><thead><tr><th>Receipt</th><th>How it was paid &amp; traced</th><th>Status</th><th>Amount</th></tr></thead><tbody>' + i.payments.map(function (p) {
+            var t = [], l2 = [], l3 = [];
+            if (p.payerName) t.push('<b>Paid by</b> ' + T.esc(p.payerName)); if (p.payerBank) t.push(T.esc(p.payerBank) + (p.payerAccount ? ' (' + T.esc(p.payerAccount) + ')' : '')); if (p.payerContact) t.push('<b>Mobile</b> ' + T.esc(p.payerContact));
+            if (p.referenceNumber) l2.push('<b>Ref</b> <span style="font-family:Consolas,monospace;font-weight:800">' + T.esc(p.referenceNumber) + '</span>'); if (p.chequeNumber) l2.push('<b>Cheque</b> ' + T.esc(p.chequeNumber));
+            if (p.destinationAccountLabel) l2.push('<b>Into</b> ' + T.esc(p.destinationAccountLabel)); if (p.valueDate) l2.push('<b>Date</b> ' + T.date(p.valueDate)); if (p.proofUrl) l2.push('<a href="' + T.esc(p.proofUrl) + '" target="_blank"><i class="bi bi-paperclip"></i> proof</a>');
+            l3.push('Recorded by ' + T.esc(p.receivedByName || '—') + ' on ' + T.date(p.paymentDate));
+            if (p.confirmedByName && p.status !== 'PENDING') l3.push((p.status === 'REJECTED' ? 'Rejected' : 'Confirmed') + ' by ' + T.esc(p.confirmedByName) + (p.statementReference ? ' · statement: ' + T.esc(p.statementReference) : '')); if (p.rejectReason) l3.push('Reason: ' + T.esc(p.rejectReason));
+            var badge = p.status === 'CONFIRMED' ? 'b-green' : p.status === 'PENDING' ? 'b-amber' : 'b-gray';
+            var act = (p.status === 'PENDING' && canVerify) ? '<div style="margin-top:.4rem;display:flex;gap:.4rem"><button class="tr-btn btn-success-t" data-confirm="' + p.id + '"><i class="bi bi-check2"></i> Confirm</button><button class="tr-btn btn-ghost-t" style="color:#dc2626" data-reject="' + p.id + '">Reject</button></div>' : '';
+            return '<tr><td><b>' + T.esc(p.paymentNumber) + '</b></td><td><b>' + T.esc(p.methodLabel || p.method) + '</b><div class="tr-note" style="margin:.15rem 0">' + t.join(' · ') + '</div><div class="tr-note" style="margin:.15rem 0">' + l2.join(' · ') + '</div><div class="tr-note" style="margin:.15rem 0;color:#94a3b8">' + l3.join(' · ') + '</div>' + act + '</td><td><span class="tr-badge ' + badge + '">' + p.status + '</span></td><td><b>' + T.money(p.amount) + '</b></td></tr>';
+        }).join('') + '</tbody></table></div>';
+    }
+
+    function show(id) {
+        cur = list.filter(function (i) { return i.id === id; })[0]; if (!cur) return; var i = cur;
+        iTitle.textContent = 'Invoice ' + i.invoiceNumber;
+        iBody.innerHTML = '<div class="tr-kv" style="margin-bottom:1rem"><div><div class="k">Customer</div><div class="v">' + T.esc(i.customerName || '—') + '</div></div><div><div class="k">Dog</div><div class="v">' + T.esc(i.dogName || '—') + '</div></div><div><div class="k">Enrolment</div><div class="v">' + (i.enrollmentId ? '<a href="/Training/Enrolment/' + i.enrollmentId + '">' + T.esc(i.enrollmentNumber) + '</a>' : '—') + '</div></div><div><div class="k">Invoice date</div><div class="v">' + T.date(i.invoiceDate) + '</div></div><div><div class="k">Due</div><div class="v">' + T.date(i.dueDate) + '</div></div><div><div class="k">Status</div><div class="v">' + st(i.status) + '</div></div>' + (i.emailedAt ? '<div><div class="k">Emailed</div><div class="v">' + T.date(i.emailedAt) + '</div></div>' : '') + '</div>' +
+            '<div class="tr-tablewrap"><table class="tr-table"><thead><tr><th>Description</th><th>Qty</th><th>Unit price</th><th>Amount</th></tr></thead><tbody>' + i.items.map(function (x) { return '<tr><td>' + T.esc(x.description) + '</td><td>' + x.quantity + '</td><td>' + T.money(x.unitPrice) + '</td><td>' + T.money(x.amount) + '</td></tr>'; }).join('') + '</tbody></table></div>' +
+            '<div style="text-align:right;margin:.7rem 0;font-size:.9rem">Total <b>' + T.money(i.totalAmount) + '</b> &nbsp;·&nbsp; Paid <b style="color:#059669">' + T.money(i.paidAmount) + '</b>' + (i.pendingAmount > 0 ? ' &nbsp;·&nbsp; Awaiting confirmation <b style="color:#d97706">' + T.money(i.pendingAmount) + '</b>' : '') + ' &nbsp;·&nbsp; Balance due <b style="color:' + (i.balanceAmount > 0 ? '#dc2626' : '#059669') + '">' + T.money(i.balanceAmount) + '</b></div>' +
+            '<h5 style="margin-top:1rem">Payments</h5>' + ledger(i);
+        var open = i.balanceAmount - (i.pendingAmount || 0);
+        iFoot.innerHTML = '<a class="tr-btn btn-ghost-t" target="_blank" href="/Training/InvoicePdf/' + i.id + '"><i class="bi bi-file-earmark-pdf"></i> PDF</a>' +
+            (canEmail && i.status !== 'CANCELLED' ? '<button class="tr-btn btn-ghost-t" id="iEmail"><i class="bi bi-envelope-paper"></i> Email</button>' : '') +
+            (canCancel && i.status !== 'CANCELLED' && i.paidAmount === 0 && !(i.pendingAmount > 0) ? '<button class="tr-btn btn-ghost-t" style="color:#dc2626" id="iCancel">Cancel invoice</button>' : '') +
+            (canPay && i.status !== 'PAID' && i.status !== 'CANCELLED' && open > 0 ? '<button class="tr-btn btn-success-t" id="iPay"><i class="bi bi-cash-coin"></i> Record payment</button>' : '') +
+            '<button class="tr-btn btn-ghost-t" onclick="T.close(\'mInv\')">Close</button>';
+        var b;
+        if ((b = document.getElementById('iPay'))) b.onclick = pay;
+        if ((b = document.getElementById('iEmail'))) b.onclick = email;
+        if ((b = document.getElementById('iCancel'))) b.onclick = cancel;
+        iBody.querySelectorAll('[data-confirm]').forEach(function (x) { x.onclick = function () { review(+x.dataset.confirm, true); }; });
+        iBody.querySelectorAll('[data-reject]').forEach(function (x) { x.onclick = function () { review(+x.dataset.reject, false); }; });
+        T.open('mInv');
+    }
+
+    function pay() {
+        T.close('mInv');
+        PayForm.open({ invoiceId: cur.id, number: cur.invoiceNumber, party: cur.customerName, balance: cur.balanceAmount, pending: cur.pendingAmount || 0, currency: 'USD', canVerify: canVerify,
+            url: '/TrainingApi/invoices/' + cur.id + '/payments',
+            onDone: async function (r) { T.toast(r.message); await load(); show(cur.id); } });
+    }
+    async function review(paymentId, ok) {
+        var text = ok ? prompt('Enter the bank-statement line / reference this payment was matched to:') : prompt('Why is this payment rejected? (e.g. not on the bank statement, wrong amount)');
+        if (!text) return;
+        var r = await T.api('POST', 'payments/' + paymentId + (ok ? '/confirm' : '/reject'), ok ? { statementReference: text } : { reason: text });
+        if (r.success) { T.toast(r.message); await load(); show(cur.id); } else T.toast(r.message || 'Could not update the payment.', 'error');
+    }
+    async function email() {
+        var to = prompt('Send invoice ' + cur.invoiceNumber + ' to which email address?', cur.customerEmail || ''); if (!to) return;
+        var r = await T.api('POST', 'invoices/' + cur.id + '/email', { to: to });
+        if (r.success) { T.toast(r.message); await load(); show(cur.id); } else T.toast(r.message || 'The email could not be sent.', 'error');
+    }
+    async function cancel() {
+        if (!confirm('Cancel this invoice? The enrolment goes back to "health passed" so a new invoice can be raised.')) return;
+        var r = await T.api('POST', 'invoices/' + cur.id + '/cancel', {});
+        if (r.success) { T.close('mInv'); T.toast(r.message); load(); } else T.toast(r.message || 'Could not cancel.', 'error');
+    }
+    fGo.onclick = load; fSearch.onkeydown = function (e) { if (e.key === 'Enter') load(); };
+    load();
+})();
+</script>

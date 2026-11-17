@@ -122,6 +122,45 @@ namespace Dog.Portal.Controllers
             }
         }
 
+        // POST /Roles/Create
+        [HttpPost]
+        public async Task<IActionResult> Create([FromBody] CreateRoleRequest req)
+        {
+            if (!IsAuthenticated()) return Json(new { success = false, message = "Session expired." });
+            try
+            {
+                var resp = await _apiClient.PostAsync<ApiResponse<object>>("api/roles", new { name = req.Name, type = req.Type, level = req.Level });
+                return Json(new { success = resp?.Success ?? false, message = resp?.Message ?? "Created." });
+            }
+            catch (Exception ex) { return Json(new { success = false, message = ex.Message }); }
+        }
+
+        // POST /Roles/Edit
+        [HttpPost]
+        public async Task<IActionResult> Edit([FromBody] EditRoleRequest req)
+        {
+            if (!IsAuthenticated()) return Json(new { success = false, message = "Session expired." });
+            try
+            {
+                var resp = await _apiClient.PutAsync<ApiResponse<object>>($"api/roles/{req.Id}", new { id = req.Id, name = req.Name, type = req.Type, level = req.Level });
+                return Json(new { success = resp?.Success ?? false, message = resp?.Message ?? "Updated." });
+            }
+            catch (Exception ex) { return Json(new { success = false, message = ex.Message }); }
+        }
+
+        // POST /Roles/Delete/{id}
+        [HttpPost]
+        public async Task<IActionResult> Delete(string id)
+        {
+            if (!IsAuthenticated()) return Json(new { success = false, message = "Session expired." });
+            try
+            {
+                var resp = await _apiClient.DeleteAsync<ApiResponse<object>>($"api/roles/{id}");
+                return Json(new { success = resp?.Success ?? false, message = resp?.Message ?? "Deleted." });
+            }
+            catch (Exception ex) { return Json(new { success = false, message = ex.Message }); }
+        }
+
         // POST /Roles/SaveMenus  (called by JS fetch)
         [HttpPost]
         public async Task<IActionResult> SaveMenus([FromBody] SaveMenusRequest req)

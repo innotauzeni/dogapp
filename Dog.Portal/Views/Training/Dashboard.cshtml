@@ -1,0 +1,98 @@
+@{
+    Layout = "_AdminLayout";
+    ViewData["Title"] = "Training Dashboard";
+}
+<partial name="_TrainingShared" />
+<div class="tr">
+    <div class="tr-head">
+        <div><h4><i class="bi bi-speedometer2 me-2" style="color:#667eea"></i>Training Dashboard</h4><p>Where every dog is in the training process</p></div>
+        <div class="tr-actions">
+            <a class="tr-btn btn-primary-t" id="newEnrol" href="/Training/Enrolments?new=1" style="display:none"><i class="bi bi-plus-lg"></i> New enrolment</a>
+        </div>
+    </div>
+
+    <div class="tr-card">
+        <div class="tr-filters" style="margin:0">
+            <div class="tr-field"><label>From</label><input type="date" class="tr-in" id="fFrom"></div>
+            <div class="tr-field"><label>To</label><input type="date" class="tr-in" id="fTo"></div>
+            <div class="tr-field"><label>Handler</label><select class="tr-in" id="fHandler"><option value="">All handlers</option></select></div>
+            <div class="tr-field"><label>Programme</label><select class="tr-in" id="fProg"><option value="">All programmes</option></select></div>
+            <button class="tr-btn btn-primary-t" id="fApply"><i class="bi bi-funnel-fill"></i> Apply</button>
+            <button class="tr-btn btn-ghost-t" id="fClear">Clear</button>
+        </div>
+    </div>
+
+    <div id="alerts"></div>
+    <div class="tr-grid" id="stats"><div class="tr-empty" style="grid-column:1/-1">Loading…</div></div>
+
+    <div class="tr-card">
+        <h5><i class="bi bi-clock-history" style="color:#667eea"></i> Recent activity</h5>
+        <div class="tr-tablewrap"><table class="tr-table"><thead><tr><th>Dog</th><th>Customer</th><th>Programme</th><th>Handler</th><th>Status</th><th>Week</th></tr></thead><tbody id="recent"></tbody></table></div>
+    </div>
+</div>
+
+<script>
+(function () {
+    var S = [
+        ['awaitingHealthAssessment', 'Awaiting health assessment', 'bi-heart-pulse-fill', '#d97706', 'AwaitingHealthAssessment,HealthFailed'],
+        ['healthPassed', 'Passed health assessment', 'bi-check-circle-fill', '#0f766e', 'HealthPassed'],
+        ['awaitingPayment', 'Awaiting payment', 'bi-cash-coin', '#d97706', 'AwaitingPayment'],
+        ['awaitingHandler', 'Awaiting handler allocation', 'bi-person-plus-fill', '#7c3aed', 'AwaitingHandler'],
+        ['readyToActivate', 'Ready to start', 'bi-play-circle-fill', '#2563eb', 'Ready'],
+        ['inTraining', 'Currently training', 'bi-activity', '#059669', 'InTraining'],
+        ['week1', 'In Week 1', 'bi-1-circle-fill', '#059669', 'InTraining'],
+        ['week2', 'In Week 2', 'bi-2-circle-fill', '#059669', 'InTraining'],
+        ['week3', 'In Week 3', 'bi-3-circle-fill', '#059669', 'InTraining'],
+        ['awaitingFinalAssessment', 'Awaiting final assessment', 'bi-clipboard2-pulse-fill', '#7c3aed', 'AwaitingFinalAssessment'],
+        ['requiringAdditionalTraining', 'Requiring additional training', 'bi-arrow-repeat', '#dc2626', 'AwaitingFinalAssessment,InTraining'],
+        ['awaitingApproval', 'Awaiting approval', 'bi-hourglass-split', '#d97706', 'AwaitingApproval'],
+        ['completed', 'Completed training', 'bi-trophy-fill', '#059669', 'Completed'],
+        ['certificatesIssued', 'Certificates issued', 'bi-patch-check-fill', '#b8860b', null],
+        ['reportsAwaitingReview', 'Progress reports to review', 'bi-journal-check', '#2563eb', null]
+    ];
+
+    function q() {
+        var p = [];
+        if (fFrom.value) p.push('from=' + fFrom.value); if (fTo.value) p.push('to=' + fTo.value);
+        if (fHandler.value) p.push('handlerUserId=' + encodeURIComponent(fHandler.value)); if (fProg.value) p.push('programmeId=' + fProg.value);
+        return p.length ? '?' + p.join('&') : '';
+    }
+
+    async function load() {
+        var r = await T.api('GET', 'dashboard' + q());
+        if (!r.success) { stats.innerHTML = '<div class="tr-empty" style="grid-column:1/-1"><i class="bi bi-exclamation-circle"></i>' + T.esc(r.message || 'Could not load.') + '</div>'; return; }
+        var d = r.data, html = '';
+        S.forEach(function (s) {
+            var n = d[s[0]] || 0, link = s[4] ? '/Training/Enrolments?status=' + s[4] : (s[0] === 'certificatesIssued' ? '/Training/Certificates' : '/Training/ProgressReports?status=Submitted');
+            html += '<a class="tr-stat" href="' + link + '"><i class="bi ' + s[2] + ' i" style="color:' + s[3] + '"></i><div class="n">' + n + '</div><div class="l">' + s[1] + '</div></a>';
+        });
+        stats.innerHTML = html;
+
+        var a = '';
+        if (d.awaitingPayment > 0) a += '<div class="tr-alert al-warn"><i class="bi bi-cash-coin"></i><span>' + d.awaitingPayment + ' dog(s) are waiting for payment – training cannot start until the invoice is paid in full.</span></div>';
+        if (d.awaitingFinalAssessment > 0) a += '<div class="tr-alert al-info"><i class="bi bi-clipboard2-pulse-fill"></i><span>' + d.awaitingFinalAssessment + ' dog(s) have finished their training period and are due for their final assessment.</span></div>';
+        if (d.reportsAwaitingReview > 0) a += '<div class="tr-alert al-info"><i class="bi bi-journal-check"></i><span>' + d.reportsAwaitingReview + ' weekly progress report(s) are waiting for review.</span></div>';
+        alerts.innerHTML = a;
+
+        recent.innerHTML = (d.recent || []).length === 0
+            ? '<tr><td colspan="6"><div class="tr-empty"><i class="bi bi-inbox"></i>No enrolments yet.</div></td></tr>'
+            : d.recent.map(function (e) {
+                return '<tr class="click" onclick="location.href=\'/Training/Enrolment/' + e.id + '\'"><td>' + T.dog(e.dogName, e.dogBreed, e.dogPhotoUrl) + '</td><td>' + T.esc(e.customerName || '—') + '</td><td>' + T.esc(e.programmeName) + '</td><td>' + T.esc(e.handlerName || '—') + '</td><td>' + T.badge(e.status) + '</td><td>' + (e.currentWeek ? 'Week ' + e.currentWeek + ' · Day ' + e.dayNumber : '—') + '</td></tr>';
+            }).join('');
+    }
+
+    async function boot() {
+        if (T.can('training.enrolment.create')) newEnrol.style.display = '';
+        if (T.can('training.programme.view') || T.can('training.enrolment.create')) {
+            var p = await T.api('GET', 'programmes/active'); if (p.success) fProg.innerHTML += T.opts(p.data, 'id', function (x) { return x.name; }, '');
+        }
+        if (T.can('training.handler.view')) {
+            var h = await T.api('GET', 'handlers'); if (h.success) fHandler.innerHTML += T.opts(h.data, 'userId', function (x) { return x.name; }, '');
+        }
+        load();
+    }
+    fApply.onclick = load;
+    fClear.onclick = function () { fFrom.value = fTo.value = fHandler.value = fProg.value = ''; load(); };
+    boot();
+})();
+</script>

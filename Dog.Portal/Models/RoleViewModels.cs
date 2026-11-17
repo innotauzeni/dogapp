@@ -39,6 +39,21 @@ namespace Dog.Portal.Models
         public List<int> ModuleIds { get; set; } = new();
     }
 
+    public class CreateRoleRequest
+    {
+        public string Name { get; set; } = string.Empty;
+        public string? Type { get; set; }
+        public string? Level { get; set; }
+    }
+
+    public class EditRoleRequest
+    {
+        public string Id { get; set; } = string.Empty;
+        public string Name { get; set; } = string.Empty;
+        public string? Type { get; set; }
+        public string? Level { get; set; }
+    }
+
     // ── View Models ──────────────────────────────────────────
     public class RolesListViewModel
     {

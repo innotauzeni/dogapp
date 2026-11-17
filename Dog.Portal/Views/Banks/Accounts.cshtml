@@ -1,10 +1,11 @@
-﻿@model Dog.Portal.Models.BankAccountListViewModel
+@model Dog.Portal.Models.BankAccountListViewModel
 @{
     Layout = "_AdminLayout";
     ViewData["Title"] = Model.BankName != null ? "Accounts - " + Model.BankName : "Bank Accounts";
     var totalAll = Model.TotalCount;
     var activeCount = Model.BankAccountList.Count(a => a.IsActive);
     var inactiveCount = Model.BankAccountList.Count(a => !a.IsActive);
+    var P = PermHelper.For(Context);
 }
 <style>
 .page-hdr h4{font-size:1.15rem;font-weight:800;color:#0f172a;margin:0 0 .25rem}
@@ -65,7 +66,7 @@
 .empty-state h3{font-size:1.1rem;font-weight:600;color:#64748b;margin-bottom:.5rem}
 .modal-backdrop-custom{position:fixed;inset:0;background:rgba(15,23,42,.45);backdrop-filter:blur(3px);z-index:1050;display:none;align-items:center;justify-content:center;padding:1rem}
 .modal-backdrop-custom.open{display:flex}
-.modal-box{background:#fff;border-radius:16px;box-shadow:0 20px 60px rgba(0,0,0,.2);width:100%;max-width:560px;max-height:90vh;overflow-y:auto;animation:mslide .22s ease}
+.modal-box{background:#fff;border-radius:16px;box-shadow:0 20px 60px rgba(0,0,0,.2);width:100%;max-width:780px;max-height:90vh;overflow-y:auto;animation:mslide .22s ease}
 @@keyframes mslide{from{opacity:0;transform:translateY(-16px)}to{opacity:1;transform:translateY(0)}}
 .modal-hdr{display:flex;align-items:center;justify-content:space-between;padding:1.25rem 1.5rem;border-bottom:1px solid #f1f5f9}
 .modal-hdr h5{font-size:1rem;font-weight:800;color:#0f172a;margin:0;display:flex;align-items:center;gap:.5rem}
@@ -101,7 +102,9 @@
   <div class="hdr-actions">
     <div class="total-chip"><i class="bi bi-credit-card"></i> @totalAll Total</div>
     <a href="@Url.Action("Index", "Banks")" class="btn-back"><i class="bi bi-arrow-left"></i> Back to Banks</a>
+    @if (P.Can("bank.create")) {
     <button type="button" class="btn-add" onclick="openCreateModal()"><i class="bi bi-plus-lg"></i> Add Account</button>
+    }
   </div>
 </div>
 <div class="stats-row">
@@ -158,10 +161,14 @@
                        data-branchcode="@item.BranchCode"
                        data-swiftcode="@item.SwiftCode"
                        data-isactive="@item.IsActive.ToString().ToLower()">
+                    @if (P.Can("bank.edit")) {
                     <button class="act-item" onclick="openEdit(this.closest('.act-menu'))"><i class="bi bi-pencil-fill" style="color:#667eea"></i> Edit</button>
                     <button class="act-item" onclick="toggleAccount(this.closest('.act-menu'))"><i class="bi @(item.IsActive ? "bi-toggle-off" : "bi-toggle-on")"></i> @(item.IsActive ? "Deactivate" : "Activate")</button>
+                    }
+                    @if (P.Can("bank.delete")) {
                     <div class="act-divider"></div>
                     <button class="act-item danger" onclick="openDelete(this.closest('.act-menu'))"><i class="bi bi-trash3-fill"></i> Delete</button>
+                    }
                   </div>
                 </div>
               </td>

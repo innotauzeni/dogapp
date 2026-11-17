@@ -23,7 +23,7 @@ namespace Dog.Infrastructure.Persistence
 
             try
             {
-                await db.Database.MigrateAsync();
+                //await db.Database.MigrateAsync();
 
                 // Reference data
                 var country = await SeedCountryAsync(db);
@@ -54,6 +54,9 @@ namespace Dog.Infrastructure.Persistence
                 // Menu & permission structure
                 var moduleMap = await SeedModulesAsync(db);
                 var permissionMap = await SeedPermissionsAsync(db);
+
+                await SeedBillingMenusAsync(db, roles);
+                permissionMap = await SeedPermissionsAsync(db);
 
                 var ownerRole = await roles.FindByNameAsync(OwnerRoleName);
                 if (ownerRole != null)
@@ -270,6 +273,7 @@ namespace Dog.Infrastructure.Persistence
             {
                 (OwnerRoleName, "System",  "Owner"),
                 ("Admin",       "System",  "Admin"),
+                ("Dog Handler", "Company", "Handler"),
                 ("Manager",     "Company", "Manager"),
                 ("Staff",       "Company", "Staff"),
                 ("Customer",    "Company", "Customer"),
@@ -333,6 +337,7 @@ namespace Dog.Infrastructure.Persistence
                         new SubDef("Users",          "bi-people-fill",    "Users/Index",           "users.view",         3),
                         new SubDef("Companies",      "bi-building-fill",  "Companies/Index",       "companies.view",     4),
                         new SubDef("Countries",      "bi-globe2",         "Country/Index",      "country.view",     5),
+                        new SubDef("Billing & Email", "bi-envelope-paper", "BillingSettings/Index", "billingsettings.view", 6),
                     }
                 ),
                
@@ -347,6 +352,30 @@ namespace Dog.Infrastructure.Persistence
                     {
                         new SubDef("Webhooks",     "bi-broadcast",    "Webhooks/Index", "webhooks.view", 1),
                         new SubDef("Webhook Logs", "bi-journal-text", "Webhooks/Logs",  "webhooks.view", 2),
+                    }
+                ),
+
+                new ModuleDef(
+                    Name:        "Dog Training",
+                    Icon:        "bi-mortarboard-fill",
+                    Description: "Dog training: health assessment, enrolment, handlers, daily logbook, assessments and certificates",
+                    AccessName:  "dogtraining",
+                    SortOrder:   15,
+                    Submodules: new[]
+                    {
+                        new SubDef("Training Dashboard",     "bi-speedometer2",        "Training/Dashboard",         "training.dashboard.view",   1),
+                        new SubDef("Training Customers",     "bi-people-fill",         "Training/Customers",         "training.customer.view",    2),
+                        new SubDef("Training Dogs",          "bi-piggy-bank-fill",     "Training/Dogs",              "training.dog.view",         3),
+                        new SubDef("Health Assessments",     "bi-heart-pulse-fill",    "Training/HealthAssessments", "training.health.view",      4),
+                        new SubDef("Training Enrolments",    "bi-clipboard2-check",    "Training/Enrolments",        "training.enrolment.view",   5),
+                        new SubDef("Invoices & Payments",    "bi-receipt",             "Training/Invoices",          "training.invoice.view",     6),
+                        new SubDef("Handler Allocation",     "bi-person-check-fill",   "Training/HandlerAllocation", "training.handler.view",     7),
+                        new SubDef("Training Programmes",    "bi-journal-richtext",    "Training/Programmes",        "training.programme.view",   8),
+                        new SubDef("Daily Training Logbook", "bi-journal-text",        "Training/Logbook",           "training.log.view",         9),
+                        new SubDef("Progress Reports",       "bi-graph-up-arrow",      "Training/ProgressReports",   "training.progress.view",    10),
+                        new SubDef("Final Assessments",      "bi-award",               "Training/FinalAssessments",  "training.assessment.view",  11),
+                        new SubDef("Certificates",           "bi-patch-check-fill",    "Training/Certificates",      "training.certificate.view", 12),
+                        new SubDef("Training Reports",       "bi-bar-chart-line-fill", "Training/Reports",           "training.reports.view",     13),
                     }
                 ),
             };
@@ -490,6 +519,54 @@ namespace Dog.Infrastructure.Persistence
                 ("submodules.create", "Create Submodule",  "Configuration"),
                 ("submodules.edit",   "Edit Submodule",    "Configuration"),
                 ("submodules.delete", "Delete Submodule",  "Configuration"),
+
+                // System Logs (error logs + audit trail) — used by SystemLogsController but
+                // never had matching seed entries, so no role (not even SystemOwner) could
+                // ever hold these claims until now.
+                ("systemworker.view",   "View System Logs",        "System Worker"),
+                ("systemworker.manage", "Resolve/Delete Log Entries", "System Worker"),
+                ("systemworker.audit",  "View Audit Trail",        "System Worker"),
+                // Dog Training
+                ("training.dashboard.view", "View Training Dashboard", "Dog Training"),
+                ("training.health.view", "View Health Assessments", "Dog Training"),
+                ("training.health.create", "Create Health Assessments", "Dog Training"),
+                ("training.health.approve", "Approve Health Assessments", "Dog Training"),
+                ("training.enrolment.view", "View Training Enrolments", "Dog Training"),
+                ("training.enrolment.create", "Create Training Enrolments", "Dog Training"),
+                ("training.customer.view", "View Training Customers", "Dog Training"),
+                ("training.customer.manage", "Manage Training Customers", "Dog Training"),
+                ("training.dog.view", "View Training Dogs", "Dog Training"),
+                ("training.dog.manage", "Manage Training Dogs", "Dog Training"),
+                ("training.invoice.view", "View Training Invoices", "Dog Training"),
+                ("training.invoice.generate", "Generate / Cancel Training Invoices", "Dog Training"),
+                ("training.payment.record", "Record Training Payments", "Dog Training"),
+                ("training.handler.view", "View Handler Allocation", "Dog Training"),
+                ("training.handler.assign", "Assign Handlers & Activate Training", "Dog Training"),
+                ("training.programme.view", "View Training Programmes", "Dog Training"),
+                ("training.programme.manage", "Manage Training Programmes & Templates", "Dog Training"),
+                ("training.log.view", "View Daily Training Logbook", "Dog Training"),
+                ("training.log.record", "Record Daily Training", "Dog Training"),
+                ("training.progress.view", "View Progress Reports", "Dog Training"),
+                ("training.progress.submit", "Submit Progress Reports", "Dog Training"),
+                ("training.progress.review", "Review & Approve Progress Reports", "Dog Training"),
+                ("training.assessment.view", "View Final Assessments", "Dog Training"),
+                ("training.assessment.conduct", "Conduct Final Assessments", "Dog Training"),
+                ("training.assessment.approve", "Approve Training Completion", "Dog Training"),
+                ("training.certificate.view", "View Training Certificates", "Dog Training"),
+                ("training.certificate.issue", "Issue Training Certificates", "Dog Training"),
+                ("training.reports.view", "View Training Reports", "Dog Training"),
+                ("training.manage.all", "Manage All Dogs in Training (not only assigned)", "Dog Training"),
+                ("training.payment.verify", "Confirm / Reject Training Bank & Cheque Payments", "Dog Training"),
+                ("training.invoice.email", "Email Training Invoices", "Dog Training"),
+                // Billing: customer companies, payment verification, email, billing settings
+                ("customercompany.view", "View Customer Companies", "Managements"),
+                ("customercompany.create", "Create Customer Company", "Managements"),
+                ("customercompany.edit", "Edit Customer Company", "Managements"),
+                ("customercompany.delete", "Delete Customer Company", "Managements"),
+                ("invoice.verifypayment", "Confirm / Reject Bank & Cheque Payments", "Finance"),
+                ("invoice.email", "Email Invoices", "Finance"),
+                ("billingsettings.view", "View Billing & Email Settings", "Configuration"),
+                ("billingsettings.edit", "Edit Billing & Email Settings", "Configuration"),
             };
 
             foreach (var (name, displayName, module) in defs)
@@ -511,6 +588,67 @@ namespace Dog.Infrastructure.Persistence
             }
 
             return map;
+        }
+
+        // ── BILLING MENUS (Customer Companies sits next to Customers) + sensible role defaults ───────
+        private static async Task SeedBillingMenusAsync(ApplicationDbContext db, RoleManager<Role> roles)
+        {
+            // Customer Companies lives in whichever module already holds the Customers menu.
+            var customersSub = await db.ka_submodules.IgnoreQueryFilters().FirstOrDefaultAsync(s => s.AccessName == "customer.view");
+            if (customersSub != null &&
+                !await db.ka_submodules.IgnoreQueryFilters().AnyAsync(s => s.AccessName == "customercompany.view"))
+            {
+                db.ka_submodules.Add(new Submodule
+                {
+                    Name = "Customer Companies", Icon = "bi-buildings", Route = "CustomerCompanies",
+                    AccessName = "customercompany.view", Order = customersSub.Order + 1, ModuleId = customersSub.ModuleId,
+                });
+                await db.SaveChangesAsync();
+            }
+
+            // Make sure the permissions exist before granting them.
+            await SeedPermissionsAsync(db);
+            var perms = (await db.ka_permissions.IgnoreQueryFilters().Where(p => !p.IsDeleted).Select(p => new { p.Name, p.Id }).ToListAsync())
+                .GroupBy(p => p.Name).ToDictionary(g => g.Key, g => g.Min(x => x.Id));
+
+            async Task Grant(string roleName, params string[] names)
+            {
+                var role = await roles.FindByNameAsync(roleName);
+                if (role == null) return;
+                foreach (var n in names)
+                {
+                    if (!perms.TryGetValue(n, out var pid)) continue;
+                    if (!await db.ka_rolepermissions.IgnoreQueryFilters().AnyAsync(rp => rp.RoleId == role.Id && rp.PermissionId == pid))
+                        db.ka_rolepermissions.Add(new RolePermission { RoleId = role.Id, PermissionId = pid });
+                }
+                await db.SaveChangesAsync();
+            }
+
+            var all = new[]
+            {
+                "customercompany.view", "customercompany.create", "customercompany.edit", "customercompany.delete",
+                "invoice.verifypayment", "invoice.email", "billingsettings.view", "billingsettings.edit",
+                "training.payment.verify", "training.invoice.email",
+            };
+            await Grant(OwnerRoleName, all);
+            await Grant("Admin", all);
+
+            // Anyone who could already manage customers / invoices keeps working without a manual re-tick.
+            var map = new (string Has, string Gets)[]
+            {
+                ("customer.view", "customercompany.view"), ("customer.create", "customercompany.create"),
+                ("customer.edit", "customercompany.edit"), ("customer.delete", "customercompany.delete"),
+                ("invoice.edit", "invoice.email"), ("training.invoice.generate", "training.invoice.email"),
+            };
+            foreach (var (has, gets) in map)
+            {
+                if (!perms.TryGetValue(has, out var hasId) || !perms.TryGetValue(gets, out var getId)) continue;
+                var roleIds = await db.ka_rolepermissions.IgnoreQueryFilters().Where(rp => rp.PermissionId == hasId).Select(rp => rp.RoleId).Distinct().ToListAsync();
+                foreach (var rid in roleIds)
+                    if (!await db.ka_rolepermissions.IgnoreQueryFilters().AnyAsync(rp => rp.RoleId == rid && rp.PermissionId == getId))
+                        db.ka_rolepermissions.Add(new RolePermission { RoleId = rid, PermissionId = getId });
+                await db.SaveChangesAsync();
+            }
         }
 
         // ── ASSIGN MENUS TO ROLE ─────────────────────────────────────────────

@@ -1,0 +1,70 @@
+@{
+    Layout = "_AdminLayout";
+    ViewData["Title"] = "Training Certificates";
+}
+<partial name="_TrainingShared" />
+<div class="tr">
+    <div class="tr-head">
+        <div><h4><i class="bi bi-patch-check-fill me-2" style="color:#b8860b"></i>Training Certificates</h4><p>Certificates of completion — each has a unique number and a QR code anyone can scan to verify it</p></div>
+        <div class="tr-actions"><a class="tr-btn btn-ghost-t" target="_blank" href="/Verify"><i class="bi bi-qr-code-scan"></i> Public verification page</a></div>
+    </div>
+
+    <div class="tr-card" id="readyCard" style="display:none">
+        <h5><i class="bi bi-award-fill" style="color:#059669"></i> Approved &ndash; ready to issue <span class="tr-badge b-green" id="readyCount"></span></h5>
+        <div class="tr-tablewrap"><table class="tr-table"><tbody id="ready"></tbody></table></div>
+    </div>
+
+    <div class="tr-tablewrap"><table class="tr-table">
+        <thead><tr><th>Certificate no.</th><th>Dog</th><th>Owner</th><th>Programme</th><th>Completed</th><th>Issued</th><th>Status</th><th></th></tr></thead>
+        <tbody id="rows"><tr><td colspan="8"><div class="tr-empty">Loading…</div></td></tr></tbody>
+    </table></div>
+</div>
+
+<div class="tr-modal" id="mRev"><div class="tr-box"><div class="tr-box-h"><h5>Revoke certificate</h5><button class="tr-x" onclick="T.close('mRev')"><i class="bi bi-x-lg"></i></button></div>
+<div class="tr-box-b"><div class="tr-alert al-bad"><i class="bi bi-exclamation-triangle-fill"></i><span>A revoked certificate stops verifying immediately and cannot be re-issued without a new assessment.</span></div>
+<div class="tr-field"><label>Reason *</label><textarea class="tr-in" id="revReason"></textarea></div></div>
+<div class="tr-box-f"><button class="tr-btn btn-ghost-t" onclick="T.close('mRev')">Cancel</button><button class="tr-btn btn-danger-t" id="revGo">Revoke</button></div></div></div>
+
+<script>
+(function () {
+    var revId = null, canIssue = T.can('training.certificate.issue');
+
+    async function loadReady() {
+        if (!T.can('training.assessment.view')) return;
+        var r = await T.api('GET', 'final-assessments?result=Passed');
+        var list = r.success ? r.data.filter(function (a) { return a.approvalStatus === 'Approved' && !a.certificateNumber; }) : [];
+        readyCard.style.display = list.length ? '' : 'none'; readyCount.textContent = list.length;
+        ready.innerHTML = list.map(function (a) {
+            return '<tr><td><b>' + T.esc(a.dogName) + '</b></td><td>' + T.esc(a.customerName || '—') + '</td><td>Score ' + a.overallScore + '/10</td><td>Approved ' + T.date(a.approvedOn) + '</td><td style="text-align:right">' + (canIssue ? '<button class="tr-btn btn-success-t btn-sm-t" data-issue="' + a.id + '"><i class="bi bi-award-fill"></i> Issue certificate</button>' : '') + '</td></tr>';
+        }).join('');
+        ready.querySelectorAll('[data-issue]').forEach(function (b) {
+            b.onclick = async function () {
+                T.busy(b, true, 'Issuing…'); var x = await T.api('POST', 'certificates/issue/' + b.dataset.issue, {}); T.busy(b, false);
+                if (x.success) { T.toast(x.message); load(); loadReady(); } else T.toast(x.message || 'Could not issue the certificate.', 'error');
+            };
+        });
+    }
+
+    async function load() {
+        var r = await T.api('GET', 'certificates');
+        if (!r.success) { rows.innerHTML = '<tr><td colspan="8"><div class="tr-empty"><i class="bi bi-exclamation-circle"></i>' + T.esc(r.message || 'Could not load.') + '</div></td></tr>'; return; }
+        rows.innerHTML = r.data.length === 0 ? '<tr><td colspan="8"><div class="tr-empty"><i class="bi bi-award"></i>No certificates issued yet.</div></td></tr>' : r.data.map(function (c) {
+            return '<tr><td><b>' + T.esc(c.certificateNumber) + '</b></td><td>' + T.esc(c.dogName) + '<div class="tr-note" style="margin:0">' + T.esc(c.breed || '') + '</div></td><td>' + T.esc(c.ownerName || '—') + '</td><td>' + T.esc(c.programmeName) + '</td><td>' + T.date(c.completionDate) + '</td><td>' + T.date(c.issuedOn) + '</td><td>' + (c.isRevoked ? '<span class="tr-badge b-red">Revoked</span>' : '<span class="tr-badge b-green">Valid</span>') + '</td><td style="text-align:right;white-space:nowrap">' +
+                (c.isRevoked ? '' : '<a class="tr-btn btn-primary-t btn-sm-t" target="_blank" href="/Training/CertificatePdf/' + c.id + '"><i class="bi bi-file-earmark-pdf"></i> PDF</a> <button class="tr-btn btn-ghost-t btn-sm-t" data-copy="' + T.esc(c.verificationToken) + '" title="Copy verification link"><i class="bi bi-link-45deg"></i></button>' + (canIssue ? ' <button class="tr-btn btn-ghost-t btn-sm-t" style="color:#dc2626" data-rev="' + c.id + '" title="Revoke"><i class="bi bi-slash-circle"></i></button>' : '')) + '</td></tr>';
+        }).join('');
+        rows.querySelectorAll('[data-copy]').forEach(function (b) {
+            b.onclick = function () {
+                var url = location.origin + '/Verify/Training/' + b.dataset.copy;
+                (navigator.clipboard ? navigator.clipboard.writeText(url) : Promise.reject()).then(function () { T.toast('Verification link copied.'); }, function () { prompt('Copy this link:', url); });
+            };
+        });
+        rows.querySelectorAll('[data-rev]').forEach(function (b) { b.onclick = function () { revId = +b.dataset.rev; revReason.value = ''; T.open('mRev'); }; });
+    }
+    revGo.onclick = async function () {
+        if (!revReason.value.trim()) { T.toast('A reason is required.', 'error'); return; }
+        var r = await T.api('POST', 'certificates/' + revId + '/revoke', { reason: revReason.value });
+        if (r.success) { T.close('mRev'); T.toast(r.message); load(); } else T.toast(r.message || 'Could not revoke.', 'error');
+    };
+    load(); loadReady();
+})();
+</script>

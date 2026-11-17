@@ -22,6 +22,26 @@ namespace Dog.Application.Features.Invoices.DTOs
         public string? Terms { get; set; }
         public DateTime CreatedAt { get; set; }
         public List<InvoiceItemDto> Items { get; set; } = new();
+
+        public int? CustomerCompanyId { get; set; }
+        public string? BillToName { get; set; }
+        public string? BillToAddress { get; set; }
+        public string? BillToTaxNumber { get; set; }
+        public string? BillToVatNumber { get; set; }
+        public string? BillToEmail { get; set; }
+        public string? BillToPhone { get; set; }
+        public string? ContactPerson { get; set; }
+        public string? PurchaseOrderNumber { get; set; }
+        public string CurrencyCode { get; set; } = "USD";
+        public bool IsFiscal { get; set; }
+        public string? FiscalInvoiceNumber { get; set; }
+        public string? FiscalDeviceSerial { get; set; }
+        public string? FiscalVerificationCode { get; set; }
+        public DateTime? FiscalDate { get; set; }
+        public DateTime? EmailedAt { get; set; }
+        public string? EmailedTo { get; set; }
+        public decimal PendingAmount { get; set; }
+        public List<Billing.InvoicePaymentDto> Payments { get; set; } = new();
     }
 
     public class InvoiceItemDto
@@ -49,6 +69,20 @@ namespace Dog.Application.Features.Invoices.DTOs
         public string? Notes { get; set; }
         public string? Terms { get; set; }
         public List<CreateInvoiceItemDto> Items { get; set; } = new();
+
+        /// <summary>Bill the customer COMPANY: its name, address, tax and VAT numbers are copied onto the invoice.</summary>
+        public int? CustomerCompanyId { get; set; }
+        public string? BillToName { get; set; }
+        public string? BillToAddress { get; set; }
+        public string? BillToTaxNumber { get; set; }
+        public string? BillToVatNumber { get; set; }
+        public string? ContactPerson { get; set; }
+        public string? PurchaseOrderNumber { get; set; }
+        public string? CurrencyCode { get; set; }
+        public bool IsFiscal { get; set; }
+        public string? FiscalInvoiceNumber { get; set; }
+        public string? FiscalVerificationCode { get; set; }
+        public DateTime? FiscalDate { get; set; }
     }
 
     public class CreateInvoiceItemDto

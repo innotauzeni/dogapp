@@ -9,6 +9,7 @@ namespace Dog.Portal.Models
         public string? PhoneNumber { get; set; }
         public string? Website { get; set; }
         public string? Address { get; set; }
+        public string? Logo { get; set; }
         public string? Location { get; set; }
         public int CountryId { get; set; }
         public string? CountryName { get; set; }
@@ -65,6 +66,7 @@ namespace Dog.Portal.Models
         public string? PhoneNumber { get; set; }
         public string? Website { get; set; }
         public string? Address { get; set; }
+        public string? Logo { get; set; }
         public string? Location { get; set; }
         public int CountryId { get; set; }
         public int ProvinceId { get; set; }

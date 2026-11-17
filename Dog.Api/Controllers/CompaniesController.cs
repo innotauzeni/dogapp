@@ -1,4 +1,5 @@
 using MediatR;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Dog.Application.Authorization;
 using Dog.Application.Features.Companies.Commands;
@@ -51,5 +52,15 @@ namespace Dog.Api.Controllers
         [HasPermission("companies.edit")]
         public async Task<IActionResult> ToggleStatus(int id, CancellationToken ct)
             => Ok(await _mediator.Send(new ToggleCompanyStatusCommand(id), ct));
+
+        /// Lets a company admin re-brand the app's accent color without touching
+        /// the rest of the company record. Deliberately narrower than the general
+        /// companies.edit permission — only Admin/SystemOwner, not every head-office
+        /// user who happens to have companies.edit.
+        [HttpPut("{id:int}/brand-color")]
+        [HasPermission("companies.edit")]
+        [Authorize(Roles = "Admin,SystemOwner")]
+        public async Task<IActionResult> UpdateBrandColor(int id, [FromBody] UpdateBrandColorDto dto, CancellationToken ct)
+            => Ok(await _mediator.Send(new UpdateCompanyBrandColorCommand(id, dto.BrandColor), ct));
     }
 }

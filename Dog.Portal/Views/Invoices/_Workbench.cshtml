@@ -1,0 +1,382 @@
+@* Invoice builder (create / edit draft), invoice viewer with its payment ledger, and "email invoice".
+   Rendered inside Invoices/Index. Uses /BillingApi/... (a thin pass-through to the API, which enforces every permission). *@
+@model Dog.Portal.Models.InvoiceListViewModel
+@{
+    var P = PermHelper.For(Context);
+    var camel = new System.Text.Json.JsonSerializerOptions { PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase };
+    var customersJson = System.Text.Json.JsonSerializer.Serialize(Model.Customers.Select(c => new { id = c.Id, label = c.FullName, email = c.Email, phone = c.Cellphone, companyId = c.CustomerCompanyId, companyName = c.CustomerCompanyName }), camel);
+    var dogsJson = System.Text.Json.JsonSerializer.Serialize(Model.Dogs.Select(d => new { id = d.Id, label = d.Name, sub = d.Breed }), camel);
+}
+<style>
+.wb-bd{position:fixed;inset:0;background:rgba(15,23,42,.5);backdrop-filter:blur(3px);z-index:1050;display:none;align-items:flex-start;justify-content:center;padding:1.2rem;overflow-y:auto}
+.wb-bd.open{display:flex}
+.wb-box{background:#fff;border-radius:16px;box-shadow:0 24px 70px rgba(0,0,0,.25);width:100%;max-width:980px;margin:auto}
+.wb-box.md{max-width:760px}.wb-box.sm{max-width:520px}
+.wb-hd{padding:1.05rem 1.4rem;border-bottom:1px solid #f1f5f9;display:flex;align-items:center;justify-content:space-between;gap:1rem;position:sticky;top:0;background:#fff;border-radius:16px 16px 0 0;z-index:5}
+.wb-hd h5{margin:0;font-size:1.02rem;font-weight:800;color:#0f172a}.wb-hd small{display:block;color:#64748b;font-size:.78rem;font-weight:500}
+.wb-x{width:30px;height:30px;border:none;background:#f1f5f9;border-radius:7px;color:#64748b;cursor:pointer;flex-shrink:0}
+.wb-bdy{padding:1.2rem 1.4rem}
+.wb-ft{padding:.9rem 1.4rem;border-top:1px solid #f1f5f9;display:flex;justify-content:flex-end;gap:.6rem;flex-wrap:wrap;background:#fafbfc;border-radius:0 0 16px 16px;position:sticky;bottom:0}
+.wb-btn{padding:.6rem 1.25rem;border:none;border-radius:9px;font-size:.85rem;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:.4rem;text-decoration:none}
+.wb-btn.pri{background:linear-gradient(135deg,#667eea,#764ba2);color:#fff}.wb-btn.ok{background:linear-gradient(135deg,#10b981,#059669);color:#fff}
+.wb-btn.sec{background:#f1f5f9;color:#475569;border:1.5px solid #e2e8f0}.wb-btn.red{background:#fee2e2;color:#b91c1c}.wb-btn.sm{padding:.35rem .75rem;font-size:.76rem}
+.wb-btn:disabled{opacity:.6;cursor:not-allowed}
+.wb-sec{font-size:.72rem;font-weight:800;color:#6366f1;text-transform:uppercase;letter-spacing:.06em;margin:1rem 0 .55rem;padding-bottom:.3rem;border-bottom:1px solid #eef2ff;display:flex;justify-content:space-between;align-items:center}
+.wb-sec:first-child{margin-top:0}
+.wb-g2{display:grid;grid-template-columns:1fr 1fr;gap:.8rem}.wb-g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:.8rem}.wb-g4{display:grid;grid-template-columns:repeat(4,1fr);gap:.8rem}
+@@media(max-width:700px){.wb-g2,.wb-g3,.wb-g4{grid-template-columns:1fr}}
+.wb-f{margin-bottom:.75rem}.wb-f label{display:block;font-size:.76rem;font-weight:700;color:#374151;margin-bottom:.25rem}.wb-f .rq{color:#ef4444}
+.wb-i{width:100%;padding:.55rem .75rem;border:1.5px solid #e2e8f0;border-radius:9px;font-size:.84rem;outline:none;background:#fff}
+.wb-i:focus{border-color:#6366f1;box-shadow:0 0 0 3px rgba(99,102,241,.12)}
+.wb-seg{display:inline-flex;background:#f1f5f9;border-radius:9px;padding:3px;margin-bottom:.7rem}
+.wb-seg button{border:none;background:none;padding:.4rem .9rem;border-radius:7px;font-size:.8rem;font-weight:700;color:#64748b;cursor:pointer}
+.wb-seg button.on{background:#fff;color:#4338ca;box-shadow:0 1px 4px rgba(0,0,0,.1)}
+.wb-dd{position:relative}
+.wb-dd-list{position:absolute;top:100%;left:0;right:0;background:#fff;border:1px solid #e2e8f0;border-radius:9px;box-shadow:0 10px 28px rgba(0,0,0,.14);max-height:240px;overflow-y:auto;z-index:20;display:none;margin-top:.2rem}
+.wb-dd-list.open{display:block}
+.wb-dd-item{padding:.55rem .8rem;font-size:.83rem;cursor:pointer;color:#1e293b}.wb-dd-item:hover{background:#f1f5f9}
+.wb-dd-item small{display:block;font-size:.72rem;color:#94a3b8;margin-top:.05rem}
+.wb-co{border:1.5px solid #c7d2fe;background:#f5f7ff;border-radius:12px;padding:.8rem 1rem;margin-top:.5rem;display:none}
+.wb-co .n{font-weight:800;color:#1e1b4b;font-size:.95rem}.wb-co .d{font-size:.8rem;color:#475569;margin-top:.15rem}
+.wb-co .tags{display:flex;gap:.4rem;flex-wrap:wrap;margin-top:.4rem}
+.wb-tag{background:#fff;border:1px solid #c7d2fe;color:#4338ca;border-radius:20px;padding:.1rem .6rem;font-size:.72rem;font-weight:700}
+.wb-tag.warn{border-color:#fde68a;color:#92400e;background:#fffbeb}
+.wb-lines{width:100%;border-collapse:collapse;font-size:.82rem}
+.wb-lines th{padding:.45rem .5rem;background:#f8fafc;border-bottom:1px solid #e2e8f0;font-size:.68rem;font-weight:800;color:#64748b;text-transform:uppercase;text-align:left}
+.wb-lines td{padding:.35rem .35rem;border-bottom:1px solid #f1f5f9;vertical-align:middle}
+.wb-lines input{width:100%;padding:.4rem .5rem;border:1.5px solid #e2e8f0;border-radius:7px;font-size:.82rem;outline:none}
+.wb-lines input:focus{border-color:#6366f1}
+.wb-lines .amt{text-align:right;font-weight:700;white-space:nowrap;padding-right:.5rem}
+.wb-rm{border:none;background:#fee2e2;color:#b91c1c;border-radius:6px;width:26px;height:26px;cursor:pointer}
+.wb-tot{margin-left:auto;max-width:340px;background:#f8fafc;border-radius:12px;padding:.9rem 1rem;margin-top:.8rem}
+.wb-tot .r{display:flex;justify-content:space-between;font-size:.84rem;padding:.22rem 0;color:#475569}
+.wb-tot .r.t{font-weight:800;color:#0f172a;font-size:1.05rem;border-top:1px solid #e2e8f0;margin-top:.3rem;padding-top:.5rem}
+.wb-fisc{border:1.5px dashed #a5b4fc;background:#f8f9ff;border-radius:12px;padding:.8rem 1rem;margin-top:.9rem}
+.wb-fisc-note{font-size:.74rem;color:#64748b;margin-top:.3rem}
+.wb-err{background:#fef2f2;border:1px solid #fecaca;color:#b91c1c;border-radius:9px;padding:.55rem .8rem;font-size:.82rem;font-weight:600;margin-bottom:.8rem;display:none}
+.wb-v-top{display:flex;gap:1.2rem;flex-wrap:wrap;justify-content:space-between;margin-bottom:1rem}
+.wb-v-bill{flex:1;min-width:240px}.wb-v-bill .n{font-size:1.05rem;font-weight:800;color:#0f172a}.wb-v-bill div{font-size:.82rem;color:#475569}
+.wb-kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:.6rem;margin-bottom:1rem}
+@@media(max-width:700px){.wb-kpis{grid-template-columns:1fr 1fr}}
+.wb-kpi{background:#f8fafc;border-radius:10px;padding:.6rem .8rem}.wb-kpi .v{font-weight:800;font-size:1.02rem;color:#0f172a}.wb-kpi .l{font-size:.68rem;color:#94a3b8;font-weight:700;text-transform:uppercase}
+.wb-tbl{width:100%;border-collapse:collapse;font-size:.82rem}
+.wb-tbl th{padding:.5rem .6rem;text-align:left;font-size:.68rem;font-weight:800;color:#64748b;text-transform:uppercase;background:#f8fafc;border-bottom:1px solid #e2e8f0}
+.wb-tbl td{padding:.55rem .6rem;border-bottom:1px solid #f1f5f9;vertical-align:top}.wb-tbl .num{text-align:right;white-space:nowrap}
+.wb-st{display:inline-block;padding:.12rem .55rem;border-radius:20px;font-size:.68rem;font-weight:800}
+.wb-st.CONFIRMED{background:#d1fae5;color:#047857}.wb-st.PENDING{background:#fef3c7;color:#92400e}.wb-st.REJECTED{background:#fee2e2;color:#b91c1c}
+.wb-trace{font-size:.76rem;color:#64748b;margin-top:.2rem;line-height:1.5}.wb-trace b{color:#334155}.wb-trace .ref{font-family:Consolas,monospace;font-weight:800;color:#1e293b}
+.wb-rev{display:flex;gap:.4rem;margin-top:.4rem;flex-wrap:wrap}
+</style>
+
+<!-- ═════════ NEW / EDIT INVOICE ═════════ -->
+<div class="wb-bd" id="createModal"><div class="wb-box">
+  <div class="wb-hd"><div><h5 id="wbTitle"><i class="bi bi-receipt" style="color:#667eea"></i> New invoice</h5><small>Bill a company: its registration, tax and VAT details are printed on the invoice.</small></div><button class="wb-x" onclick="WB.close('createModal')"><i class="bi bi-x-lg"></i></button></div>
+  <div class="wb-bdy">
+    <div class="wb-err" id="wbErr"></div>
+    <div class="wb-sec">Bill to</div>
+    <div class="wb-seg"><button id="wbModeCo" class="on" onclick="WB.mode('co')"><i class="bi bi-buildings"></i> A company</button><button id="wbModePerson" onclick="WB.mode('person')"><i class="bi bi-person"></i> An individual</button></div>
+    <div id="wbCoBox">
+      <div class="wb-dd"><input class="wb-i" id="wbCoSearch" placeholder="Search company by name, VAT, TIN or registration number…" autocomplete="off" oninput="WB.coSearch()" onfocus="WB.coSearch()" onblur="setTimeout(function(){WB.hide('wbCoList')},150)"><div class="wb-dd-list" id="wbCoList"></div></div>
+      <div class="wb-co" id="wbCoCard"></div>
+      <div class="wb-g3" style="margin-top:.7rem">
+        <div class="wb-f"><label>Attention (contact person)</label><input class="wb-i" id="wbContact" list="wbContactList" placeholder="Who should receive this invoice?"><datalist id="wbContactList"></datalist></div>
+        <div class="wb-f"><label>Send invoice to (email)</label><input class="wb-i" id="wbEmail" placeholder="billing@company.co.zw"></div>
+        <div class="wb-f"><label>Phone</label><input class="wb-i" id="wbPhone"></div>
+      </div>
+    </div>
+    <div id="wbPersonBox" style="display:none">
+      <div class="wb-dd"><input class="wb-i" id="wbPSearch" placeholder="Search customer by name, email or phone…" autocomplete="off" oninput="WB.pSearch()" onfocus="WB.pSearch()" onblur="setTimeout(function(){WB.hide('wbPList')},150)"><div class="wb-dd-list" id="wbPList"></div></div>
+      <div class="wb-g3" style="margin-top:.7rem">
+        <div class="wb-f"><label>Name on invoice</label><input class="wb-i" id="wbPName"></div>
+        <div class="wb-f"><label>Email</label><input class="wb-i" id="wbPEmail"></div>
+        <div class="wb-f"><label>Phone</label><input class="wb-i" id="wbPPhone"></div>
+      </div>
+      <div class="wb-g3">
+        <div class="wb-f" style="grid-column:1/3"><label>Address</label><input class="wb-i" id="wbPAddr"></div>
+        <div class="wb-f"><label>VAT / TIN no. (if any)</label><input class="wb-i" id="wbPVat"></div>
+      </div>
+    </div>
+
+    <div class="wb-sec">Invoice details</div>
+    <div class="wb-g4">
+      <div class="wb-f"><label>Invoice date <span class="rq">*</span></label><input class="wb-i" type="date" id="wbDate" onchange="WB.dueFromTerms()"></div>
+      <div class="wb-f"><label>Due date <span class="rq">*</span> <span id="wbTermsHint" style="font-weight:500;color:#94a3b8"></span></label><input class="wb-i" type="date" id="wbDue"></div>
+      <div class="wb-f"><label>Customer PO number</label><input class="wb-i" id="wbPO"></div>
+      <div class="wb-f"><label>Currency</label><select class="wb-i" id="wbCur" onchange="WB.calc()"><option>USD</option><option>ZWG</option><option>ZAR</option><option>EUR</option><option>GBP</option></select></div>
+    </div>
+
+    <div class="wb-sec"><span>Items</span><span><select class="wb-i" id="wbCat" style="width:auto;display:inline-block;padding:.3rem .5rem;font-size:.76rem" onchange="WB.addFromCatalog(this)"><option value="">+ Add from saved items…</option></select></span></div>
+    <div style="overflow-x:auto"><table class="wb-lines"><thead><tr><th>Description</th><th style="width:62px">Qty</th><th style="width:100px">Unit price</th><th style="width:66px">Disc %</th><th style="width:66px">VAT %</th><th style="width:96px;text-align:right">Amount</th><th style="width:30px"></th></tr></thead><tbody id="wbLines"></tbody></table></div>
+    <div style="margin-top:.5rem;display:flex;gap:.5rem;flex-wrap:wrap"><button class="wb-btn sec sm" onclick="WB.addLine()"><i class="bi bi-plus"></i> Add line</button><button class="wb-btn sec sm" onclick="WB.pickDog(this)"><i class="bi bi-search"></i> Add a dog as a line</button></div>
+    <div class="wb-dd-list" id="wbDogList" style="position:fixed;min-width:240px"></div>
+    <div class="wb-tot" id="wbTot"></div>
+    <div class="wb-g2" style="margin-top:.6rem"><div class="wb-f" style="max-width:240px;margin-left:auto"><label>Extra discount (whole invoice)</label><input class="wb-i" id="wbDisc" type="number" min="0" step="0.01" value="0" oninput="WB.calc()"></div></div>
+
+    <div class="wb-fisc" id="wbFisc" style="display:none">
+      <label style="display:flex;gap:.5rem;align-items:center;font-weight:800;color:#312e81;cursor:pointer;margin:0"><input type="checkbox" id="wbIsFiscal" onchange="WB.fiscToggle()"> This is a fiscal invoice (issued on the fiscal device)</label>
+      <div id="wbFiscFields" style="display:none"><div class="wb-g3" style="margin-top:.6rem">
+        <div class="wb-f"><label>Fiscal invoice no.</label><input class="wb-i" id="wbFNo"></div><div class="wb-f"><label>Verification code</label><input class="wb-i" id="wbFVer"></div><div class="wb-f"><label>Fiscal date</label><input class="wb-i" id="wbFDate" type="datetime-local"></div></div>
+        <div class="wb-fisc-note">Type these in from the fiscal device's receipt. The portal prints them (with a QR code) on the PDF but does not talk to the fiscal device or ZIMRA itself.</div></div>
+    </div>
+
+    <div class="wb-g2" style="margin-top:.9rem"><div class="wb-f"><label>Notes <span style="font-weight:500;color:#94a3b8">(printed on the invoice)</span></label><textarea class="wb-i" id="wbNotes" rows="2"></textarea></div>
+      <div class="wb-f"><label>Terms &amp; conditions</label><textarea class="wb-i" id="wbTerms" rows="2"></textarea></div></div>
+  </div>
+  <div class="wb-ft"><button class="wb-btn sec" onclick="WB.close('createModal')">Cancel</button><button class="wb-btn sec" id="wbSaveDraft" onclick="WB.save(false)"><i class="bi bi-save"></i> Save as draft</button><button class="wb-btn pri" id="wbSaveIssue" onclick="WB.save(true)"><i class="bi bi-send-check"></i> Create &amp; issue</button></div>
+</div></div>
+
+<!-- ═════════ VIEW INVOICE + PAYMENT LEDGER ═════════ -->
+<div class="wb-bd" id="viewModal"><div class="wb-box">
+  <div class="wb-hd"><div><h5 id="wbvTitle">Invoice</h5><small id="wbvSub"></small></div><button class="wb-x" onclick="WB.close('viewModal')"><i class="bi bi-x-lg"></i></button></div>
+  <div class="wb-bdy" id="wbvBody"><div style="text-align:center;padding:2rem;color:#94a3b8">Loading…</div></div>
+  <div class="wb-ft" id="wbvFoot"></div>
+</div></div>
+
+<!-- ═════════ EMAIL INVOICE ═════════ -->
+<div class="wb-bd" id="emailModal"><div class="wb-box sm">
+  <div class="wb-hd"><div><h5><i class="bi bi-envelope-paper" style="color:#667eea"></i> Email invoice</h5><small id="wbeSub"></small></div><button class="wb-x" onclick="WB.close('emailModal')"><i class="bi bi-x-lg"></i></button></div>
+  <div class="wb-bdy">
+    <div class="wb-err" id="wbeErr"></div>
+    <div class="wb-f"><label>To <span class="rq">*</span> <span style="font-weight:500;color:#94a3b8">(several addresses: separate with ;)</span></label><input class="wb-i" id="wbeTo"></div>
+    <div class="wb-f"><label>Cc</label><input class="wb-i" id="wbeCc"></div>
+    <div class="wb-f"><label>Message <span style="font-weight:500;color:#94a3b8">(optional — added above the invoice summary)</span></label><textarea class="wb-i" id="wbeMsg" rows="3"></textarea></div>
+    <div style="font-size:.78rem;color:#64748b"><i class="bi bi-paperclip"></i> The invoice PDF is attached. It is sent from your company's own email account (Configuration → Billing &amp; Email).</div>
+  </div>
+  <div class="wb-ft"><button class="wb-btn sec" onclick="WB.close('emailModal')">Cancel</button><button class="wb-btn pri" id="wbeGo" onclick="WB.sendEmail()"><i class="bi bi-send"></i> Send email</button></div>
+</div></div>
+
+@await Html.PartialAsync("_PaymentForm")
+
+<script>
+var WB = (function(){
+  var CAN = { verify: @(P.Can("invoice.verifypayment") ? "true" : "false"), pay: @(P.Can("invoice.pay") ? "true" : "false"), email: @(P.Can("invoice.email") ? "true" : "false"),
+              edit: @(P.Can("invoice.edit") ? "true" : "false") };
+  var PEOPLE = @Html.Raw(customersJson), DOGS = @Html.Raw(dogsJson);
+  var companies = [], catalog = [], profile = null, loaded = false;
+  var sel = { company: null, personId: null }, editId = 0, lineN = 0, mode = 'co', invCache = null, emailInv = null;
+  function $(id){return document.getElementById(id);}
+  function esc(s){return (s==null?'':String(s)).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
+  function money(v){return (Number(v)||0).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2});}
+  function toast(m,t){ if(window.showToast) showToast(m,t); else alert(m); }
+  async function api(method,path,body){
+    try{ var r=await fetch('/BillingApi/'+path,{method:method,headers:{'Content-Type':'application/json'},body:body?JSON.stringify(body):undefined}); return await r.json(); }
+    catch(e){ return {success:false,message:'Network error. Please try again.'}; }
+  }
+  function open(id){ $(id).classList.add('open'); document.body.style.overflow='hidden'; }
+  function close(id){ $(id).classList.remove('open'); if(!document.querySelector('.wb-bd.open')) document.body.style.overflow=''; }
+  function hide(id){ $(id).classList.remove('open'); }
+  function err(id,m){ var e=$(id); if(m){e.textContent=m;e.style.display='block';e.scrollIntoView({block:'nearest'});} else e.style.display='none'; }
+
+  async function preload(){
+    if(loaded) return;
+    var r = await Promise.all([api('GET','CustomerCompany/Lookup'), api('GET','BillingSetup/catalog'), api('GET','BillingSetup/pdf-info')]);
+    companies = (r[0].data||[]).filter(function(c){return c.isActive!==false;});
+    catalog = r[1].data||[];
+    profile = (r[2].data||{}).profile||{};
+    var cs=$('wbCat'); catalog.forEach(function(c){var o=document.createElement('option');o.value=c.id;o.textContent=c.name+' — '+money(c.unitPrice)+(c.taxRate?' (+'+c.taxRate+'% VAT)':'');cs.appendChild(o);});
+    $('wbFisc').style.display = profile.fiscalEnabled ? '' : 'none';
+    loaded = true;
+  }
+
+  // ── pickers ──
+  function list(el, items, onPick){
+    if(!items.length){ el.innerHTML='<div class="wb-dd-item" style="color:#94a3b8">No matches</div>'; }
+    else { el.innerHTML = items.map(function(it,i){return '<div class="wb-dd-item" data-i="'+i+'">'+it.html+'</div>';}).join('');
+      Array.prototype.forEach.call(el.children,function(c,i){ c.addEventListener('mousedown',function(e){e.preventDefault();onPick(items[i].ref);}); }); }
+    el.classList.add('open');
+  }
+  function coSearch(){
+    var q=($('wbCoSearch').value||'').toLowerCase();
+    var f=companies.filter(function(c){return !q||[c.name,c.tradingName,c.vatNumber,c.taxNumber,c.registrationNumber,c.email].some(function(x){return (x||'').toLowerCase().indexOf(q)>-1;});}).slice(0,40);
+    list($('wbCoList'), f.map(function(c){return {ref:c,html:'<b>'+esc(c.name)+'</b><small>'+esc([c.vatNumber?'VAT '+c.vatNumber:'',c.taxNumber?'TIN '+c.taxNumber:'',c.city,c.billingEmail||c.email].filter(Boolean).join(' · '))+'</small>'};}), pickCompany);
+  }
+  async function pickCompany(c){
+    hide('wbCoList'); sel.company=c; $('wbCoSearch').value=c.name;
+    var tags=[]; if(c.vatNumber) tags.push('VAT '+c.vatNumber); else tags.push('<span class="wb-tag warn">no VAT no.</span>');
+    if(c.taxNumber) tags.push('TIN '+c.taxNumber); if(c.registrationNumber) tags.push('Reg '+c.registrationNumber); tags.push('Terms '+(c.paymentTermsDays||0)+' days');
+    if(c.outstanding>0) tags.push('<span class="wb-tag warn">Owes '+money(c.outstanding)+'</span>');
+    $('wbCoCard').innerHTML='<div class="n"><i class="bi bi-buildings"></i> '+esc(c.name)+'</div><div class="d">'+esc([c.address,c.city,c.country].filter(Boolean).join(', ')||'No address on file')+'</div><div class="tags">'+tags.map(function(t){return t.indexOf('<')===0?t:'<span class="wb-tag">'+esc(t)+'</span>';}).join('')+'</div>';
+    $('wbCoCard').style.display='block';
+    $('wbEmail').value = c.billingEmail||c.email||''; $('wbPhone').value=c.phone||'';
+    if(!$('wbContact').value) $('wbContact').value = c.contactPerson||'';
+    $('wbTermsHint').textContent = '(from the company\'s '+(c.paymentTermsDays||0)+'-day terms)';
+    dueFromTerms();
+    var p = await api('GET','CustomerCompany/'+c.id);
+    if(p.success){ $('wbContactList').innerHTML=(p.data.contacts||[]).map(function(x){return '<option value="'+esc(x.fullName)+'">'+esc(x.jobTitle||'')+'</option>';}).join('');
+      if(!$('wbContact').value && p.data.contacts && p.data.contacts.length) $('wbContact').value = p.data.contacts[0].fullName; }
+  }
+  function pSearch(){
+    var q=($('wbPSearch').value||'').toLowerCase();
+    var f=PEOPLE.filter(function(c){return !q||[c.label,c.email,c.phone].some(function(x){return (x||'').toLowerCase().indexOf(q)>-1;});}).slice(0,40);
+    list($('wbPList'), f.map(function(c){return {ref:c,html:esc(c.label)+'<small>'+esc([c.email,c.phone,c.companyName?'Company: '+c.companyName:''].filter(Boolean).join(' · '))+'</small>'};}), pickPerson);
+  }
+  function pickPerson(p){
+    hide('wbPList');
+    // A person who works for a company is billed through that company, not personally.
+    var co = p.companyId ? companies.find(function(c){return c.id===p.companyId;}) : null;
+    if(co){ mode_('co'); $('wbContact').value=p.label; pickCompany(co); toast('Billing '+co.name+' (attention: '+p.label+') — the invoice goes to the company.','success'); return; }
+    sel.personId=p.id; $('wbPSearch').value=p.label; $('wbPName').value=p.label; $('wbPEmail').value=p.email||''; $('wbPPhone').value=p.phone||'';
+  }
+  function mode_(m){ mode=m; $('wbModeCo').classList.toggle('on',m==='co'); $('wbModePerson').classList.toggle('on',m==='person'); $('wbCoBox').style.display=m==='co'?'':'none'; $('wbPersonBox').style.display=m==='person'?'':'none'; }
+
+  function dueFromTerms(){
+    var d=$('wbDate').value; if(!d) return; var terms = sel.company ? (sel.company.paymentTermsDays||0) : 30;
+    var x=new Date(d+'T00:00:00'); x.setDate(x.getDate()+terms); $('wbDue').value=x.toISOString().split('T')[0];
+  }
+
+  // ── lines ──
+  function addLine(v){
+    v=v||{}; lineN++; var id=lineN, tr=document.createElement('tr'); tr.id='wbl_'+id;
+    tr.innerHTML='<td><input data-f="d" placeholder="Description" value="'+esc(v.description||'')+'" oninput="WB.calc()"></td><td><input data-f="q" type="number" min="1" step="1" value="'+(v.quantity||1)+'" oninput="WB.calc()"></td>'+
+      '<td><input data-f="p" type="number" min="0" step="0.01" value="'+(v.unitPrice!=null?v.unitPrice:'')+'" oninput="WB.calc()"></td><td><input data-f="x" type="number" min="0" max="100" step="0.1" value="'+(v.discountRate||0)+'" oninput="WB.calc()"></td>'+
+      '<td><input data-f="t" type="number" min="0" max="100" step="0.1" value="'+(v.taxRate!=null?v.taxRate:(profile&&profile.defaultVatRate)||0)+'" oninput="WB.calc()"></td><td class="amt">0.00</td><td><button class="wb-rm" onclick="WB.rm('+id+')"><i class="bi bi-x"></i></button></td>';
+    $('wbLines').appendChild(tr); calc();
+  }
+  function rm(id){ var r=$('wbl_'+id); if(r) r.remove(); calc(); }
+  function rows(){
+    return Array.prototype.map.call($('wbLines').querySelectorAll('tr'),function(tr){
+      var g=function(f){return tr.querySelector('[data-f="'+f+'"]').value;};
+      return { tr:tr, description:g('d').trim(), quantity:parseInt(g('q'))||0, unitPrice:parseFloat(g('p'))||0, discountRate:parseFloat(g('x'))||0, taxRate:parseFloat(g('t'))||0 };
+    });
+  }
+  function calc(){
+    var sub=0,disc=0,vat={},total=0;
+    rows().forEach(function(r){
+      var gross=r.quantity*r.unitPrice, net=gross*(1-r.discountRate/100), v=net*r.taxRate/100;
+      sub+=gross; disc+=gross-net; total+=net+v; if(r.taxRate>0) vat[r.taxRate]=(vat[r.taxRate]||0)+v;
+      r.tr.querySelector('.amt').textContent=money(net+v);
+    });
+    var hd=Math.max(0,parseFloat($('wbDisc').value)||0), cur=$('wbCur').value;
+    var h='<div class="r"><span>Subtotal</span><span>'+cur+' '+money(sub)+'</span></div>';
+    if(disc+hd>0) h+='<div class="r"><span>Discount</span><span>-'+money(disc+hd)+'</span></div>';
+    Object.keys(vat).sort(function(a,b){return a-b;}).forEach(function(k){ h+='<div class="r"><span>VAT '+k+'%</span><span>'+money(vat[k])+'</span></div>'; });
+    h+='<div class="r t"><span>Total</span><span>'+cur+' '+money(Math.max(0,total-hd))+'</span></div>';
+    $('wbTot').innerHTML=h;
+  }
+  function addFromCatalog(s){ var c=catalog.find(function(x){return String(x.id)===s.value;}); s.value=''; if(c) addLine({description:c.name+(c.description?' — '+c.description:''),unitPrice:c.unitPrice,taxRate:c.taxRate}); }
+  function pickDog(btn){
+    var el=$('wbDogList'); list(el, DOGS.map(function(d){return {ref:d,html:esc(d.label)+(d.sub?'<small>'+esc(d.sub)+'</small>':'')};}), function(d){ el.classList.remove('open'); addLine({description:d.label+(d.sub?' ('+d.sub+')':'')}); });
+    var r=btn.getBoundingClientRect(); el.style.top=(r.bottom+4)+'px'; el.style.left=Math.min(r.left,window.innerWidth-260)+'px';
+  }
+  document.addEventListener('click',function(e){ if(!e.target.closest('#wbDogList')&&!e.target.closest('[onclick*="WB.pickDog"]')) $('wbDogList').classList.remove('open'); });
+  function fiscToggle(){ $('wbFiscFields').style.display=$('wbIsFiscal').checked?'':'none'; }
+
+  async function openCreate(prefillCompanyId, invoice){
+    await preload();
+    editId = invoice ? invoice.id : 0; sel={company:null,personId:null}; lineN=0; $('wbLines').innerHTML='';
+    $('wbTitle').innerHTML='<i class="bi bi-receipt" style="color:#667eea"></i> '+(invoice?'Edit draft '+esc(invoice.invoiceNumber):'New invoice');
+    ['wbCoSearch','wbContact','wbEmail','wbPhone','wbPSearch','wbPName','wbPEmail','wbPPhone','wbPAddr','wbPVat','wbPO','wbNotes','wbFNo','wbFVer','wbFDate'].forEach(function(i){$(i).value='';});
+    $('wbCoCard').style.display='none'; $('wbIsFiscal').checked=false; fiscToggle(); $('wbDisc').value='0'; $('wbCur').value='USD'; $('wbTermsHint').textContent='';
+    $('wbDate').value=new Date().toISOString().split('T')[0]; $('wbTerms').value=(profile&&profile.invoiceTerms)||''; mode_('co'); err('wbErr','');
+    if(invoice){
+      $('wbDate').value=(invoice.invoiceDate||'').split('T')[0]; $('wbDue').value=(invoice.dueDate||'').split('T')[0]; $('wbPO').value=invoice.purchaseOrderNumber||''; $('wbCur').value=invoice.currencyCode||'USD';
+      $('wbNotes').value=invoice.notes||''; $('wbTerms').value=invoice.terms||''; $('wbDisc').value=invoice.discountAmount||0;
+      var co = invoice.customerCompanyId ? companies.find(function(c){return c.id===invoice.customerCompanyId;}) : null;
+      if(co){ await pickCompany(co); $('wbDue').value=(invoice.dueDate||'').split('T')[0]; $('wbContact').value=invoice.contactPerson||''; $('wbEmail').value=invoice.billToEmail||invoice.customerEmail||''; $('wbPhone').value=invoice.billToPhone||invoice.customerPhone||''; }
+      else { mode_('person'); $('wbPName').value=invoice.billToName||invoice.customerName||''; $('wbPEmail').value=invoice.billToEmail||''; $('wbPPhone').value=invoice.billToPhone||''; $('wbPAddr').value=invoice.billToAddress||''; $('wbPVat').value=invoice.billToVatNumber||invoice.billToTaxNumber||''; $('wbPSearch').value=$('wbPName').value; }
+      (invoice.items||[]).forEach(function(i){addLine(i);});
+      if(invoice.isFiscal){ $('wbIsFiscal').checked=true; fiscToggle(); $('wbFNo').value=invoice.fiscalInvoiceNumber||''; $('wbFVer').value=invoice.fiscalVerificationCode||''; if(invoice.fiscalDate) $('wbFDate').value=invoice.fiscalDate.slice(0,16); }
+    } else {
+      dueFromTerms(); if(!$('wbDue').value){ var d=new Date(); d.setDate(d.getDate()+30); $('wbDue').value=d.toISOString().split('T')[0]; }
+      addLine();
+      if(prefillCompanyId){ var c=companies.find(function(x){return x.id===prefillCompanyId;}); if(c) pickCompany(c); }
+    }
+    calc(); open('createModal');
+  }
+
+  async function save(issue){
+    err('wbErr','');
+    var its=rows().filter(function(r){return r.description;});
+    if(mode==='co' && !sel.company){ err('wbErr','Choose the company to bill (or switch to "An individual").'); return; }
+    if(mode==='person' && !$('wbPName').value.trim()){ err('wbErr','Enter the name to bill.'); return; }
+    if(!$('wbDate').value||!$('wbDue').value){ err('wbErr','The invoice date and due date are required.'); return; }
+    if(!its.length){ err('wbErr','Add at least one line item with a description.'); return; }
+    if(its.some(function(r){return r.quantity<=0;})){ err('wbErr','Every line needs a quantity of at least 1.'); return; }
+    var body={ invoiceDate:$('wbDate').value, dueDate:$('wbDue').value, purchaseOrderNumber:$('wbPO').value.trim()||null, currencyCode:$('wbCur').value,
+      discountAmount:Math.max(0,parseFloat($('wbDisc').value)||0), taxAmount:0, notes:$('wbNotes').value.trim()||null, terms:$('wbTerms').value.trim()||null,
+      items:its.map(function(r){return {description:r.description,quantity:r.quantity,unitPrice:r.unitPrice,taxRate:r.taxRate,discountRate:r.discountRate};}) };
+    if(mode==='co'){ body.customerCompanyId=sel.company.id; body.contactPerson=$('wbContact').value.trim()||null; body.customerEmail=$('wbEmail').value.trim()||null; body.customerPhone=$('wbPhone').value.trim()||null;
+      var match=PEOPLE.find(function(p){return p.companyId===sel.company.id && p.label===body.contactPerson;}); if(match) body.customerId=String(match.id); }
+    else { body.customerName=$('wbPName').value.trim(); body.billToName=body.customerName; body.customerEmail=$('wbPEmail').value.trim()||null; body.customerPhone=$('wbPPhone').value.trim()||null;
+      body.billToAddress=$('wbPAddr').value.trim()||null; body.billToVatNumber=$('wbPVat').value.trim()||null; if(sel.personId) body.customerId=String(sel.personId); }
+    if($('wbIsFiscal').checked){ body.isFiscal=true; body.fiscalInvoiceNumber=$('wbFNo').value.trim()||null; body.fiscalVerificationCode=$('wbFVer').value.trim()||null; body.fiscalDate=$('wbFDate').value||null; }
+    var b1=$('wbSaveDraft'), b2=$('wbSaveIssue'); b1.disabled=b2.disabled=true;
+    var j = await api(editId?'PUT':'POST', editId?'Invoice/'+editId:'Invoice', body);
+    if(j.success && issue){ var id = (j.data&&j.data.id)||editId; var s = await api('POST','Invoice/'+id+'/send'); if(!s.success){ toast('Saved as a draft, but it could not be issued: '+(s.message||''),'error'); } }
+    b1.disabled=b2.disabled=false;
+    if(j.success){ toast(j.message||'Invoice saved.','success'); close('createModal'); setTimeout(function(){location.reload();},900); } else err('wbErr',j.message||'Could not save the invoice.');
+  }
+
+  // ── view ──
+  async function view(id){
+    $('wbvBody').innerHTML='<div style="text-align:center;padding:2rem;color:#94a3b8">Loading…</div>'; $('wbvFoot').innerHTML=''; open('viewModal');
+    var j=await api('GET','Invoice/'+id); if(!j.success){ $('wbvBody').innerHTML='<div class="wb-err" style="display:block">'+esc(j.message||'Could not load the invoice.')+'</div>'; return; }
+    renderView(j.data);
+  }
+  function renderView(i){
+    invCache=i; var cur=i.currencyCode||'USD', m=function(v){return cur+' '+money(v);};
+    $('wbvTitle').innerHTML='<i class="bi bi-receipt" style="color:#667eea"></i> '+esc(i.invoiceNumber)+' <span class="wb-st '+(i.status==='PAID'?'CONFIRMED':i.status==='CANCELLED'?'REJECTED':'PENDING')+'" style="margin-left:.4rem">'+esc(i.status)+'</span>'+(i.isFiscal?' <span class="wb-tag" style="margin-left:.3rem">FISCAL</span>':'');
+    $('wbvSub').textContent='Issued '+new Date(i.invoiceDate).toLocaleDateString()+' · due '+new Date(i.dueDate).toLocaleDateString()+(i.emailedAt?' · emailed '+new Date(i.emailedAt).toLocaleDateString()+' to '+i.emailedTo:'');
+    var bill='<div class="wb-v-bill"><div style="font-size:.68rem;font-weight:800;color:#94a3b8;text-transform:uppercase">Bill to</div><div class="n">'+esc(i.billToName||i.customerName||'—')+'</div>'+
+      (i.billToAddress?'<div>'+esc(i.billToAddress)+'</div>':'')+(i.billToVatNumber?'<div>VAT '+esc(i.billToVatNumber)+'</div>':'')+(i.billToTaxNumber?'<div>TIN '+esc(i.billToTaxNumber)+'</div>':'')+
+      (i.contactPerson?'<div>Attention: '+esc(i.contactPerson)+'</div>':'')+'<div>'+esc([i.billToEmail||i.customerEmail,i.billToPhone||i.customerPhone].filter(Boolean).join(' · '))+'</div>'+(i.purchaseOrderNumber?'<div>PO: '+esc(i.purchaseOrderNumber)+'</div>':'')+'</div>';
+    var kp='<div class="wb-kpis"><div class="wb-kpi"><div class="v">'+m(i.totalAmount)+'</div><div class="l">Total</div></div><div class="wb-kpi"><div class="v" style="color:#047857">'+m(i.paidAmount)+'</div><div class="l">Paid</div></div>'+
+      '<div class="wb-kpi"><div class="v" style="color:#b45309">'+m(i.pendingAmount||0)+'</div><div class="l">Awaiting confirmation</div></div><div class="wb-kpi"><div class="v" style="color:'+(i.balanceAmount>0?'#b91c1c':'#047857')+'">'+m(i.balanceAmount)+'</div><div class="l">Balance due</div></div></div>';
+    var items='<table class="wb-tbl"><thead><tr><th>Description</th><th class="num">Qty</th><th class="num">Unit price</th><th class="num">Disc</th><th class="num">VAT</th><th class="num">Amount</th></tr></thead><tbody>'+
+      (i.items||[]).map(function(x){return '<tr><td>'+esc(x.description)+'</td><td class="num">'+x.quantity+'</td><td class="num">'+money(x.unitPrice)+'</td><td class="num">'+(x.discountRate?x.discountRate+'%':'–')+'</td><td class="num">'+(x.taxRate?x.taxRate+'%':'–')+'</td><td class="num"><b>'+money(x.amount)+'</b></td></tr>';}).join('')+'</tbody></table>';
+    var pays=(i.payments||[]);
+    var ledger='<div class="wb-sec" style="margin-top:1.2rem">Payments</div>'+(pays.length?'<table class="wb-tbl"><thead><tr><th>Receipt</th><th>How it was paid &amp; traced</th><th>Status</th><th class="num">Amount</th></tr></thead><tbody>'+pays.map(function(p){
+      var t=[]; if(p.payerName) t.push('<b>Paid by</b> '+esc(p.payerName)); if(p.payerBank) t.push(esc(p.payerBank)+(p.payerAccount?' ('+esc(p.payerAccount)+')':'')); if(p.payerContact) t.push('<b>Mobile</b> '+esc(p.payerContact));
+      var l2=[]; if(p.referenceNumber) l2.push('<b>Ref</b> <span class="ref">'+esc(p.referenceNumber)+'</span>'); if(p.chequeNumber) l2.push('<b>Cheque</b> '+esc(p.chequeNumber)); if(p.destinationAccountLabel) l2.push('<b>Into</b> '+esc(p.destinationAccountLabel));
+      if(p.valueDate) l2.push('<b>Date</b> '+new Date(p.valueDate).toLocaleDateString()); if(p.proofUrl) l2.push('<a href="'+esc(p.proofUrl)+'" target="_blank"><i class="bi bi-paperclip"></i> proof</a>');
+      var l3=[]; l3.push('Recorded by '+esc(p.receivedByName||'—')+' on '+new Date(p.paymentDate).toLocaleDateString()); if(p.confirmedByName&&p.status!=='PENDING') l3.push((p.status==='REJECTED'?'Rejected':'Confirmed')+' by '+esc(p.confirmedByName)+(p.statementReference?' · statement: '+esc(p.statementReference):'')); if(p.rejectReason) l3.push('Reason: '+esc(p.rejectReason));
+      var act=(p.status==='PENDING'&&CAN.verify)?'<div class="wb-rev"><button class="wb-btn ok sm" onclick="WB.confirmPay('+p.id+')"><i class="bi bi-check2"></i> Confirm</button><button class="wb-btn red sm" onclick="WB.rejectPay('+p.id+')"><i class="bi bi-x"></i> Reject</button></div>':'';
+      return '<tr><td><b>'+esc(p.paymentNumber)+'</b></td><td><div style="font-weight:700">'+esc(p.methodLabel||p.method)+'</div><div class="wb-trace">'+t.join(' · ')+'</div><div class="wb-trace">'+l2.join(' · ')+'</div><div class="wb-trace" style="color:#94a3b8">'+l3.join(' · ')+'</div>'+act+'</td><td><span class="wb-st '+p.status+'">'+p.status+'</span></td><td class="num"><b>'+esc(p.currencyCode)+' '+money(p.amount)+'</b></td></tr>';
+    }).join('')+'</tbody></table>':'<div style="color:#94a3b8;font-size:.84rem;padding:.4rem 0">No payments recorded yet.</div>');
+    var fisc=i.isFiscal?'<div class="wb-fisc" style="margin-top:1rem"><b>Fiscal details</b><div class="wb-trace">Fiscal no. <b>'+esc(i.fiscalInvoiceNumber||'—')+'</b> · Device '+esc(i.fiscalDeviceSerial||'—')+' · Code '+esc(i.fiscalVerificationCode||'—')+(i.fiscalDate?' · '+new Date(i.fiscalDate).toLocaleString():'')+'</div></div>':'';
+    $('wbvBody').innerHTML='<div class="wb-v-top">'+bill+'</div>'+kp+items+(i.notes?'<div class="wb-trace" style="margin-top:.7rem"><b>Notes:</b> '+esc(i.notes)+'</div>':'')+fisc+ledger;
+    var f='<a class="wb-btn sec" target="_blank" href="/Invoices/Pdf/'+i.id+'"><i class="bi bi-file-earmark-pdf" style="color:#dc2626"></i> PDF</a>';
+    if(CAN.email && i.status!=='CANCELLED') f+='<button class="wb-btn sec" onclick="WB.emailFromView()"><i class="bi bi-envelope-paper"></i> Email</button>';
+    if(CAN.edit && i.status==='DRAFT') f+='<button class="wb-btn sec" onclick="WB.editFromView()"><i class="bi bi-pencil"></i> Edit draft</button>';
+    if(CAN.pay && i.balanceAmount>0 && (i.status==='SENT'||i.status==='PARTIAL')) f+='<button class="wb-btn ok" onclick="WB.payFromView()"><i class="bi bi-cash-coin"></i> Record payment</button>';
+    $('wbvFoot').innerHTML=f;
+  }
+  async function confirmPay(id){
+    var ref=prompt('Enter the bank-statement line / reference this payment was matched to:'); if(!ref) return;
+    var j=await api('POST','Invoice/payments/'+id+'/confirm',{statementReference:ref}); toast(j.message||(j.success?'Confirmed.':'Failed.'),j.success?'success':'error'); if(j.success) view(invCache.id);
+  }
+  async function rejectPay(id){
+    var why=prompt('Why is this payment rejected? (e.g. not on the bank statement, wrong amount)'); if(!why) return;
+    var j=await api('POST','Invoice/payments/'+id+'/reject',{reason:why}); toast(j.message||(j.success?'Rejected.':'Failed.'),j.success?'success':'error'); if(j.success) view(invCache.id);
+  }
+
+  // ── pay (shared form) ──
+  function pay(i){
+    close('viewModal');
+    PayForm.open({ invoiceId:i.id, number:i.invoiceNumber, party:i.billToName||i.customerName, balance:i.balanceAmount, pending:i.pendingAmount||0, currency:i.currencyCode||'USD', url:'/BillingApi/Invoice/pay', canVerify:CAN.verify,
+      onDone:function(j){ toast(j.message||'Payment recorded.','success'); setTimeout(function(){location.reload();},1100); } });
+  }
+  async function payById(id){ var j=await api('GET','Invoice/'+id); if(!j.success){toast(j.message||'Could not load the invoice.','error');return;} pay(j.data); }
+
+  // ── email ──
+  function emailOpen(i){
+    emailInv=i; close('viewModal'); err('wbeErr',''); $('wbeSub').textContent=i.invoiceNumber+' · '+(i.billToName||i.customerName||'');
+    $('wbeTo').value=i.billToEmail||i.customerEmail||''; $('wbeCc').value=''; $('wbeMsg').value=''; open('emailModal');
+  }
+  async function emailById(id){ var j=await api('GET','Invoice/'+id); if(!j.success){toast(j.message||'Could not load the invoice.','error');return;} emailOpen(j.data); }
+  async function sendEmail(){
+    var to=$('wbeTo').value.trim(); if(!to||to.indexOf(String.fromCharCode(64))<0){ err('wbeErr','Enter the email address to send to.'); return; }
+    var b=$('wbeGo'); b.disabled=true; var h=b.innerHTML; b.innerHTML='Sending…';
+    var j=await api('POST','Invoice/'+emailInv.id+'/email',{to:to,cc:$('wbeCc').value.trim()||null,message:$('wbeMsg').value.trim()||null});
+    b.disabled=false; b.innerHTML=h;
+    if(j.success){ toast(j.message||'Email sent.','success'); close('emailModal'); setTimeout(function(){location.reload();},1000); } else err('wbeErr',j.message||'The email could not be sent.');
+  }
+
+  document.querySelectorAll('.wb-bd').forEach(function(bd){ bd.addEventListener('mousedown',function(e){ if(e.target===bd) close(bd.id); }); });
+  return { open:open, close:close, hide:hide, mode:mode_, coSearch:coSearch, pSearch:pSearch, dueFromTerms:dueFromTerms, addLine:addLine, rm:rm, calc:calc, addFromCatalog:addFromCatalog, pickDog:pickDog,
+    fiscToggle:fiscToggle, create:openCreate, save:save, view:view, confirmPay:confirmPay, rejectPay:rejectPay, payFromView:function(){pay(invCache);}, payById:payById,
+    emailFromView:function(){emailOpen(invCache);}, emailById:emailById, sendEmail:sendEmail,
+    editFromView:function(){ var i=invCache; close('viewModal'); openCreate(null,i); },
+    editById:async function(id){ var j=await api('GET','Invoice/'+id); if(!j.success){toast(j.message||'Could not load the invoice.','error');return;} openCreate(null,j.data); } };
+})();
+</script>

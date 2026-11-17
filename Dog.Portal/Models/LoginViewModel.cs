@@ -57,6 +57,7 @@ namespace Dog.Portal.Models
         public List<string> Permissions { get; set; } = new();
         public List<MenuItemModel> Menus { get; set; } = new();
         public bool IsHeadOffice { get; set; }
+        public bool IsDogHandler => Role == "Dog Handler";
         public List<BranchModel> Branches { get; set; } = new();
         public int? CurrentBranchId { get; set; }
     }

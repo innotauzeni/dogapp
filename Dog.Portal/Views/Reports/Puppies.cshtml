@@ -1,0 +1,122 @@
+@model List<Dog.Portal.Models.PuppyReportDto>
+@{
+    Layout = "_AdminLayout";
+    ViewData["Title"] = "Puppies";
+}
+
+<style>
+    .report-header { padding: 2rem; background: linear-gradient(135deg, #7c3aed, #6d28d9); color: white; border-radius: 12px; margin-bottom: 2rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; }
+    .report-header-info h2 { margin: 0; font-size: 1.8rem; font-weight: 800; }
+    .report-header-info p { margin: 0.5rem 0 0 0; opacity: 0.9; }
+    .report-stats { display: flex; gap: 2rem; }
+    .stat-item { text-align: center; }
+    .stat-number { font-size: 2.5rem; font-weight: 800; }
+    .stat-label { font-size: 0.9rem; opacity: 0.9; }
+
+    .table-container { background: white; border-radius: 12px; border: 1px solid #e2e8f0; overflow: hidden; overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; }
+    thead { background: #f8fafc; border-bottom: 2px solid #e2e8f0; }
+    th { padding: 1rem; text-align: left; font-weight: 700; font-size: 0.9rem; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em; white-space: nowrap; }
+    td { padding: 1rem; border-bottom: 1px solid #f1f5f9; }
+    tbody tr:hover { background: #f8fafc; }
+    tbody tr:last-child td { border-bottom: none; }
+
+    .dog-name { font-weight: 700; color: #1e293b; }
+    .badge { display: inline-block; padding: 0.25rem 0.75rem; border-radius: 6px; font-size: 0.85rem; font-weight: 600; }
+    .badge-success { background: #d1fae5; color: #065f46; }
+    .badge-danger { background: #fee2e2; color: #991b1b; }
+
+    .empty-state { text-align: center; padding: 4rem 2rem; }
+    .empty-state-icon { font-size: 3rem; margin-bottom: 1rem; opacity: 0.3; }
+    .empty-state h3 { color: #64748b; margin-bottom: 0.5rem; }
+    .empty-state p { color: #94a3b8; }
+
+    .btn-back, .btn-export { display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.6rem 1.25rem; border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 0.9rem; cursor: pointer; transition: all 0.2s; border: 1.5px solid #e2e8f0; }
+    .btn-back { background: #f1f5f9; color: #374151; }
+    .btn-back:hover { background: #e2e8f0; color: #1e293b; border-color: #cbd5e1; }
+    .btn-export.csv { border-color: #059669; color: #059669; background: #fff; }
+    .btn-export.csv:hover { background: #d1fae5; }
+    .btn-export.pdf { border-color: #dc2626; color: #dc2626; background: #fff; }
+    .btn-export.pdf:hover { background: #fee2e2; }
+    .actions-row { display: flex; gap: .75rem; flex-wrap: wrap; margin-bottom: 1.5rem; }
+</style>
+
+@if (!string.IsNullOrEmpty(ViewBag.FetchError as string))
+{
+    <div class="alert-err" style="margin-bottom:1rem;"><i class="bi bi-exclamation-circle-fill"></i> @ViewBag.FetchError</div>
+}
+
+<div class="report-header">
+    <div class="report-header-info">
+        <h2><i class="bi bi-heart-eyes-fill"></i> Puppies</h2>
+        <p>Every puppy recorded across all litters</p>
+    </div>
+    <div class="report-stats">
+        <div class="stat-item">
+            <div class="stat-number">@Model.Count</div>
+            <div class="stat-label">Puppies</div>
+        </div>
+        <div class="stat-item">
+            <div class="stat-number">@Model.Count(p => p.IsAlive)</div>
+            <div class="stat-label">Alive</div>
+        </div>
+    </div>
+</div>
+
+<div class="actions-row">
+    <a href="@Url.Action("Index")" class="btn-back"><i class="bi bi-arrow-left"></i> Back to Reports</a>
+    <a href="/Reports/ExportPuppies?format=csv" class="btn-export csv"><i class="bi bi-filetype-csv"></i> Export CSV</a>
+    <a href="/Reports/ExportPuppies?format=pdf" class="btn-export pdf"><i class="bi bi-filetype-pdf"></i> Export PDF</a>
+</div>
+
+@if (Model.Count == 0)
+{
+    <div class="empty-state">
+        <div class="empty-state-icon">🐶</div>
+        <h3>No puppies yet</h3>
+        <p>Puppies will appear here once a litter is recorded.</p>
+    </div>
+}
+else
+{
+    <div class="table-container">
+        <table>
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Color</th>
+                    <th>Gender</th>
+                    <th>Birth Date</th>
+                    <th>Age</th>
+                    <th>Sire</th>
+                    <th>Dam</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var p in Model)
+                {
+                    <tr>
+                        <td><span class="dog-name">@p.Name</span></td>
+                        <td>@(string.IsNullOrEmpty(p.Color) ? "—" : p.Color)</td>
+                        <td>@(string.IsNullOrEmpty(p.Gender) ? "—" : p.Gender)</td>
+                        <td>@p.DateOfBirth.ToString("dd MMM yyyy")</td>
+                        <td>@p.AgeDisplay</td>
+                        <td>@p.SireName</td>
+                        <td>@p.DamName</td>
+                        <td>
+                            @if (p.IsAlive)
+                            {
+                                <span class="badge badge-success">Alive</span>
+                            }
+                            else
+                            {
+                                <span class="badge badge-danger">Deceased</span>
+                            }
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}
