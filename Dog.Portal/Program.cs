@@ -12,6 +12,8 @@ QuestPDF.Settings.License = QuestPDF.Infrastructure.LicenseType.Community;
 // Use only QuestPDF's bundled fonts (Lato) so PDFs render the same on any server — system fonts
 // such as Arial may be missing on the host, which made certificate text disappear.
 QuestPDF.Settings.UseEnvironmentFonts = false;
+var latoFonts = Dog.Application.Common.Pdf.PdfFonts.Register();
+Console.WriteLine(latoFonts > 0 ? $"PDF fonts: registered {latoFonts} Lato files." : "PDF fonts: WARNING - no Lato-*.ttf found next to the application; PDFs will print without text. Copy the Lato-*.ttf files from the publish folder.");
 
 // Add services to the container.
 builder.Services.AddHttpContextAccessor();

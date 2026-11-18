@@ -11,6 +11,8 @@ var builder = WebApplication.CreateBuilder(args);
 QuestPDF.Settings.License = QuestPDF.Infrastructure.LicenseType.Community;
 // Bundled fonts only (Lato) — avoids missing-font blank text on servers without Arial.
 QuestPDF.Settings.UseEnvironmentFonts = false;
+var latoFonts = Dog.Application.Common.Pdf.PdfFonts.Register();
+Console.WriteLine(latoFonts > 0 ? $"PDF fonts: registered {latoFonts} Lato files." : "PDF fonts: WARNING - no Lato-*.ttf found next to the application; PDFs will print without text. Copy the Lato-*.ttf files from the publish folder.");
 
 // Background job: promote puppies to registered dogs at 6 weeks of age.
 builder.Services.AddHostedService<Dog.Api.BackgroundJobs.PuppyPromotionService>();
