@@ -90,6 +90,7 @@ class _HomeShellState extends State<HomeShell> {
     }
 
     return Scaffold(
+      key: ShellDrawer.key,
       body: body,
       drawer: AppDrawer(
         currentIndex: _index,

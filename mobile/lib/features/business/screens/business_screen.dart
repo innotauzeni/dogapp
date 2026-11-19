@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../shared/widgets/app_drawer.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:provider/provider.dart';
 
@@ -88,6 +89,7 @@ class _BusinessScreenState extends State<BusinessScreen> with SingleTickerProvid
     final canCreateExpense = auth.can('expense.create');
     return Scaffold(
       appBar: AppBar(
+        leading: const MenuButton(),
         title: const Text('Business'),
         bottom: TabBar(
           controller: _tab,

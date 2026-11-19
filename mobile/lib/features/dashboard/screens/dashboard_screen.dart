@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../shared/widgets/app_drawer.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:provider/provider.dart';
 
@@ -163,6 +164,16 @@ class _Greeting extends StatelessWidget {
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              if (ShellDrawer.availableFor(context))
+                Padding(
+                  padding: EdgeInsets.only(right: 8.w),
+                  child: IconButton(
+                    style: IconButton.styleFrom(backgroundColor: Colors.white24),
+                    icon: const Icon(Icons.menu_rounded, color: Colors.white),
+                    tooltip: 'Menu',
+                    onPressed: ShellDrawer.open,
+                  ),
+                ),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,

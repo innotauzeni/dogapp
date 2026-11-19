@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../shared/widgets/app_drawer.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:provider/provider.dart';
 
@@ -117,7 +118,7 @@ class _DogsListScreenState extends State<DogsListScreen> {
       });
     }
     return Scaffold(
-      appBar: AppBar(title: Text(_getTitle())),
+      appBar: AppBar(leading: const MenuButton(), title: Text(_getTitle())),
       floatingActionButton: canCreate
           ? FloatingActionButton.extended(
               heroTag: 'fab-dogs-list-add',

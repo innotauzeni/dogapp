@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../shared/widgets/app_drawer.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:provider/provider.dart';
 
@@ -60,7 +61,7 @@ class _HandlerDogsScreenState extends State<HandlerDogsScreen> {
     final canRecord = context.watch<AuthProvider>().can('pet.edit') ||
         context.watch<AuthProvider>().isDogHandler;
     return Scaffold(
-      appBar: AppBar(title: const Text('My Assigned Dogs')),
+      appBar: AppBar(leading: const MenuButton(), title: const Text('My Assigned Dogs')),
       body: SafeArea(
         top: false,
         child: RefreshIndicator(

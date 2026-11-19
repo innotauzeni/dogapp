@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../shared/widgets/app_drawer.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:provider/provider.dart';
 
@@ -107,6 +108,7 @@ class _BreedingScreenState extends State<BreedingScreen> with SingleTickerProvid
     final canEdit = auth.can('pet.edit') || auth.isDogHandler;
     return Scaffold(
       appBar: AppBar(
+        leading: const MenuButton(),
         title: const Text('Breeding'),
         bottom: TabBar(
           controller: _tab,

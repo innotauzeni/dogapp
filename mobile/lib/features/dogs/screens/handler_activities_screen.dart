@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../shared/widgets/app_drawer.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:provider/provider.dart';
 
@@ -42,7 +43,7 @@ class _HandlerActivitiesScreenState extends State<HandlerActivitiesScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('My Activities')),
+      appBar: AppBar(leading: const MenuButton(), title: const Text('My Activities')),
       body: SafeArea(
         top: false,
         child: RefreshIndicator(
