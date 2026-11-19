@@ -16,6 +16,17 @@ class BusinessRepository {
         parser: (d) => _list(d, Invoice.fromJson),
       );
 
+  Future<Invoice> getInvoice(int id) => _api.get('Invoice/$id', parser: (d) => Invoice.fromJson((d as Map).cast<String, dynamic>()));
+
+  /// Our bank accounts a customer can pay into (id + label).
+  Future<List<Map<String, dynamic>>> getBankAccounts() => _api.get(
+        'BillingSetup/pdf-info',
+        query: {'CompanyId': 0},
+        parser: (d) => (((d as Map)['bankAccounts'] as List?) ?? const []).map((e) => (e as Map).cast<String, dynamic>()).toList(),
+      );
+
+  Future<void> payInvoice(Map<String, dynamic> body) => _api.post('Invoice/pay', body: body, parser: (_) {});
+
   Future<void> createInvoice(Map<String, dynamic> body) =>
       _api.post('Invoice', body: body, parser: (_) {});
 

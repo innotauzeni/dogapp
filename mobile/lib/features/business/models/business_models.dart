@@ -143,6 +143,32 @@ class InvoiceItem {
       );
 }
 
+class InvoicePayment {
+  final int id;
+  final String paymentNumber;
+  final String method;
+  final String status;
+  final double amount;
+  final String? payerName;
+  final String? referenceNumber;
+  final String? destination;
+  final DateTime? date;
+
+  InvoicePayment({required this.id, required this.paymentNumber, required this.method, required this.status, required this.amount, this.payerName, this.referenceNumber, this.destination, this.date});
+
+  factory InvoicePayment.fromJson(Map<String, dynamic> j) => InvoicePayment(
+        id: _asInt(j['id']),
+        paymentNumber: (j['paymentNumber'] ?? '').toString(),
+        method: (j['methodLabel'] ?? j['method'] ?? '').toString(),
+        status: (j['status'] ?? '').toString(),
+        amount: _asDouble(j['amount']),
+        payerName: j['payerName'] as String?,
+        referenceNumber: j['referenceNumber'] as String?,
+        destination: j['destinationAccountLabel'] as String?,
+        date: _asDate(j['valueDate'] ?? j['paymentDate']),
+      );
+}
+
 class Invoice {
   final int id;
   final String invoiceNumber;
@@ -156,6 +182,12 @@ class Invoice {
   final String status;
   final String? notes;
   final List<InvoiceItem> items;
+  final String? billToName;
+  final String? billToVat;
+  final String? contactPerson;
+  final String currency;
+  final double pendingAmount;
+  final List<InvoicePayment> payments;
 
   Invoice({
     required this.id,
@@ -170,6 +202,12 @@ class Invoice {
     required this.status,
     this.notes,
     this.items = const [],
+    this.billToName,
+    this.billToVat,
+    this.contactPerson,
+    this.currency = 'USD',
+    this.pendingAmount = 0,
+    this.payments = const [],
   });
 
   factory Invoice.fromJson(Map<String, dynamic> j) => Invoice(
@@ -184,6 +222,14 @@ class Invoice {
         balanceAmount: _asDouble(j['balanceAmount']),
         status: (j['status'] ?? 'DRAFT').toString(),
         notes: j['notes'] as String?,
+        billToName: j['billToName'] as String?,
+        billToVat: j['billToVatNumber'] as String?,
+        contactPerson: j['contactPerson'] as String?,
+        currency: (j['currencyCode'] ?? 'USD').toString(),
+        pendingAmount: _asDouble(j['pendingAmount']),
+        payments: ((j['payments'] as List?) ?? const [])
+            .map((e) => InvoicePayment.fromJson((e as Map).cast<String, dynamic>()))
+            .toList(),
         items: ((j['items'] as List?) ?? const [])
             .map((e) => InvoiceItem.fromJson((e as Map).cast<String, dynamic>()))
             .toList(),
