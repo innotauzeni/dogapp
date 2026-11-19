@@ -63,7 +63,7 @@
         var r = await T.api('GET', 'handlers');
         if (!r.success) { handlersEl().innerHTML = '<div class="tr-empty" style="grid-column:1/-1">' + T.esc(r.message || 'Could not load.') + '</div>'; return; }
         handlers = r.data;
-        handlersEl().innerHTML = handlers.length === 0 ? '<div class="tr-empty" style="grid-column:1/-1"><i class="bi bi-person-x"></i>No users with the "Dog Handler" role were found.</div>' : handlers.map(function (h) {
+        handlersEl().innerHTML = handlers.length === 0 ? '<div class="tr-empty" style="grid-column:1/-1"><i class="bi bi-person-x"></i>No active system users were found. Add users under Configuration → Users.</div>' : handlers.map(function (h) {
             var pct = Math.min(100, Math.round(h.currentDogs * 100 / Math.max(1, h.maxDogs)));
             return '<div class="tr-card" style="margin:0"><div style="display:flex;justify-content:space-between;gap:.5rem"><div><b>' + T.esc(h.name) + '</b><div class="tr-note" style="margin:0">' + T.esc(h.specialisation || 'No specialisation set') + '</div></div>' + (h.isAvailable ? '<span class="tr-badge b-green">Available</span>' : '<span class="tr-badge b-gray">Unavailable</span>') + '</div>' +
                 '<div style="margin:.7rem 0 .25rem;font-size:.78rem;display:flex;justify-content:space-between"><span>Workload</span><b>' + h.currentDogs + ' / ' + h.maxDogs + '</b></div><div class="tr-bar"><div style="width:' + pct + '%;' + (pct >= 100 ? 'background:#dc2626' : '') + '"></div></div>' +

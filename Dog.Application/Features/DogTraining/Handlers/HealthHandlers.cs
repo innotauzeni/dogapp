@@ -268,12 +268,12 @@ namespace Dog.Application.Features.DogTraining.Handlers
         {
             var companyIds = await TrainingSupport.CompanyScope(uow, companyId, ct);
 
-            // Handlers are the users holding the existing "Dog Handler" role.
-            var role = await uow.Repository<Role>().TableNoTracking.FirstOrDefaultAsync(r => r.Name == "Dog Handler", ct);
-            if (role == null) return new();
-            var userIds = await uow.Repository<ApplicationRoleUser>().TableNoTracking.Where(ur => ur.RoleId == role.Id).Select(ur => ur.UserId).ToListAsync(ct);
+            // Any active system user of the company (or its branches) can be a handler. Customer-portal accounts are left out.
+            var customerRole = await uow.Repository<Role>().TableNoTracking.FirstOrDefaultAsync(r => r.Name == "Customer", ct);
+            var excluded = customerRole == null ? new List<string>()
+                : await uow.Repository<ApplicationRoleUser>().TableNoTracking.Where(ur => ur.RoleId == customerRole.Id).Select(ur => ur.UserId).ToListAsync(ct);
             var users = await uow.Repository<ApplicationUser>().TableNoTracking
-                .Where(u => userIds.Contains(u.Id) && companyIds.Contains(u.CompanyId) && (onlyUserId == null || u.Id == onlyUserId))
+                .Where(u => !excluded.Contains(u.Id) && companyIds.Contains(u.CompanyId) && (u.Status == null || u.Status == "ACTIVE") && (onlyUserId == null || u.Id == onlyUserId))
                 .OrderBy(u => u.Name).ThenBy(u => u.Surname).ToListAsync(ct);
             var ids = users.Select(u => u.Id).ToList();
 
@@ -337,7 +337,7 @@ namespace Dog.Application.Features.DogTraining.Handlers
 
             var list = await HandlerCapacityBuilder.BuildAsync(_uow, user.CompanyId, d.UserId, ct);
             return list.Count > 0 ? ApiResponse<HandlerCapacityDto>.Ok(list[0], "Handler details saved.")
-                                  : ApiResponse<HandlerCapacityDto>.Fail("The user is not a Dog Handler.");
+                                  : ApiResponse<HandlerCapacityDto>.Fail("That user could not be found or is not active.");
         }
     }
 }
