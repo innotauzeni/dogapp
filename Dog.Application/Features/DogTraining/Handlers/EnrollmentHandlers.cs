@@ -191,6 +191,13 @@ namespace Dog.Application.Features.DogTraining.Handlers
             if (e.InvoiceId != null) return ApiResponse<EnrollmentDetailDto>.Fail("An invoice has already been raised for this enrolment.");
             if (e.Status != TrainingStatus.HealthPassed)
                 return ApiResponse<EnrollmentDetailDto>.Fail("An invoice can only be raised after the dog has passed its health assessment.");
+            // The fee is copied from the programme when the dog is enrolled. If it was 0 then and the programme fee has since
+            // been set, pick up the current programme fee instead of leaving the enrolment stuck.
+            if (e.Fee <= 0)
+            {
+                var current = await _uow.Repository<DogTrainingProgramme>().TableNoTracking.FirstOrDefaultAsync(p => p.Id == e.ProgrammeId, ct);
+                if (current != null && current.Fee > 0) e.Fee = current.Fee;
+            }
             if (e.Fee + e.AdditionalCharges <= 0)
                 return ApiResponse<EnrollmentDetailDto>.Fail("The training fee is zero. Set the fee on the programme (or add charges) before invoicing.");
 
