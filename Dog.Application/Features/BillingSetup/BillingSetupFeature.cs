@@ -287,7 +287,16 @@ namespace Dog.Application.Features.BillingSetup
         public async Task<ApiResponse<PdfInfoDto>> Handle(GetPdfInfoQuery request, CancellationToken ct)
         {
             var c = await _uow.Repository<Company>().TableNoTracking.FirstOrDefaultAsync(x => x.Id == request.CompanyId, ct);
-            var accounts = await _uow.Repository<BankAccount>().TableNoTracking.Include(b => b.Bank).Where(b => b.CompanyId == request.CompanyId && b.IsActive).OrderBy(b => b.Id).Take(6).ToListAsync(ct);
+            var bankOwner = request.CompanyId;
+            // A branch that has not filled in its own legal details / bank accounts prints its head office's.
+            if (c?.ParentCompanyId != null && string.IsNullOrWhiteSpace(c.RegistrationNumber) && string.IsNullOrWhiteSpace(c.TaxNumber) && string.IsNullOrWhiteSpace(c.VatNumber))
+            {
+                var parent = await _uow.Repository<Company>().TableNoTracking.FirstOrDefaultAsync(x => x.Id == c.ParentCompanyId, ct);
+                if (parent != null) { c.RegistrationNumber = parent.RegistrationNumber; c.TaxNumber = parent.TaxNumber; c.VatNumber = parent.VatNumber; c.InvoiceTerms ??= parent.InvoiceTerms; c.InvoiceFooter ??= parent.InvoiceFooter; }
+            }
+            var accounts = await _uow.Repository<BankAccount>().TableNoTracking.Include(b => b.Bank).Where(b => b.CompanyId == bankOwner && b.IsActive).OrderBy(b => b.Id).Take(6).ToListAsync(ct);
+            if (accounts.Count == 0 && c?.ParentCompanyId != null)
+                accounts = await _uow.Repository<BankAccount>().TableNoTracking.Include(b => b.Bank).Where(b => b.CompanyId == c.ParentCompanyId && b.IsActive).OrderBy(b => b.Id).Take(6).ToListAsync(ct);
             return ApiResponse<PdfInfoDto>.Ok(new PdfInfoDto
             {
                 Profile = c == null ? null : new BillingProfileDto

@@ -83,7 +83,17 @@ namespace Dog.Portal.Controllers
                 }
                 catch { /* branding is optional */ }
 
-                var logo = await TryLoadLogoAsync(company?.Logo);
+                var logoUrl = company?.Logo;
+                if (string.IsNullOrWhiteSpace(logoUrl) && company?.ParentCompanyId > 0)
+                {
+                    try
+                    {
+                        var pr = await _apiClient.GetAsync<ApiResponse<object>>($"api/companies/{company.ParentCompanyId}");
+                        if (pr?.Data != null) logoUrl = JsonSerializer.Deserialize<Dog.Application.Features.Companies.DTOs.CompanyDto>(JsonSerializer.Serialize(pr.Data), Opts)?.Logo;
+                    }
+                    catch { }
+                }
+                var logo = await TryLoadLogoAsync(logoUrl);
                 Dog.Application.Features.BillingSetup.PdfInfoDto? info = null;
                 try
                 {

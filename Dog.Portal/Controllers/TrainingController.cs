@@ -197,7 +197,17 @@ namespace Dog.Portal.Controllers
                     company = JsonSerializer.Deserialize<AppCompanyDto>(JsonSerializer.Serialize(r.Data), Json);
             }
             catch { /* branding is optional */ }
-            var logo = await PdfImageLoader.LoadAsync(company?.Logo, $"{Request.Scheme}://{Request.Host}");
+            var logoUrl = company?.Logo;
+            if (string.IsNullOrWhiteSpace(logoUrl) && company?.ParentCompanyId > 0)
+            {
+                try
+                {
+                    var pr = await _api.GetAsync<ApiResponse<object>>($"api/companies/{company.ParentCompanyId}");
+                    if (pr?.Data != null) logoUrl = JsonSerializer.Deserialize<AppCompanyDto>(JsonSerializer.Serialize(pr.Data), Json)?.Logo;
+                }
+                catch { }
+            }
+            var logo = await PdfImageLoader.LoadAsync(logoUrl, $"{Request.Scheme}://{Request.Host}");
             return (company, logo);
         }
 

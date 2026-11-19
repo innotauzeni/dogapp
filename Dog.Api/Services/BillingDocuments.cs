@@ -33,9 +33,14 @@ namespace Dog.Api.Services
             CompanyDto? company = null;
             try { company = (await _mediator.Send(new GetCompanyByIdQuery(companyId), ct))?.Data; } catch { /* branding is optional */ }
             byte[]? logo = null;
+            var logoUrl = company?.Logo;
+            if (string.IsNullOrWhiteSpace(logoUrl) && company?.ParentCompanyId > 0)
+            {
+                try { logoUrl = (await _mediator.Send(new GetCompanyByIdQuery(company.ParentCompanyId.Value), ct))?.Data?.Logo; } catch { }
+            }
             try
             {
-                if (Uri.TryCreate(company?.Logo, UriKind.Absolute, out var uri) && (uri.Scheme == Uri.UriSchemeHttp || uri.Scheme == Uri.UriSchemeHttps))
+                if (Uri.TryCreate(logoUrl, UriKind.Absolute, out var uri) && (uri.Scheme == Uri.UriSchemeHttp || uri.Scheme == Uri.UriSchemeHttps))
                     logo = await Http.GetByteArrayAsync(uri, ct);
             }
             catch { /* logo is optional */ }

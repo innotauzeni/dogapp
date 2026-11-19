@@ -125,8 +125,9 @@ namespace Dog.Application.Common.Pdf
                             {
                                 c.Item().Text(m.Seller.Name).FontSize(17).Bold().FontColor(brand);
                                 if (!string.IsNullOrWhiteSpace(m.Seller.Address)) c.Item().Text(m.Seller.Address!).FontSize(8.5f).FontColor(Muted);
-                                var l2 = string.Join("  •  ", new[] { m.Seller.Phone, m.Seller.Email, m.Seller.Website }.Where(s => !string.IsNullOrWhiteSpace(s)));
+                                var l2 = string.Join("  •  ", new[] { m.Seller.Phone, m.Seller.Email }.Where(s => !string.IsNullOrWhiteSpace(s)));
                                 if (l2.Length > 0) c.Item().Text(l2).FontSize(8.5f).FontColor(Muted);
+                                if (!string.IsNullOrWhiteSpace(m.Seller.Website)) c.Item().Text(m.Seller.Website!.Trim().TrimEnd('/')).FontSize(8.5f).FontColor(brand);
                                 var ids = string.Join("   ", new[]
                                 {
                                     Pair("Reg", m.Seller.RegistrationNumber), Pair("TIN/BP", m.Seller.TaxNumber), Pair("VAT", m.Seller.VatNumber)
