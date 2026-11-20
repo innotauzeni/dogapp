@@ -107,6 +107,8 @@ namespace Dog.Infrastructure.Persistence
         public DbSet<EmailSetting> ka_emailsettings { get; set; }
         public DbSet<EmailLog> ka_emaillogs { get; set; }
         public DbSet<InvoiceCatalogItem> ka_invoicecatalog { get; set; }
+        public DbSet<AppAnnouncement> ka_appannouncements { get; set; }
+        public DbSet<AppAnnouncementDelivery> ka_appannouncementdeliveries { get; set; }
 
         protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
         {
@@ -406,6 +408,8 @@ namespace Dog.Infrastructure.Persistence
         {
             builder.Entity<Customer>(b =>
                 b.HasOne(c => c.CustomerCompany).WithMany(cc => cc.Contacts).HasForeignKey(c => c.CustomerCompanyId).OnDelete(DeleteBehavior.SetNull));
+            builder.Entity<AppAnnouncement>(b => { b.Property(a => a.Key).HasMaxLength(100); b.HasIndex(a => a.Key).IsUnique(); });
+            builder.Entity<AppAnnouncementDelivery>(b => { b.Property(d => d.Phone).HasMaxLength(30); b.HasIndex(d => new { d.AnnouncementId, d.Phone, d.SentOn }); });
             builder.Entity<InvoicePayment>(b =>
             {
                 b.Property(p => p.PaymentNumber).HasMaxLength(40);

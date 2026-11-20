@@ -39,6 +39,7 @@ builder.Services.AddHostedService<Dog.Api.BackgroundJobs.ReminderBackgroundServi
 
 // Background job: alerts the configured admin phone via WhatsApp when a Critical error is logged.
 builder.Services.AddHostedService<Dog.Api.BackgroundJobs.CriticalErrorAlertService>();
+builder.Services.AddHostedService<Dog.Api.BackgroundJobs.AnnouncementBackgroundService>();
 
 // Require auth on all endpoints by default
 builder.Services.AddControllers(options =>

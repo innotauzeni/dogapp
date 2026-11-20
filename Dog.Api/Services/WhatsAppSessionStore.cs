@@ -93,6 +93,8 @@ public class UserSession
     public int TrainingSlotIndex { get; set; }
     public int TrainingMinutes { get; set; }
     public string? TrainingDogName { get; set; }
+    public Dog.Application.Features.DogTraining.DTOs.ProgressReportDto? TrainingReportDraft { get; set; }
+    public List<int> TrainingReportWeeks { get; set; } = new();
     public int? TrainingInvoiceId { get; set; }
     public decimal TrainingPayAmount { get; set; }
     public Dog.Application.Features.DogTraining.DTOs.RecordTrainingPaymentDto? TrainingPayDraft { get; set; }

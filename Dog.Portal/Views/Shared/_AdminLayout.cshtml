@@ -828,6 +828,7 @@
 
         <!-- Page content -->
         <main class="content-area">
+            <div id="annBanners"></div>
             @RenderBody()
         </main>
     </div>
@@ -961,6 +962,25 @@
     }
     <script>window.__PG = { perms: @Html.Raw(JsonSerializer.Serialize(userSession?.Permissions ?? new List<string>())), prefix: @Html.Raw(JsonSerializer.Serialize(pgPrefix)) };</script>
     <script src="~/js/permission-guard.js" asp-append-version="true"></script>
+    <script>
+    // Notices that run for a few days (e.g. "new mobile app") - the API stops returning them when their days are over.
+    (function () {
+        function esc(s) { return (s == null ? '' : String(s)).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+        fetch('/BillingApi/Announcements/active').then(function (r) { return r.json(); }).then(function (j) {
+            var box = document.getElementById('annBanners'); if (!box || !j || !j.success) return;
+            (j.data || []).forEach(function (a) {
+                var k = 'ann-dismissed-' + a.key; try { if (localStorage.getItem(k)) return; } catch (e) { }
+                var d = document.createElement('div');
+                d.style.cssText = 'display:flex;align-items:center;gap:.9rem;flex-wrap:wrap;background:linear-gradient(135deg,#eef2ff,#e0f2fe);border:1px solid #c7d2fe;border-radius:12px;padding:.8rem 1.1rem;margin-bottom:1rem;color:#1e293b;font-size:.88rem';
+                d.innerHTML = '<i class="bi bi-phone" style="font-size:1.4rem;color:#4f46e5"></i><div style="flex:1;min-width:220px"><b>' + esc(a.title) + '</b><div style="color:#475569">' + esc(a.message) + '</div></div>' +
+                    (a.linkUrl ? '<a href="' + esc(a.linkUrl) + '" target="_blank" rel="noopener" style="background:#4f46e5;color:#fff;text-decoration:none;font-weight:700;padding:.5rem 1rem;border-radius:9px;white-space:nowrap"><i class="bi bi-download"></i> ' + esc(a.linkText || 'Open') + '</a>' : '') +
+                    '<button type="button" aria-label="Dismiss" style="border:none;background:none;color:#64748b;font-size:1.2rem;cursor:pointer">&times;</button>';
+                d.querySelector('button').onclick = function () { try { localStorage.setItem(k, '1'); } catch (e) { } d.remove(); };
+                box.appendChild(d);
+            });
+        }).catch(function () { });
+    })();
+    </script>
     @await RenderSectionAsync("Scripts", required: false)
 </body>
 </html>

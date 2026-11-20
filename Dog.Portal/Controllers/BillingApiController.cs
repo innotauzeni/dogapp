@@ -16,7 +16,7 @@ namespace Dog.Portal.Controllers
     public class BillingApiController : Controller
     {
         private static readonly Regex SafePath = new(@"^[A-Za-z0-9/_\-]+$", RegexOptions.Compiled);
-        private static readonly string[] Allowed = { "Invoice/", "CustomerCompany", "BillingSetup/" };
+        private static readonly string[] Allowed = { "Invoice/", "CustomerCompany", "BillingSetup/", "Announcements/" };
         private readonly IApiClient _api;
 
         public BillingApiController(IApiClient api) => _api = api;

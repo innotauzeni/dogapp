@@ -71,7 +71,7 @@ public partial class WhatsAppBotService : IWhatsAppBotService
     private static readonly HashSet<string> FreeTextCaptureMenus = new()
     {
         "record_note", "vaccine_name", "vaccine_due", "vaccine_notes", "mating_partner_name", "litter_puppy_name",
-        "invoice_item_desc", "invoice_notes", "training_notes"
+        "invoice_item_desc", "invoice_notes", "training_notes", "training_report_text", "training_pay_field"
     };
 
     // Sessions live in IWhatsAppSessionStore (a singleton) rather than on this
@@ -187,6 +187,9 @@ public partial class WhatsAppBotService : IWhatsAppBotService
             "expense_date" => await HandleExpenseDateMenuAsync(input, companyId, session),
             "training" => await HandleTrainingMenuAsync(inputLower, companyId, session),
             "training_dog" => await HandleTrainingDogPickAsync(inputLower, companyId, session),
+            "training_plan_dog" => await HandleTrainingPlanDogAsync(inputLower, companyId, session),
+            "training_report_dog" => await HandleTrainingReportDogAsync(inputLower, companyId, session),
+            "training_report_text" => await HandleTrainingReportTextAsync(input, companyId, session),
             "training_slot" => HandleTrainingSlot(inputLower, session),
             "training_duration" => HandleTrainingDuration(inputLower, session),
             "training_notes" => await HandleTrainingNotesAsync(input, companyId, session),

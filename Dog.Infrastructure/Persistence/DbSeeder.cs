@@ -56,6 +56,9 @@ namespace Dog.Infrastructure.Persistence
                 var permissionMap = await SeedPermissionsAsync(db);
 
                 await SeedBillingMenusAsync(db, roles);
+                await SeedHandlerAccessAsync(db, roles);
+                try { await SeedAppAnnouncementsAsync(db); }
+                catch (Exception annEx) { logger.LogWarning(annEx, "App announcement not seeded (run sql/Release_2026-11-20.sql first): {Message}", annEx.Message); }
                 permissionMap = await SeedPermissionsAsync(db);
 
                 var ownerRole = await roles.FindByNameAsync(OwnerRoleName);
@@ -649,6 +652,55 @@ namespace Dog.Infrastructure.Persistence
                         db.ka_rolepermissions.Add(new RolePermission { RoleId = rid, PermissionId = getId });
                 await db.SaveChangesAsync();
             }
+        }
+
+        // ── Dog Handler role: its own menu inside Dog Training + only the permissions a handler needs ──
+        private static readonly string[] HandlerPermissions =
+        {
+            "training.dashboard.view", "training.enrolment.view", "training.log.view", "training.log.record",
+            "training.progress.view", "training.progress.submit", "training.assessment.view",
+        };
+
+        private static async Task SeedHandlerAccessAsync(ApplicationDbContext db, RoleManager<Role> roles)
+        {
+            var role = await roles.FindByNameAsync("Dog Handler");
+            if (role == null) return;
+            var module = await db.ka_systemmodules.IgnoreQueryFilters().FirstOrDefaultAsync(m => m.AccessName == "dogtraining");
+            if (module != null && !await db.ka_rolemenus.IgnoreQueryFilters().AnyAsync(rm => rm.RoleId == role.Id && rm.SystemModuleId == module.Id))
+                db.ka_rolemenus.Add(new RoleMenu { RoleId = role.Id, SystemModuleId = module.Id });
+            var perms = (await db.ka_permissions.IgnoreQueryFilters().Where(p => !p.IsDeleted && HandlerPermissions.Contains(p.Name)).Select(p => new { p.Name, p.Id }).ToListAsync())
+                .GroupBy(p => p.Name).Select(g => g.Min(x => x.Id)).ToList();
+            foreach (var pid in perms)
+                if (!await db.ka_rolepermissions.IgnoreQueryFilters().AnyAsync(rp => rp.RoleId == role.Id && rp.PermissionId == pid))
+                    db.ka_rolepermissions.Add(new RolePermission { RoleId = role.Id, PermissionId = pid });
+            await db.SaveChangesAsync();
+        }
+
+        // ── Notice: new mobile app on APKPure (WhatsApp 4 days, portal banner 3 days) ──
+        private static async Task SeedAppAnnouncementsAsync(ApplicationDbContext db)
+        {
+            const string key = "mobile-app-apkpure-1.1.0";
+            if (await db.ka_appannouncements.IgnoreQueryFilters().AnyAsync(a => a.Key == key)) return;
+            var company = await db.ka_companies.OrderBy(c => c.Id).FirstOrDefaultAsync();
+            if (company == null) return;
+
+            // Local (Harare) time: start today if there is still time to send, otherwise tomorrow.
+            DateTime local;
+            try { local = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, TimeZoneInfo.FindSystemTimeZoneById("Africa/Harare")); }
+            catch { local = DateTime.UtcNow.AddHours(2); }
+            var start = local.Hour < 16 ? local.Date : local.Date.AddDays(1);
+
+            const string link = "https://apkpure.com/p/com.blackeagle.black_eagle";
+            db.ka_appannouncements.Add(new AppAnnouncement
+            {
+                CompanyId = company.Id, Key = key, Title = "New Black Eagle mobile app", StartDate = start, WhatsAppDays = 4, PortalDays = 3,
+                LinkUrl = link, LinkText = "Download on APKPure",
+                Message = "📱 *Black Eagle – new mobile app*\n\nPlease download the latest Black Eagle app from APKPure:\n" + link +
+                          "\n\n⚠️ *Before you install it, uninstall the version that is on your phone now* (Settings → Apps → Black Eagle → Uninstall). " +
+                          "Then install the new one and sign in with your usual login.\n\nThank you.",
+                PortalMessage = "A new Black Eagle mobile app is available. Uninstall the version on your phone first, then install the new one from APKPure.",
+            });
+            await db.SaveChangesAsync();
         }
 
         // ── ASSIGN MENUS TO ROLE ─────────────────────────────────────────────

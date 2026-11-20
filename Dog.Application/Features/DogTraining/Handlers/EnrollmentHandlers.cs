@@ -295,6 +295,17 @@ namespace Dog.Application.Features.DogTraining.Handlers
             if (e.Status == TrainingStatus.AwaitingHandler) e.Status = TrainingStatus.Ready;
             await _uow.Repository<DogTrainingEnrollment>().UpdateAsync(e, ct);
 
+            // Anyone allocated a dog needs the handler menu (logbook, weekly reports, their dogs) on web, WhatsApp and mobile.
+            // Those come from the "Dog Handler" role, so add it to the user if they do not have it yet (they sign in again to see it).
+            try
+            {
+                var handlerRole = await _uow.Repository<Role>().TableNoTracking.FirstOrDefaultAsync(r => r.Name == "Dog Handler", ct);
+                if (handlerRole != null &&
+                    !await _uow.Repository<ApplicationRoleUser>().TableNoTracking.AnyAsync(ur => ur.UserId == d.HandlerUserId && ur.RoleId == handlerRole.Id, ct))
+                    await _uow.Repository<ApplicationRoleUser>().AddAsync(new ApplicationRoleUser { UserId = d.HandlerUserId, RoleId = handlerRole.Id }, ct);
+            }
+            catch { /* allocation itself already succeeded; the role can be added by an administrator */ }
+
             return ApiResponse<EnrollmentDetailDto>.Ok((await EnrollmentDetailBuilder.BuildAsync(_uow, e.Id, ct))!,
                 $"Allocated to {TrainingSupport.FullName(handler)}.");
         }

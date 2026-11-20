@@ -22,11 +22,13 @@ public partial class WhatsAppBotService
     private static bool Can(UserSession s, params string[] anyOf) => anyOf.Any(s.Permissions.Contains);
 
     private TrainingActor TrainingActorFor(UserSession s, int companyId)
-        => new(s.AuthenticatedUserId ?? "", s.AuthenticatedUsername ?? "", companyId, TrainingManagerPermissions.Any(s.Permissions.Contains));
+        => new(s.AuthenticatedUserId ?? "", s.AuthenticatedUsername ?? "", companyId, TrainingManagerPermissions.Any(s.Permissions.Contains),
+            s.Permissions.Contains("training.payment.verify"));
 
     private static readonly string[] TrainingPerms =
     {
-        "training.log.view", "training.log.record", "training.dashboard.view", "training.invoice.view", "training.payment.record"
+        "training.log.view", "training.log.record", "training.dashboard.view", "training.invoice.view", "training.payment.record",
+        "training.progress.view", "training.progress.submit", "training.enrolment.view"
     };
 
     // ── Entry point: "training" command / main-menu option 10 ────────────────
@@ -43,6 +45,8 @@ public partial class WhatsAppBotService
         void Add(string key, string text) { opts.Add(key); sb.AppendLine($"{opts.Count}️⃣  {text}"); }
         if (Can(session, "training.log.view", "training.log.record")) Add("dogs", "My *training dogs* (week & day)");
         if (Can(session, "training.log.record")) Add("log", "*Log today's training* 📝");
+        if (Can(session, "training.progress.submit")) Add("report", "*Weekly progress report* 📋");
+        if (Can(session, "training.enrolment.view", "training.log.view")) Add("plan", "*Today's plan* for a dog 🗓");
         if (Can(session, "training.dashboard.view")) Add("summary", "Training *summary*");
         if (Can(session, "training.invoice.view")) Add(Can(session, "training.payment.record") ? "pay" : "invoices", Can(session, "training.payment.record") ? "*Record a payment* 💵" : "Unpaid *invoices*");
         sb.AppendLine();
@@ -63,6 +67,8 @@ public partial class WhatsAppBotService
         {
             case "dogs": return await TrainingDogsTextAsync(actor, session) + "\n\nType *training* for the training menu, or *0* for the main menu.";
             case "log": return await StartTrainingLogAsync(actor, session);
+            case "report": return await StartTrainingReportAsync(actor, session);
+            case "plan": return await StartTrainingPlanAsync(actor, session);
             case "summary": return await TrainingSummaryTextAsync(actor);
             case "pay":
             case "invoices": return await StartTrainingPaymentAsync(actor, session, canPay: session.TrainingMenuOptions[n - 1] == "pay");
@@ -383,5 +389,121 @@ Type *training* for the training menu, or *0* for the main menu.";
                (pending ? "⏳ It is *pending* until it is confirmed on the bank statement / cheque clears — then the balance updates." :
                 inv.Status == "PAID" ? "🎉 Paid in full — the dog can now be allocated a handler and start training." : $"Balance still due: *{inv.BalanceAmount:0.00}*") +
                "\n\n" + StartTrainingMenu(session);
+    }
+
+    // ── Today's plan (what the dog is scheduled to do today) ─────────────────
+
+    private async Task<string> StartTrainingPlanAsync(TrainingActor actor, UserSession session)
+    {
+        var dogs = await ActiveTrainingDogsAsync(actor);
+        if (dogs.Count == 0) return "🐕 No dogs are in training for you right now.\n\nType *0* for the main menu.";
+
+        session.LastListIds = dogs.Select(d => d.Id).ToList();
+        session.CurrentMenu = "training_plan_dog";
+        var sb = new StringBuilder("🗓 *TODAY'S PLAN*\n\nWhich dog?\n\n");
+        for (var i = 0; i < dogs.Count; i++)
+            sb.AppendLine($"{i + 1}. *{dogs[i].DogName}* — Week {dogs[i].CurrentWeek}, Day {dogs[i].DayNumber}");
+        sb.AppendLine("\nReply with the dog's number, or *back* to cancel.");
+        return sb.ToString();
+    }
+
+    private async Task<string> HandleTrainingPlanDogAsync(string input, int companyId, UserSession session)
+    {
+        var enrollmentId = ResolveListSelection(session, input);
+        if (enrollmentId == null) return "❌ Please reply with a number from the list, or type *back* to cancel.";
+
+        var resp = await _mediator.Send(new GetDailyLogForDayQuery(TrainingActorFor(session, companyId), enrollmentId.Value, _clock.Today));
+        session.CurrentMenu = "training";
+        if (resp?.Success != true || resp.Data == null)
+            return $"❌ {resp?.Message ?? "Could not open that dog."}\n\n{StartTrainingMenu(session)}";
+
+        var d = resp.Data;
+        var sb = new StringBuilder($"🗓 *{d.DogName}* — Week {d.WeekNumber}, Day {d.DayNumber}\n\n");
+        if (d.Slots.Count == 0) sb.AppendLine("No schedule is set for today.");
+        foreach (var s in d.Slots)
+            sb.AppendLine($"⏰ {s.Time} — {s.Title}" + (s.Done ? (s.Rating.HasValue ? $"  ✅ {s.Rating}/10" : "  ✅") : ""));
+        sb.AppendLine();
+        sb.AppendLine("Choose *Log today's training* in the training menu to rate the activities.");
+        return sb.ToString() + "\n" + StartTrainingMenu(session);
+    }
+
+    // ── Weekly progress report (the handler's own report on a dog) ───────────
+
+    private async Task<string> StartTrainingReportAsync(TrainingActor actor, UserSession session)
+    {
+        var dogs = await ActiveTrainingDogsAsync(actor);
+        if (dogs.Count == 0) return "🐕 No dogs are in training for you right now.\n\nType *0* for the main menu.";
+
+        session.LastListIds = dogs.Select(d => d.Id).ToList();
+        session.TrainingDogNames = dogs.Select(d => d.DogName).ToList();
+        session.TrainingReportWeeks = dogs.Select(d => d.CurrentWeek).ToList();
+        session.CurrentMenu = "training_report_dog";
+        var sb = new StringBuilder("📋 *WEEKLY PROGRESS REPORT*\n\nWhich dog?\n\n");
+        for (var i = 0; i < dogs.Count; i++)
+            sb.AppendLine($"{i + 1}. *{dogs[i].DogName}* — Week {dogs[i].CurrentWeek}");
+        sb.AppendLine("\nReply with the dog's number, or *back* to cancel.");
+        return sb.ToString();
+    }
+
+    private async Task<string> HandleTrainingReportDogAsync(string input, int companyId, UserSession session)
+    {
+        var enrollmentId = ResolveListSelection(session, input);
+        if (enrollmentId == null) return "❌ Please reply with a number from the list, or type *back* to cancel.";
+        var week = session.TrainingReportWeeks[int.Parse(input) - 1];
+
+        var resp = await _mediator.Send(new GetProgressReportDraftQuery(TrainingActorFor(session, companyId), enrollmentId.Value, week));
+        if (resp?.Success != true || resp.Data == null)
+        {
+            session.CurrentMenu = "training";
+            return $"❌ {resp?.Message ?? "Could not open the report."}\n\n{StartTrainingMenu(session)}";
+        }
+
+        var r = resp.Data;
+        if (r.Status is "Submitted" or "Approved")
+        {
+            session.CurrentMenu = "training";
+            return $"✅ The week {r.WeekNumber} report for *{r.DogName}* is already {r.Status.ToLowerInvariant()}.\n\n{StartTrainingMenu(session)}";
+        }
+
+        session.TrainingReportDraft = r;
+        session.CurrentMenu = "training_report_text";
+        var sb = new StringBuilder($"📋 *{r.DogName} — Week {r.WeekNumber}*\n\n");
+        if (r.LogsInWeek > 0) sb.AppendLine($"{r.LogsInWeek} training day(s) logged" + (r.AverageRating.HasValue ? $", average rating {r.AverageRating}/10." : "."));
+        else sb.AppendLine("No daily training has been logged for this week yet.");
+        if (!string.IsNullOrWhiteSpace(r.ActivitiesCompleted)) sb.AppendLine($"Done: {r.ActivitiesCompleted}");
+        if (!string.IsNullOrWhiteSpace(r.ActivitiesOutstanding)) sb.AppendLine($"Outstanding: {r.ActivitiesOutstanding}");
+        sb.AppendLine();
+        sb.AppendLine("✍️ Write your *summary of the dog's performance this week* (what improved, any problems, advice) and I will submit the report for review.");
+        sb.AppendLine("Type *skip* to submit with the automatic summary only, or *back* to cancel.");
+        return sb.ToString();
+    }
+
+    private async Task<string> HandleTrainingReportTextAsync(string input, int companyId, UserSession session)
+    {
+        var r = session.TrainingReportDraft;
+        if (r == null) { session.CurrentMenu = "main"; return GetMainMenu(); }
+
+        var text = input.Trim();
+        var skip = text.Equals("skip", StringComparison.OrdinalIgnoreCase);
+        if (!skip && text.Length < 5) return "❌ Please write a little more, or type *skip*.";
+
+        var resp = await _mediator.Send(new SaveProgressReportCommand(TrainingActorFor(session, companyId), new SaveProgressReportDto
+        {
+            EnrollmentId = r.EnrollmentId,
+            WeekNumber = r.WeekNumber,
+            Objectives = r.Objectives,
+            ActivitiesCompleted = r.ActivitiesCompleted,
+            ActivitiesOutstanding = r.ActivitiesOutstanding,
+            PerformanceSummary = skip ? r.PerformanceSummary : text,
+            Challenges = r.Challenges,
+            Improvements = r.Improvements,
+            Recommendations = r.Recommendations,
+            Submit = true,
+        }));
+        session.TrainingReportDraft = null;
+        session.CurrentMenu = "training";
+        if (resp?.Success != true)
+            return $"❌ {resp?.Message ?? "Could not submit the report."}\n\n{StartTrainingMenu(session)}";
+        return $"✅ *Report submitted* — {r.DogName}, week {r.WeekNumber}. Management will review it.\n\n{StartTrainingMenu(session)}";
     }
 }
