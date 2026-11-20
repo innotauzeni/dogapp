@@ -6,7 +6,7 @@ import '../../core/responsive/responsive.dart';
 import '../../core/theme/app_colors.dart';
 import '../../features/auth/providers/auth_provider.dart';
 import '../../features/settings/screens/settings_screen.dart';
-import '../../features/training/screens/training_dogs_screen.dart';
+import '../../features/training/screens/training_hub_screen.dart';
 
 /// Lets any tab screen open the shell's navigation drawer.
 class ShellDrawer {
@@ -61,7 +61,7 @@ class AppDrawer extends StatelessWidget {
     final brandDark = Color.lerp(brand, Colors.black, 0.45)!;
     final name = (user?.name ?? 'User').trim();
     final role = auth.isDogHandler ? 'Dog Handler' : (user?.role ?? '');
-    final canTraining = auth.isDogHandler || auth.permissions.isEmpty || auth.can('training.log.view') || auth.can('training.dashboard.view');
+    final canTraining = auth.isDogHandler || auth.permissions.any((p) => p.startsWith('training.'));
 
     return Drawer(
       width: 304.w.clamp(280, 340).toDouble(),
@@ -162,7 +162,7 @@ class AppDrawer extends StatelessWidget {
                     label: 'Dog Training',
                     selected: false,
                     brand: brand,
-                    onTap: () => _push(context, const TrainingDogsScreen()),
+                    onTap: () => _push(context, const TrainingHubScreen()),
                   ),
                 _tile(
                   icon: Icons.settings_outlined,

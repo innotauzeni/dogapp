@@ -170,6 +170,22 @@ class TrainingRepository {
         parser: (d) => ((d as List?) ?? const []).map((e) => WeekPlan.fromJson((e as Map).cast<String, dynamic>())).toList(),
       );
 
+  /// Any Dog Training list endpoint (enrolments, invoices, handlers ...) as plain maps.
+  Future<List<Map<String, dynamic>>> rawList(String path, {Map<String, dynamic>? query}) => _api.get(
+        path,
+        query: query,
+        parser: (d) => ((d as List?) ?? const []).map((e) => (e as Map).cast<String, dynamic>()).toList(),
+      );
+
+  Future<Map<String, dynamic>> rawMap(String path, {Map<String, dynamic>? query}) =>
+      _api.get(path, query: query, parser: (d) => ((d as Map?) ?? const {}).cast<String, dynamic>());
+
+  /// The week's report, pre-filled from the daily logs (or what was already saved).
+  Future<Map<String, dynamic>> progressDraft(int enrollmentId, int week) =>
+      rawMap('Training/progress-reports/draft', query: {'enrollmentId': enrollmentId, 'week': week});
+
+  Future<void> saveProgressReport(Map<String, dynamic> body) => _api.post('Training/progress-reports', body: body, parser: (_) {});
+
   /// Uploads a photo / video and attaches it to the daily log.
   Future<void> uploadToLog(int logId, String filePath) async {
     final name = filePath.split(RegExp(r'[\\/]')).last;
