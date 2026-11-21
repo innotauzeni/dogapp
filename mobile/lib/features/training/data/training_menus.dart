@@ -52,37 +52,6 @@ List<MapEntry<String, String>> _kv(Map<String, String?> m) =>
 
 final List<TrainingMenu> trainingMenus = [
   TrainingMenu(
-    title: 'Training Enrolments',
-    subtitle: 'Dogs enrolled, their stage and handler',
-    permission: 'training.enrolment.view',
-    path: 'Training/enrollments',
-    icon: Icons.assignment_rounded,
-    color: const Color(0xFF2563EB),
-    empty: 'No enrolments yet.',
-    row: (j) => TRow(
-      title: '${_s(j['dogName'])} · ${_s(j['enrollmentNumber'])}',
-      subtitle: [_s(j['customerName']), _s(j['programmeName'])].where((e) => e.isNotEmpty).join(' · '),
-      trailing: _s(j['status']) == 'InTraining' ? 'Wk ${_s(j['currentWeek'])} · Day ${_s(j['dayNumber'])}' : '',
-      badge: _s(j['status']),
-      details: _kv({
-        'Enrolment': _s(j['enrollmentNumber']),
-        'Dog': '${_s(j['dogName'])} ${_s(j['dogBreed']).isEmpty ? '' : '(${_s(j['dogBreed'])})'}',
-        'Customer': _s(j['customerName']),
-        'Programme': _s(j['programmeName']),
-        'Status': _s(j['status']),
-        'Handler': _s(j['handlerName']),
-        'Started': _d(j['startDate']),
-        'Planned end': _d(j['plannedEndDate']),
-        'Week / day': _s(j['status']) == 'InTraining' ? 'Week ${_s(j['currentWeek'])}, day ${_s(j['dayNumber'])}' : '',
-        'Fee': _m(j['fee']),
-        'Additional charges': (j['additionalCharges'] ?? 0) == 0 ? '' : _m(j['additionalCharges']),
-        'Total': _m(j['total']),
-        'Invoice': _s(j['invoiceNumber']).isEmpty ? '' : '${_s(j['invoiceNumber'])} · ${_s(j['invoiceStatus'])} · balance ${_m(j['invoiceBalance'])}',
-        'Health result': _s(j['latestHealthResult']),
-      }),
-    ),
-  ),
-  TrainingMenu(
     title: 'Weekly Progress Reports',
     subtitle: 'Handler reports and their review',
     permission: 'training.progress.view',
@@ -174,44 +143,6 @@ final List<TrainingMenu> trainingMenus = [
         'Result': _s(j['result']),
         'Comments': _s(j['comments']),
       }),
-    ),
-  ),
-  TrainingMenu(
-    title: 'Invoices & Payments',
-    subtitle: 'Training fees and money received',
-    permission: 'training.invoice.view',
-    path: 'Training/invoices',
-    icon: Icons.receipt_long_rounded,
-    color: const Color(0xFFD97706),
-    empty: 'No training invoices yet.',
-    row: (j) => TRow(
-      title: '${_s(j['invoiceNumber'])} · ${_s(j['customerName'])}',
-      subtitle: [_s(j['dogName']), 'Due ${_d(j['dueDate'])}'].where((e) => e.isNotEmpty).join(' · '),
-      trailing: _m(j['balanceAmount']),
-      badge: _s(j['status']),
-      details: [
-        ..._kv({
-          'Invoice': _s(j['invoiceNumber']),
-          'Customer': _s(j['customerName']),
-          'Dog': _s(j['dogName']),
-          'Enrolment': _s(j['enrollmentNumber']),
-          'Invoice date': _d(j['invoiceDate']),
-          'Due date': _d(j['dueDate']),
-          'Total': _m(j['totalAmount']),
-          'Paid': _m(j['paidAmount']),
-          'Awaiting confirmation': (j['pendingAmount'] ?? 0) == 0 ? '' : _m(j['pendingAmount']),
-          'Balance due': _m(j['balanceAmount']),
-          'Status': _s(j['status']),
-        }),
-        for (final p in ((j['payments'] as List?) ?? const []).whereType<Map>())
-          MapEntry(
-            'Payment ${_s(p['paymentNumber'])}',
-            '${_s(p['methodLabel'] ?? p['method'])} · ${_s(p['status'])} · ${_m(p['amount'])}'
-                '${_s(p['referenceNumber']).isEmpty ? '' : '\nRef ${_s(p['referenceNumber'])}'}'
-                '${_s(p['payerName']).isEmpty ? '' : '\nFrom ${_s(p['payerName'])}'}'
-                '${_s(p['destinationAccountLabel']).isEmpty ? '' : '\nInto ${_s(p['destinationAccountLabel'])}'}',
-          ),
-      ],
     ),
   ),
   TrainingMenu(

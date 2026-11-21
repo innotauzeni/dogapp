@@ -8,6 +8,8 @@ import '../../auth/providers/auth_provider.dart';
 import '../data/training_menus.dart';
 import 'training_dashboard_screen.dart';
 import 'training_dogs_screen.dart';
+import 'training_enrolments_screen.dart';
+import 'training_invoices_screen.dart';
 import 'training_list_screen.dart';
 
 /// "Dog Training" on the phone: the same menus as the web portal, each shown only when the signed-in
@@ -27,6 +29,12 @@ class TrainingHubScreen extends StatelessWidget {
       if (auth.can('training.log.view'))
         _HubItem('Daily Logbook', 'Your dogs in training — record today', Icons.menu_book_rounded, const Color(0xFF059669),
             (c) => const TrainingDogsScreen()),
+      if (auth.can('training.enrolment.view'))
+        _HubItem('Training Enrolments', 'Every dog, step by step', Icons.assignment_rounded, const Color(0xFF2563EB),
+            (c) => const TrainingEnrolmentsScreen()),
+      if (auth.can('training.invoice.view'))
+        _HubItem('Invoices & Payments', 'Training fees and money received', Icons.receipt_long_rounded, const Color(0xFFD97706),
+            (c) => const TrainingInvoicesScreen()),
       for (final m in trainingMenus)
         if (auth.can(m.permission))
           _HubItem(m.title, m.subtitle, m.icon, m.color, (c) => TrainingListScreen(config: m)),

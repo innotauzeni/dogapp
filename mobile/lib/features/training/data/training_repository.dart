@@ -180,6 +180,14 @@ class TrainingRepository {
   Future<Map<String, dynamic>> rawMap(String path, {Map<String, dynamic>? query}) =>
       _api.get(path, query: query, parser: (d) => ((d as Map?) ?? const {}).cast<String, dynamic>());
 
+  Future<dynamic> rawPost(String path, [Object? body]) => _api.post<dynamic>(path, body: body ?? <String, dynamic>{}, parser: (d) => d);
+
+  Future<List<Map<String, dynamic>>> banks() => _api.get(
+        'BillingSetup/pdf-info',
+        query: {'CompanyId': 0},
+        parser: (d) => (((d as Map)['bankAccounts'] as List?) ?? const []).map((e) => (e as Map).cast<String, dynamic>()).toList(),
+      );
+
   /// The week's report, pre-filled from the daily logs (or what was already saved).
   Future<Map<String, dynamic>> progressDraft(int enrollmentId, int week) =>
       rawMap('Training/progress-reports/draft', query: {'enrollmentId': enrollmentId, 'week': week});
