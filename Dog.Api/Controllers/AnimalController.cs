@@ -5,6 +5,7 @@ using Dog.Application.Features.Animals.Commands;
 using Dog.Application.Features.Animals.DTOs;
 using Dog.Application.Features.Animals.Queries;
 using MediatR;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
 
@@ -94,6 +95,20 @@ namespace Dog.Api.Controllers
         [HasPermission("pet.edit")]
         public async Task<IActionResult> AssignDog([FromBody] AssignDogDto dto, CancellationToken ct)
             => Ok(await _mediator.Send(new AssignDogCommand(dto), ct));
+
+        /// <summary>Feed the whole kennel in one go (standard portion unless told otherwise). Open to handlers even with no dogs allocated.</summary>
+        [HttpPost("FeedAllDogs")]
+        [Authorize]
+        public async Task<IActionResult> FeedAllDogs([FromBody] Dog.Application.Features.Animals.FeedAll.FeedAllDogsDto dto, CancellationToken ct)
+        {
+            var allowed = User.Claims.Any(c => c.Type == "permission" && (c.Value == "pet.view" || c.Value == "pet.edit"))
+                          || User.IsInRole("Dog Handler") || User.IsInRole("Admin") || User.IsInRole("SystemOwner");
+            if (!allowed) return StatusCode(403, new { success = false, message = "You do not have permission to do this." });
+            int.TryParse(User.FindFirstValue("companyId"), out var own);
+            dto.CompanyId = own;
+            dto.RecordedByUserId = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? User.FindFirstValue("sub");
+            return Ok(await _mediator.Send(new Dog.Application.Features.Animals.FeedAll.FeedAllDogsCommand(dto), ct));
+        }
 
         [HttpPost("AddCareRecord")]
         // Accessible to any authenticated user — authorization is handled by checking active assignments in the handler layer

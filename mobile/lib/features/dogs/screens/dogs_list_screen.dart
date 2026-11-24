@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../widgets/feed_all_sheet.dart';
 import '../../../shared/widgets/app_drawer.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:provider/provider.dart';
@@ -118,7 +119,17 @@ class _DogsListScreenState extends State<DogsListScreen> {
       });
     }
     return Scaffold(
-      appBar: AppBar(leading: const MenuButton(), title: Text(_getTitle())),
+      appBar: AppBar(
+        leading: const MenuButton(),
+        title: Text(_getTitle()),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.restaurant_rounded),
+            tooltip: 'Feed all dogs',
+            onPressed: () => showFeedAllSheet(context),
+          ),
+        ],
+      ),
       floatingActionButton: canCreate
           ? FloatingActionButton.extended(
               heroTag: 'fab-dogs-list-add',

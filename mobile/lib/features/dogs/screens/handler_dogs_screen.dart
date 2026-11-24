@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../widgets/feed_all_sheet.dart';
 import '../../../shared/widgets/app_drawer.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:provider/provider.dart';
@@ -61,7 +62,17 @@ class _HandlerDogsScreenState extends State<HandlerDogsScreen> {
     final canRecord = context.watch<AuthProvider>().can('pet.edit') ||
         context.watch<AuthProvider>().isDogHandler;
     return Scaffold(
-      appBar: AppBar(leading: const MenuButton(), title: const Text('My Assigned Dogs')),
+      appBar: AppBar(
+        leading: const MenuButton(),
+        title: const Text('My Assigned Dogs'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.restaurant_rounded),
+            tooltip: 'Feed all dogs',
+            onPressed: () => showFeedAllSheet(context),
+          ),
+        ],
+      ),
       body: SafeArea(
         top: false,
         child: RefreshIndicator(

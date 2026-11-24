@@ -46,6 +46,20 @@ namespace Dog.Api.Services
             await SendToAllNotificationNumbers(message);
         }
 
+        public async Task NotifyAllDogsFedAsync(int count, string portion, string handlerName, DateTime when, List<string> dogNames, int alreadyFed, int deployed)
+        {
+            if (!_notificationNumbers.Any()) return;
+            var names = dogNames.Count <= 12 ? string.Join(", ", dogNames) : string.Join(", ", dogNames.Take(12)) + $" and {dogNames.Count - 12} more";
+            var message = $"🍖 *KENNEL FED — {count} dog(s)*\n\n" +
+                          $"🥘 *Portion:* {portion}\n" +
+                          $"🕐 *Time:* {EventTime.When(when)}\n" +
+                          $"👤 *Fed by:* {handlerName}\n" +
+                          $"🐕 {names}\n";
+            if (alreadyFed > 0) message += $"\nℹ️ {alreadyFed} dog(s) already had today's feeding and were left out.";
+            if (deployed > 0) message += $"\nℹ️ {deployed} dog(s) on deployment were not included.";
+            await SendToAllNotificationNumbers(message);
+        }
+
         public async Task NotifyDogFedAsync(Dogtbl dog, DogCareRecord careRecord, string handlerName)
         {
             if (!_notificationNumbers.Any()) return;

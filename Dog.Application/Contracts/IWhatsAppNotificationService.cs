@@ -10,6 +10,8 @@ namespace Dog.Application.Contracts
     {
         Task NotifyDogAddedAsync(Dogtbl dog, string companyName);
         Task NotifyDogFedAsync(Dogtbl dog, DogCareRecord careRecord, string handlerName);
+        /// <summary>One summary message after the whole kennel was fed in one go.</summary>
+        Task NotifyAllDogsFedAsync(int count, string portion, string handlerName, DateTime when, List<string> dogNames, int alreadyFed, int deployed);
         Task NotifyVaccinationAsync(Dogtbl dog, DogCareRecord careRecord, string handlerName);
         Task NotifyMatingAsync(Dogtbl dog, DogCareRecord careRecord, string partnerName, string handlerName);
         Task NotifyIllnessAsync(Dogtbl dog, DogCareRecord careRecord, string handlerName);

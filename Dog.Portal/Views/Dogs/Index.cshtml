@@ -167,6 +167,7 @@
 <!-- Toast -->
 <div class="toast-wrap" id="toastWrap"></div>
 
+@await Html.PartialAsync("_FeedAll")
 <!-- Page header -->
 <div class="page-hdr-row">
     <div class="page-hdr">
@@ -180,6 +181,7 @@
         }
         <a href="/DogHandler" class="btn-clr"><i class="bi bi-person-lines-fill"></i> Dog Handler Reports</a>
         <a href="/Dogs/Assigned" class="btn-clr"><i class="bi bi-person-check-fill"></i> My Assigned Dogs</a>
+        <button type="button" class="btn-clr" onclick="FeedAll.open()" style="color:#b45309;border-color:#fde68a;background:#fffbeb"><i class="bi bi-egg-fried"></i> Feed all dogs</button>
         @if (P.Can("pet.create")) {
         <button class="btn-add" onclick="openCreateModal()">
             <i class="bi bi-person-plus-fill"></i> Add Dog

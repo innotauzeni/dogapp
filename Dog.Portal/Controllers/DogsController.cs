@@ -584,6 +584,23 @@ namespace Dog.Portal.Controllers
             catch (Exception ex) { return Json(new { success = false, message = ex.Message }); }
         }
 
+        public class FeedAllRequest { public string? Portion { get; set; } public string? Details { get; set; } public bool IncludeDeployed { get; set; } public DateTime? OccurredOn { get; set; } }
+
+        // POST /Dogs/FeedAll — record today's feeding for every dog in the kennel in one go
+        [HttpPost]
+        public async Task<IActionResult> FeedAll([FromBody] FeedAllRequest req)
+        {
+            if (!IsAuthenticated()) return Json(new { success = false, message = "Session expired." });
+            try
+            {
+                var raw = await _apiClient.PostRawAsync("api/animal/FeedAllDogs", new { portion = req.Portion, details = req.Details, includeDeployed = req.IncludeDeployed, occurredOn = req.OccurredOn });
+                if (raw.StatusCode == 403) return Json(new { success = false, message = "You do not have permission to do this." });
+                if (!raw.IsSuccessStatusCode) return Json(new { success = false, message = "The request failed (" + raw.StatusCode + ")." });
+                return Content(raw.Body, "application/json");
+            }
+            catch (Exception ex) { return Json(new { success = false, message = ex.Message }); }
+        }
+
         [HttpPost]
         public async Task<IActionResult> AddCareRecord([FromBody] AddDogCareRecordRequest request)
         {

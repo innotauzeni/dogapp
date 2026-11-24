@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../widgets/feed_all_sheet.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:provider/provider.dart';
 
@@ -198,6 +199,31 @@ class _HandlerDashboardScreenState extends State<HandlerDashboardScreen> {
                         ),
                       ),
                       SizedBox(height: 16.h),
+                      // Feed the whole kennel in one go (works even with no dogs allocated)
+                      Material(
+                        color: const Color(0xFFFFFBEB),
+                        borderRadius: BorderRadius.circular(14),
+                        child: InkWell(
+                          borderRadius: BorderRadius.circular(14),
+                          onTap: () => showFeedAllSheet(context),
+                          child: Container(
+                            padding: EdgeInsets.all(14.w),
+                            decoration: BoxDecoration(borderRadius: BorderRadius.circular(14), border: Border.all(color: const Color(0xFFFDE68A))),
+                            child: Row(children: [
+                              const Icon(Icons.restaurant_rounded, color: Color(0xFFD97706)),
+                              SizedBox(width: 12.w),
+                              Expanded(
+                                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                                  Text('Feed all dogs', style: TextStyle(fontSize: 14.sp, fontWeight: FontWeight.w800)),
+                                  Text("Record today's feeding for the whole kennel at once", style: TextStyle(fontSize: 12.sp, color: AppColors.textSecondary)),
+                                ]),
+                              ),
+                              const Icon(Icons.chevron_right_rounded, color: AppColors.textMuted),
+                            ]),
+                          ),
+                        ),
+                      ),
+                      SizedBox(height: 12.h),
                       // Dog Training: today's sessions, daily logbook and photos
                       Material(
                         color: Colors.white,

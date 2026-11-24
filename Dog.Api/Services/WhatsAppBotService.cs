@@ -71,7 +71,7 @@ public partial class WhatsAppBotService : IWhatsAppBotService
     private static readonly HashSet<string> FreeTextCaptureMenus = new()
     {
         "record_note", "vaccine_name", "vaccine_due", "vaccine_notes", "mating_partner_name", "litter_puppy_name",
-        "invoice_item_desc", "invoice_notes", "training_notes", "training_report_text", "training_pay_field"
+        "invoice_item_desc", "invoice_notes", "feedall_confirm", "training_notes", "training_report_text", "training_pay_field"
     };
 
     // Sessions live in IWhatsAppSessionStore (a singleton) rather than on this
@@ -149,6 +149,7 @@ public partial class WhatsAppBotService : IWhatsAppBotService
             "create_user" => await HandleCreateUserStepAsync(phoneNumber, input, companyId, session),
             "customers" => await HandleCustomersMenuAsync(inputLower, companyId, session),
             "record_dog" => await HandleRecordDogMenuAsync(inputLower, companyId, session),
+            "feedall_confirm" => await HandleFeedAllConfirmAsync(input, companyId, session),
             "record_event" => await HandleRecordEventMenuAsync(inputLower, session),
             "record_note" => await HandleRecordNoteMenuAsync(input, session),
             "record_attention" => await HandleRecordAttentionMenuAsync(inputLower, companyId, session),
@@ -410,6 +411,7 @@ Type *0* or *exit* to return to main menu";
 *view [dogId]* or *detail [dogId]* - View dog details
 *add [name] [breed]* - Add new dog
 *record* - Record a care activity, step by step (or type option *3*)
+*feedall* - Record today's feeding for ALL dogs at once (standard portion)
 *vaccine* - Show dogs needing vaccination
 *vaccinate* - Record a vaccine given, step by step
 *mating* - Record a mating, step by step
@@ -1219,6 +1221,10 @@ Share this password with them securely — they should change it after first log
             case "record":
             case "care":
                 return await HandleRecordCommandAsync(parts, companyId, session);
+            case "feedall":
+                return await StartFeedAllAsync(companyId, session);
+            case "feed" when parts.Length > 1 && parts[1] == "all":
+                return await StartFeedAllAsync(companyId, session);
             case "vaccine":
                 return await GetVaccineDueAsync(companyId);
             case "vaccinate":
@@ -1383,6 +1389,7 @@ Share this password with them securely — they should change it after first log
             sb.AppendLine($"{i + 1}. {dogs[i].Name} ({dogs[i].Breed})");
         sb.AppendLine();
         sb.AppendLine("*Reply with the dog's number*");
+        sb.AppendLine("🍖 Or reply *all* to feed ALL dogs at once");
         sb.Append("Type *back* to cancel");
         return sb.ToString();
     }
@@ -1395,9 +1402,12 @@ Share this password with them securely — they should change it after first log
             return GetMainMenu();
         }
 
+        if (input == "all" || input == "feedall")
+            return await StartFeedAllAsync(companyId, session);
+
         var selectedId = ResolveListSelection(session, input);
         if (selectedId == null)
-            return "❌ Not a valid number from the list above. Reply with a number, or type *back* to cancel.";
+            return "❌ Not a valid number from the list above. Reply with a number, *all* to feed every dog, or type *back* to cancel.";
 
         return await StartRecordEventStepAsync(selectedId.Value, session);
     }

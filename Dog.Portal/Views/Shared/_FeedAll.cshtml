@@ -1,0 +1,72 @@
+@* "Feed all dogs": records today's feeding for every dog in the kennel in one go (standard portion unless typed otherwise).
+   Include once on a page, then call FeedAll.open() from a button. *@
+<style>
+.fa-bd{position:fixed;inset:0;background:rgba(15,23,42,.5);backdrop-filter:blur(3px);z-index:1075;display:none;align-items:center;justify-content:center;padding:1rem}
+.fa-bd.open{display:flex}
+.fa-box{background:#fff;border-radius:16px;width:100%;max-width:480px;box-shadow:0 24px 70px rgba(0,0,0,.25);overflow:hidden}
+.fa-h{padding:1rem 1.3rem;border-bottom:1px solid #f1f5f9;display:flex;justify-content:space-between;align-items:center}
+.fa-h h5{margin:0;font-size:1rem;font-weight:800;color:#0f172a}
+.fa-x{width:30px;height:30px;border:none;background:#f1f5f9;border-radius:7px;color:#64748b;cursor:pointer}
+.fa-b{padding:1.1rem 1.3rem}
+.fa-f{margin-bottom:.8rem}.fa-f label{display:block;font-size:.77rem;font-weight:700;color:#374151;margin-bottom:.28rem}
+.fa-i{width:100%;padding:.58rem .8rem;border:1.5px solid #e2e8f0;border-radius:9px;font-size:.85rem;outline:none}
+.fa-i:focus{border-color:#6366f1;box-shadow:0 0 0 3px rgba(99,102,241,.12)}
+.fa-chips{display:flex;gap:.4rem;flex-wrap:wrap;margin-bottom:.8rem}
+.fa-chip{padding:.3rem .8rem;border:1.5px solid #e2e8f0;border-radius:20px;font-size:.78rem;font-weight:700;color:#475569;cursor:pointer;background:#fff}
+.fa-chip.on{border-color:#6366f1;background:#eef2ff;color:#4338ca}
+.fa-note{background:#f8fafc;border-left:3px solid #6366f1;border-radius:6px;padding:.55rem .8rem;font-size:.8rem;color:#475569;margin-bottom:.9rem}
+.fa-f2{padding:.85rem 1.3rem;border-top:1px solid #f1f5f9;display:flex;justify-content:flex-end;gap:.6rem;background:#fafbfc}
+.fa-btn{padding:.6rem 1.3rem;border:none;border-radius:9px;font-size:.85rem;font-weight:700;cursor:pointer}
+.fa-btn.pri{background:linear-gradient(135deg,#f59e0b,#d97706);color:#fff}.fa-btn.sec{background:#f1f5f9;color:#475569;border:1.5px solid #e2e8f0}
+.fa-btn:disabled{opacity:.6;cursor:not-allowed}
+.fa-res{font-size:.85rem;line-height:1.6}.fa-res b{color:#0f172a}
+</style>
+<div class="fa-bd" id="faModal"><div class="fa-box">
+  <div class="fa-h"><h5><i class="bi bi-egg-fried" style="color:#d97706"></i> Feed all dogs</h5><button class="fa-x" onclick="FeedAll.close()"><i class="bi bi-x-lg"></i></button></div>
+  <div class="fa-b" id="faForm">
+    <div class="fa-note">Records <b>today's feeding for every dog in the kennel</b> in one go, whoever they are allocated to. Dogs that already have today's feeding are left out. A WhatsApp notice goes out for each dog and one summary.</div>
+    <div class="fa-f"><label>Portion</label>
+      <div class="fa-chips" id="faChips"><span class="fa-chip on" data-p="Standard portion">Standard portion</span><span class="fa-chip" data-p="Double portion">Double portion</span><span class="fa-chip" data-p="Half portion">Half portion</span></div>
+      <input class="fa-i" id="faPortion" value="Standard portion" placeholder="e.g. Standard portion, 2 cups"></div>
+    <div class="fa-f"><label>Note <span style="font-weight:500;color:#94a3b8">(optional)</span></label><input class="fa-i" id="faNote" placeholder="e.g. Morning feed, everyone ate well"></div>
+    <label style="display:flex;gap:.5rem;align-items:center;font-size:.82rem;cursor:pointer;margin:0"><input type="checkbox" id="faDeployed"> Include dogs that are out on deployment</label>
+    <div id="faErr" style="color:#b91c1c;font-size:.82rem;font-weight:600;margin-top:.7rem;display:none"></div>
+  </div>
+  <div class="fa-b fa-res" id="faResult" style="display:none"></div>
+  <div class="fa-f2" id="faFoot"><button class="fa-btn sec" onclick="FeedAll.close()">Cancel</button><button class="fa-btn pri" id="faGo" onclick="FeedAll.go()"><i class="bi bi-check2-circle"></i> Feed all dogs</button></div>
+</div></div>
+<script>
+var FeedAll = (function () {
+    function $(i) { return document.getElementById(i); }
+    function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+    document.addEventListener('click', function (e) {
+        var c = e.target.closest && e.target.closest('#faChips .fa-chip'); if (!c) return;
+        document.querySelectorAll('#faChips .fa-chip').forEach(function (x) { x.classList.toggle('on', x === c); });
+        $('faPortion').value = c.dataset.p;
+    });
+    return {
+        open: function () {
+            $('faForm').style.display = ''; $('faResult').style.display = 'none'; $('faErr').style.display = 'none';
+            $('faFoot').innerHTML = '<button class="fa-btn sec" onclick="FeedAll.close()">Cancel</button><button class="fa-btn pri" id="faGo" onclick="FeedAll.go()"><i class="bi bi-check2-circle"></i> Feed all dogs</button>';
+            $('faModal').classList.add('open');
+        },
+        close: function () { $('faModal').classList.remove('open'); },
+        go: async function () {
+            var b = $('faGo'); b.disabled = true; b.textContent = 'Recording…'; $('faErr').style.display = 'none';
+            try {
+                var r = await fetch('/Dogs/FeedAll', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({
+                    portion: $('faPortion').value.trim() || 'Standard portion', details: $('faNote').value.trim() || null, includeDeployed: $('faDeployed').checked, occurredOn: new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 19) }) });
+                var j = await r.json();
+                if (!j.success) { $('faErr').textContent = j.message || 'Could not record the feeding.'; $('faErr').style.display = 'block'; b.disabled = false; b.innerHTML = '<i class="bi bi-check2-circle"></i> Feed all dogs'; return; }
+                var d = j.data || {};
+                $('faForm').style.display = 'none'; var res = $('faResult'); res.style.display = '';
+                res.innerHTML = '<div style="font-size:1.05rem;font-weight:800;color:#047857;margin-bottom:.4rem"><i class="bi bi-check-circle-fill"></i> ' + esc(j.message) + '</div>' +
+                    '<div><b>' + (d.fed || 0) + '</b> fed · <b>' + (d.alreadyFed || []).length + '</b> already fed today' + ((d.deployed || []).length ? ' · <b>' + d.deployed.length + '</b> on deployment (not included)' : '') + '</div>' +
+                    ((d.alreadyFed || []).length ? '<div style="color:#64748b;margin-top:.3rem">Already fed: ' + esc(d.alreadyFed.join(', ')) + '</div>' : '') +
+                    (d.notifyingWhatsApp ? '<div style="color:#475569;margin-top:.4rem"><i class="bi bi-whatsapp" style="color:#16a34a"></i> WhatsApp notifications are being sent for each dog — it takes a few minutes.</div>' : '');
+                $('faFoot').innerHTML = '<button class="fa-btn pri" onclick="FeedAll.close(); location.reload();">Done</button>';
+            } catch (e) { $('faErr').textContent = 'Network error. Please try again.'; $('faErr').style.display = 'block'; b.disabled = false; b.innerHTML = '<i class="bi bi-check2-circle"></i> Feed all dogs'; }
+        }
+    };
+})();
+</script>
