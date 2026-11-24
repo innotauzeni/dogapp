@@ -304,6 +304,10 @@ namespace Dog.Application.Features.DogTraining.DTOs
         /// <summary>0-10, as on the weekly plan sheets.</summary>
         public int? Rating { get; set; }
         public string? Notes { get; set; }
+        /// <summary>The handler decided this activity was not done today (different from 'not logged yet').</summary>
+        public bool Skipped { get; set; }
+        /// <summary>When this activity was logged (the handler's own clock) - so each stage of the day can be logged as it happens.</summary>
+        public DateTime? LoggedAt { get; set; }
     }
 
     public class DailyLogDto

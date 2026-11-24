@@ -91,6 +91,8 @@ public class UserSession
     public DailyLogDto? TrainingLogDraft { get; set; }
     public List<LogSlotDto> TrainingSlots { get; set; } = new();
     public int TrainingSlotIndex { get; set; }
+    /// <summary>Rating just ONE chosen activity (saved straight away) instead of walking through all of them.</summary>
+    public bool TrainingSingleSlot { get; set; }
     public int TrainingMinutes { get; set; }
     public string? TrainingDogName { get; set; }
     public Dog.Application.Features.DogTraining.DTOs.ProgressReportDto? TrainingReportDraft { get; set; }

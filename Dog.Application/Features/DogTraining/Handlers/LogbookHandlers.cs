@@ -142,6 +142,14 @@ namespace Dog.Application.Features.DogTraining.Handlers
             if (d.DurationMinutes < 0 || d.DurationMinutes > 1440) return ApiResponse<DailyLogDto>.Fail("Training duration is not valid.");
             if (d.Slots.Any(s => s.Rating is < 0 or > 10)) return ApiResponse<DailyLogDto>.Fail("Ratings must be between 0 and 10.");
 
+            // Each activity can be logged on its own as it happens: keep when it was logged, clear it when the activity is reopened.
+            foreach (var sl in d.Slots)
+            {
+                if (sl.Skipped) { sl.Done = false; sl.Rating = null; }
+                if (sl.Done || sl.Skipped) sl.LoggedAt ??= DateTime.UtcNow;
+                else sl.LoggedAt = null;
+            }
+
             var avg = TrainingSupport.Average(d.Slots.Where(s => s.Done).Select(s => s.Rating));
             var performance = TrainingSupport.Trim(d.Performance) ?? (avg.HasValue ? TrainingSupport.PerformanceFromAverage(avg.Value) : "Good");
             if (!TrainingSupport.PerformanceLevels.Contains(performance))

@@ -118,6 +118,53 @@ class _TrainingLogScreenState extends State<TrainingLogScreen> {
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(m), backgroundColor: error ? AppColors.danger : AppColors.success));
   }
 
+  /// Saves ONE activity right now (the rest of the day stays as it is) - so each stage can be logged when it happens.
+  Future<void> _saveSlot(LogSlot s) async {
+    if (s.done && s.rating == null) {
+      _toast('Choose a rating from 0 to 10 first.', error: true);
+      return;
+    }
+    s.loggedAt ??= DateTime.now().toIso8601String();
+    await _persist(slotSaved: s);
+  }
+
+  Future<void> _persist({LogSlot? slotSaved}) async {
+    setState(() => _saving = true);
+    try {
+      final suggested = _average == null ? null : _suggest(_average!);
+      final saved = await _repo.saveLog({
+        'enrollmentId': widget.dog.id,
+        'trainingDate': _date.toIso8601String(),
+        'activitiesPerformed': _activities.text,
+        'commandsPracticed': _commands.text,
+        'durationMinutes': int.tryParse(_duration.text) ?? 0,
+        'slots': _slots.map((s) => s.toJson()).toList(),
+        'performance': _performance ?? suggested,
+        'behaviourObservations': _observations.text,
+        'challenges': _challenges.text,
+        'improvements': _improvements.text,
+        'recommendations': _recommendations.text,
+        'nextObjectives': _next.text,
+      });
+      if (!mounted) return;
+      setState(() {
+        _log = saved;
+        // Take the saved times back from the server, keep what is still being typed.
+        for (var i = 0; i < _slots.length && i < saved.slots.length; i++) {
+          _slots[i].loggedAt = saved.slots[i].loggedAt;
+          _slots[i].dirty = false;
+        }
+      });
+      _toast(slotSaved == null ? 'Training recorded.' : '${slotSaved.title} saved.');
+    } on ApiException catch (e) {
+      if (mounted) _toast(e.message, error: true);
+    } catch (_) {
+      if (mounted) _toast('Could not save. Check your connection and try again.', error: true);
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
+  }
+
   Future<void> _save() async {
     if (_slots.any((s) => s.done && s.rating == null)) {
       final ok = await showDialog<bool>(
@@ -267,7 +314,16 @@ class _TrainingLogScreenState extends State<TrainingLogScreen> {
           ])),
         ],
         SizedBox(height: 14.h),
-        Text('Today\'s schedule', style: TextStyle(fontSize: 14.sp, fontWeight: FontWeight.w800)),
+        Row(children: [
+          Expanded(child: Text('Today\'s schedule', style: TextStyle(fontSize: 14.sp, fontWeight: FontWeight.w800))),
+          if (_slots.isNotEmpty) Text('${_slots.where((x) => x.logged && !x.dirty).length} of ${_slots.length} logged', style: TextStyle(fontSize: 12.sp, fontWeight: FontWeight.w700, color: AppColors.textSecondary)),
+        ]),
+        if (_slots.isNotEmpty) ...[
+          SizedBox(height: 6.h),
+          ClipRRect(borderRadius: BorderRadius.circular(6), child: LinearProgressIndicator(value: _slots.where((x) => x.logged && !x.dirty).length / _slots.length, minHeight: 7, backgroundColor: AppColors.surfaceAlt, color: const Color(0xFF059669))),
+          SizedBox(height: 4.h),
+          Text('Log each activity as it happens: tap Done, rate it and save it. The rest of the day can wait.', style: TextStyle(fontSize: 11.sp, color: AppColors.textMuted)),
+        ],
         SizedBox(height: 8.h),
         if (_slots.isEmpty)
           _card(Text('No schedule is set for today. Fill in the details below.', style: TextStyle(fontSize: 12.sp, color: AppColors.textSecondary)))
@@ -324,14 +380,25 @@ class _TrainingLogScreenState extends State<TrainingLogScreen> {
     );
   }
 
+  String _clock(String? iso) {
+    final t = DateTime.tryParse(iso ?? '');
+    if (t == null) return '';
+    final l = t.isUtc ? t.toLocal() : t;
+    return '${l.hour.toString().padLeft(2, '0')}:${l.minute.toString().padLeft(2, '0')}';
+  }
+
   Widget _slotCard(LogSlot s) {
+    // The first activity that is neither done nor skipped is "up next".
+    final next = _slots.firstWhere((x) => !x.logged, orElse: () => s);
+    final isNext = identical(next, s) && !s.logged;
+    final Color accent = s.done ? const Color(0xFF059669) : s.skipped ? AppColors.textMuted : isNext ? AppColors.primary : AppColors.border;
     return Container(
-      margin: EdgeInsets.only(bottom: 8.h),
+      margin: EdgeInsets.only(bottom: 10.h),
       padding: EdgeInsets.all(12.w),
       decoration: BoxDecoration(
-        color: s.done ? const Color(0xFFF0FDF9) : AppColors.surface,
+        color: s.done ? const Color(0xFFF0FDF9) : s.skipped ? AppColors.surfaceAlt : AppColors.surface,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: s.done ? const Color(0xFFA7F3D0) : AppColors.border, width: 1.5),
+        border: Border.all(color: accent, width: isNext ? 2 : 1.5),
       ),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Row(children: [
@@ -341,16 +408,58 @@ class _TrainingLogScreenState extends State<TrainingLogScreen> {
               Text(s.title, style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14.sp)),
             ]),
           ),
-          FilledButton.tonal(
-            onPressed: () => setState(() {
-              s.done = !s.done;
-              if (!s.done) s.rating = null;
-            }),
-            child: Text(s.done ? '✓ Done' : 'Mark done'),
-          ),
+          if (s.done && !s.dirty && s.loggedAt != null)
+            _tag('Logged ${_clock(s.loggedAt)}', const Color(0xFF065F46), const Color(0xFFD1FAE5))
+          else if (s.skipped)
+            _tag('Skipped', AppColors.textSecondary, AppColors.border)
+          else if (s.done)
+            _tag('Not saved yet', const Color(0xFF92400E), const Color(0xFFFEF3C7))
+          else if (isNext)
+            _tag('Up next', AppColors.primary, AppColors.primary.withValues(alpha: 0.12))
+          else
+            _tag('Pending', AppColors.textMuted, AppColors.surfaceAlt),
         ]),
+        SizedBox(height: 10.h),
+        if (!s.done && !s.skipped)
+          Row(children: [
+            Expanded(
+              child: FilledButton.icon(
+                onPressed: () => setState(() {
+                  s.done = true;
+                  s.dirty = true;
+                }),
+                icon: const Icon(Icons.check_rounded, size: 18),
+                label: const Text('Done'),
+              ),
+            ),
+            SizedBox(width: 8.w),
+            OutlinedButton(
+              onPressed: () {
+                setState(() {
+                  s.skipped = true;
+                  s.done = false;
+                  s.rating = null;
+                  s.dirty = true;
+                  s.loggedAt ??= DateTime.now().toIso8601String();
+                });
+                _persist(slotSaved: s);
+              },
+              child: const Text('Skip'),
+            ),
+          ]),
+        if (s.skipped)
+          Align(
+            alignment: Alignment.centerLeft,
+            child: TextButton(
+              onPressed: () => setState(() {
+                s.skipped = false;
+                s.loggedAt = null;
+                s.dirty = true;
+              }),
+              child: const Text('Undo skip'),
+            ),
+          ),
         if (s.done) ...[
-          SizedBox(height: 8.h),
           Text('Rate out of 10', style: TextStyle(fontSize: 11.sp, color: AppColors.textSecondary)),
           SizedBox(height: 4.h),
           Wrap(
@@ -359,7 +468,10 @@ class _TrainingLogScreenState extends State<TrainingLogScreen> {
             children: List.generate(11, (n) {
               final on = s.rating == n;
               return InkWell(
-                onTap: () => setState(() => s.rating = n),
+                onTap: () => setState(() {
+                  s.rating = n;
+                  s.dirty = true;
+                }),
                 borderRadius: BorderRadius.circular(8),
                 child: Container(
                   width: 38.w,
@@ -378,13 +490,42 @@ class _TrainingLogScreenState extends State<TrainingLogScreen> {
           SizedBox(height: 8.h),
           TextFormField(
             initialValue: s.notes,
-            onChanged: (v) => s.notes = v,
+            onChanged: (v) {
+              s.notes = v;
+              s.dirty = true;
+            },
             decoration: const InputDecoration(hintText: 'Notes (optional)', isDense: true, border: OutlineInputBorder()),
           ),
+          SizedBox(height: 10.h),
+          Row(children: [
+            Expanded(
+              child: FilledButton.icon(
+                onPressed: _saving ? null : () => _saveSlot(s),
+                icon: const Icon(Icons.save_rounded, size: 18),
+                label: Text(s.loggedAt != null && !s.dirty ? 'Saved ✓' : 'Save ${s.time} activity'),
+              ),
+            ),
+            SizedBox(width: 8.w),
+            TextButton(
+              onPressed: () => setState(() {
+                s.done = false;
+                s.rating = null;
+                s.loggedAt = null;
+                s.dirty = true;
+              }),
+              child: const Text('Reopen'),
+            ),
+          ]),
         ],
       ]),
     );
   }
+
+  Widget _tag(String text, Color fg, Color bg) => Container(
+        padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 4.h),
+        decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(20)),
+        child: Text(text, style: TextStyle(fontSize: 11.sp, fontWeight: FontWeight.w700, color: fg)),
+      );
 
   Widget _card(Widget child) => Container(
         width: double.infinity,

@@ -63,7 +63,7 @@
     async function load() {
         var r = await T.api('GET', 'logs/day?enrollmentId=' + ID + '&date=' + DATE);
         if (!r.success) { head.innerHTML = '<div class="tr-card"><div class="tr-empty"><i class="bi bi-exclamation-circle"></i>' + T.esc(r.message || 'Could not open this dog.') + '</div></div>'; return; }
-        log = r.data; slots = (log.slots || []).map(function (s) { return { time: s.time, title: s.title, done: !!s.done, rating: s.rating, notes: s.notes || '' }; });
+        log = r.data; slots = (log.slots || []).map(function (s) { return { time: s.time, title: s.title, done: !!s.done, rating: s.rating, notes: s.notes || '', skipped: !!s.skipped, loggedAt: s.loggedAt || null, dirty: false }; });
         performance = log.id ? log.performance : null;
         head.innerHTML = '<div class="tr-card">' + T.dog(log.dogName, log.weekNumber ? 'Week ' + log.weekNumber + ' · Day ' + log.dayNumber : 'Training not active on this date') +
             '<div class="tr-field" style="margin:.8rem 0 0;max-width:210px"><label>Training date</label><input type="date" class="tr-in" id="dt" value="' + DATE + '" max="' + T.isoDate() + '"></div></div>';
@@ -84,17 +84,32 @@
         tgtToggle.onclick = function () { tgtBody.style.display = tgtBody.style.display === 'none' ? '' : 'none'; };
     }
 
+    function clock(iso) { if (!iso) return ''; var d = new Date(iso); return isNaN(d) ? '' : d.toTimeString().slice(0, 5); }
+
     function drawSlots() {
         var el = document.getElementById('slots');
         if (slots.length === 0) { el.innerHTML = '<div class="tr-card"><div class="tr-note">No schedule is set for this day. Fill in the details below.</div></div>'; updateAvg(); return; }
-        el.innerHTML = slots.map(function (s, i) {
+        var logged = slots.filter(function (x) { return (x.done || x.skipped) && !x.dirty; }).length;
+        var next = slots.findIndex(function (x) { return !x.done && !x.skipped; });
+        var head = '<div class="tr-note" style="margin:0 0 .5rem"><b>' + logged + ' of ' + slots.length + ' logged.</b> Log each activity as it happens: tick it done, rate it and save it. The rest of the day can wait.</div>';
+        el.innerHTML = head + slots.map(function (s, i) {
             var rate = ''; for (var n = 0; n <= 10; n++) rate += '<button type="button" data-i="' + i + '" data-n="' + n + '" class="' + (s.rating === n ? 'on' : '') + '">' + n + '</button>';
-            return '<div class="slot' + (s.done ? ' done' : '') + '" data-slot="' + i + '"><div class="t"><div><div class="tm">' + T.esc(s.time) + '</div><div class="nm">' + T.esc(s.title) + '</div></div><button type="button" class="tick" data-tick="' + i + '">' + (s.done ? '<i class="bi bi-check-lg"></i> Done' : 'Mark done') + '</button></div>' +
-                (s.done ? '<div class="tr-note" style="margin:.4rem 0 .25rem">Rate out of 10</div><div class="tr-rate">' + rate + '</div><input class="tr-in" style="margin-top:.5rem" data-note="' + i + '" placeholder="Notes (optional)" value="' + T.esc(s.notes) + '">' : '') + '</div>';
+            var tag = s.done && !s.dirty && s.loggedAt ? '<span class="tr-badge b-green">Logged ' + clock(s.loggedAt) + '</span>' : s.skipped ? '<span class="tr-badge b-gray">Skipped</span>' :
+                s.done ? '<span class="tr-badge b-amber">Not saved yet</span>' : (i === next ? '<span class="tr-badge b-blue">Up next</span>' : '<span class="tr-badge b-gray">Pending</span>');
+            var btns = (!s.done && !s.skipped) ? '<button type="button" class="tick" data-tick="' + i + '">Mark done</button> <button type="button" class="tr-btn btn-ghost-t btn-sm-t" data-skip="' + i + '">Skip</button>' :
+                s.skipped ? '<button type="button" class="tr-btn btn-ghost-t btn-sm-t" data-unskip="' + i + '">Undo skip</button>' : '<button type="button" class="tick" data-tick="' + i + '"><i class="bi bi-check-lg"></i> Done</button>';
+            return '<div class="slot' + (s.done ? ' done' : '') + '" data-slot="' + i + '"' + (i === next ? ' style="border-color:#667eea"' : '') + '><div class="t"><div><div class="tm">' + T.esc(s.time) + '</div><div class="nm">' + T.esc(s.title) + '</div></div><div style="display:flex;gap:.4rem;align-items:center;flex-wrap:wrap;justify-content:flex-end">' + tag + btns + '</div></div>' +
+                (s.done ? '<div class="tr-note" style="margin:.4rem 0 .25rem">Rate out of 10</div><div class="tr-rate">' + rate + '</div><input class="tr-in" style="margin-top:.5rem" data-note="' + i + '" placeholder="Notes (optional)" value="' + T.esc(s.notes) + '">' +
+                    '<div style="margin-top:.55rem"><button type="button" class="tr-btn btn-success-t" data-saveslot="' + i + '"><i class="bi bi-save"></i> ' + (s.loggedAt && !s.dirty ? 'Saved' : 'Save ' + T.esc(s.time) + ' activity') + '</button></div>' : '') + '</div>';
         }).join('');
-        el.querySelectorAll('[data-tick]').forEach(function (b) { b.onclick = function () { var s = slots[+b.dataset.tick]; s.done = !s.done; if (!s.done) s.rating = null; drawSlots(); }; });
-        el.querySelectorAll('.tr-rate button').forEach(function (b) { b.onclick = function () { slots[+b.dataset.i].rating = +b.dataset.n; drawSlots(); }; });
-        el.querySelectorAll('[data-note]').forEach(function (i) { i.oninput = function () { slots[+i.dataset.note].notes = i.value; }; });
+        el.querySelectorAll('[data-tick]').forEach(function (b) { b.onclick = function () { var s = slots[+b.dataset.tick]; if (s.done) { s.done = false; s.rating = null; s.loggedAt = null; } else { s.done = true; } s.dirty = true; drawSlots(); }; });
+        el.querySelectorAll('[data-skip]').forEach(function (b) { b.onclick = function () { var s = slots[+b.dataset.skip]; s.skipped = true; s.done = false; s.rating = null; s.dirty = true; s.loggedAt = s.loggedAt || new Date().toISOString(); saveAll(true); }; });
+        el.querySelectorAll('[data-unskip]').forEach(function (b) { b.onclick = function () { var s = slots[+b.dataset.unskip]; s.skipped = false; s.loggedAt = null; s.dirty = true; drawSlots(); }; });
+        el.querySelectorAll('.tr-rate button').forEach(function (b) { b.onclick = function () { var s = slots[+b.dataset.i]; s.rating = +b.dataset.n; s.dirty = true; drawSlots(); }; });
+        el.querySelectorAll('[data-note]').forEach(function (i) { i.oninput = function () { var s = slots[+i.dataset.note]; s.notes = i.value; s.dirty = true; }; });
+        el.querySelectorAll('[data-saveslot]').forEach(function (b) {
+            b.onclick = function () { var s = slots[+b.dataset.saveslot]; if (s.rating == null) { T.toast('Choose a rating from 0 to 10 first.', 'error'); return; } s.loggedAt = s.loggedAt || new Date().toISOString(); saveAll(true); };
+        });
         updateAvg();
     }
 
@@ -113,16 +128,23 @@
         if (log && log.id) T.attachments('files', 'TrainingLog', log.id, canRecord);
     }
 
-    save.onclick = async function () {
-        if (slots.some(function (s) { return s.done && s.rating == null; }) && !confirm('Some completed activities have no rating. Save anyway?')) return;
+    async function saveAll(quiet) {
         T.busy(save, true, 'Saving…');
         var r = await T.api('POST', 'logs', {
             enrollmentId: ID, trainingDate: DATE, activitiesPerformed: acts.value, commandsPracticed: cmds.value, durationMinutes: +dur.value || 0,
-            slots: slots.map(function (s) { return { time: s.time, title: s.title, done: s.done, rating: s.done ? s.rating : null, notes: s.notes }; }),
+            slots: slots.map(function (s) { return { time: s.time, title: s.title, done: s.done, rating: s.done ? s.rating : null, notes: s.notes, skipped: s.skipped, loggedAt: (s.done || s.skipped) ? s.loggedAt : null }; }),
             performance: performance, behaviourObservations: obs.value, challenges: chal.value, improvements: impr.value, recommendations: recs.value, nextObjectives: next.value
         });
         T.busy(save, false);
-        if (r.success) { T.toast(r.message); log = r.data; drawFiles(); window.scrollTo({ top: 0, behavior: 'smooth' }); } else T.toast(r.message || 'Could not save.', 'error');
+        if (r.success) {
+            T.toast(quiet ? 'Activity saved.' : r.message); log = r.data;
+            (log.slots || []).forEach(function (x, i) { if (slots[i]) { slots[i].loggedAt = x.loggedAt || slots[i].loggedAt; slots[i].dirty = false; } });
+            drawSlots(); drawFiles(); if (!quiet) window.scrollTo({ top: 0, behavior: 'smooth' });
+        } else T.toast(r.message || 'Could not save.', 'error');
+    }
+    save.onclick = async function () {
+        if (slots.some(function (s) { return s.done && s.rating == null; }) && !confirm('Some completed activities have no rating. Save anyway?')) return;
+        saveAll(false);
     };
     load();
 })();

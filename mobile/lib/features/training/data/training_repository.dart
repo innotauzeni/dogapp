@@ -51,8 +51,13 @@ class LogSlot {
   bool done;
   int? rating; // 0-10, as on the weekly plan sheets
   String notes;
+  bool skipped;
+  String? loggedAt; // ISO time the handler logged it (the phone's clock)
+  bool dirty = false; // changed on screen but not saved yet
 
-  LogSlot({required this.time, required this.title, this.done = false, this.rating, this.notes = ''});
+  LogSlot({required this.time, required this.title, this.done = false, this.rating, this.notes = '', this.skipped = false, this.loggedAt});
+
+  bool get logged => done || skipped;
 
   factory LogSlot.fromJson(Map<String, dynamic> j) => LogSlot(
         time: _s(j['time']),
@@ -60,9 +65,19 @@ class LogSlot {
         done: j['done'] == true,
         rating: j['rating'] == null ? null : _i(j['rating']),
         notes: _s(j['notes']),
+        skipped: j['skipped'] == true,
+        loggedAt: j['loggedAt']?.toString(),
       );
 
-  Map<String, dynamic> toJson() => {'time': time, 'title': title, 'done': done, 'rating': done ? rating : null, 'notes': notes};
+  Map<String, dynamic> toJson() => {
+        'time': time,
+        'title': title,
+        'done': done,
+        'rating': done ? rating : null,
+        'notes': notes,
+        'skipped': skipped,
+        'loggedAt': logged ? loggedAt : null,
+      };
 }
 
 class DailyLog {

@@ -136,7 +136,8 @@ public partial class WhatsAppBotService
             return $"❌ {resp?.Message ?? "Could not open that dog."}\n\nType *back* for the main menu.";
 
         session.TrainingLogDraft = resp.Data;
-        session.TrainingSlots = resp.Data.Slots.Select(s => new LogSlotDto { Time = s.Time, Title = s.Title, Done = s.Done, Rating = s.Rating, Notes = s.Notes }).ToList();
+        session.TrainingSlots = resp.Data.Slots.Select(s => new LogSlotDto { Time = s.Time, Title = s.Title, Done = s.Done, Rating = s.Rating, Notes = s.Notes, Skipped = s.Skipped, LoggedAt = s.LoggedAt }).ToList();
+        session.TrainingSingleSlot = false;
         session.TrainingSlotIndex = 0;
         session.TrainingDogName = resp.Data.DogName;
 
@@ -147,8 +148,49 @@ public partial class WhatsAppBotService
             session.CurrentMenu = "training_duration";
             return head + "No schedule is set for today.\n\n⏱ How many *minutes* of training today? (number, or *skip*)";
         }
+        session.CurrentMenu = "training_slot_pick";
+        return head + SlotListText(session);
+    }
+
+    /// The day's activities with what has been logged so far - the handler picks the one they just did.
+    private static string SlotListText(UserSession s)
+    {
+        var sb = new StringBuilder();
+        for (var i = 0; i < s.TrainingSlots.Count; i++)
+        {
+            var x = s.TrainingSlots[i];
+            var state = x.Done ? $"✅ {(x.Rating.HasValue ? $"{x.Rating}/10" : "done")}" : x.Skipped ? "⏭ skipped" : "⬜ not logged yet";
+            sb.AppendLine($"{i + 1}. *{x.Time} — {x.Title}*  {state}");
+        }
+        sb.AppendLine();
+        sb.AppendLine("Reply the *number* of the activity to rate it (it is saved straight away),");
+        sb.AppendLine("*all* to go through the ones not logged yet, or *done* to finish the day (minutes and notes).");
+        return sb.ToString();
+    }
+
+    private async Task<string> HandleTrainingSlotPickAsync(string input, int companyId, UserSession session)
+    {
+        if (input == "done" || input == "finish")
+        {
+            session.CurrentMenu = "training_duration";
+            return "⏱ How many *minutes* of training today? (number, or *skip*)";
+        }
+        if (input == "all")
+        {
+            var first = session.TrainingSlots.FindIndex(x => !x.Done && !x.Skipped);
+            if (first < 0) return "✅ Every activity is already logged.\n\n" + SlotListText(session);
+            session.TrainingSingleSlot = false;
+            session.TrainingSlotIndex = first;
+            session.CurrentMenu = "training_slot";
+            return SlotPrompt(session);
+        }
+        if (!int.TryParse(input, out var n) || n < 1 || n > session.TrainingSlots.Count)
+            return "❌ Reply an activity number from the list, *all*, or *done*.\n\n" + SlotListText(session);
+
+        session.TrainingSingleSlot = true;
+        session.TrainingSlotIndex = n - 1;
         session.CurrentMenu = "training_slot";
-        return head + "For each activity reply a *rating 0-10* if it was done, or *skip* if it wasn't.\n\n" + SlotPrompt(session);
+        return SlotPrompt(session);
     }
 
     private static string SlotPrompt(UserSession s)
@@ -157,21 +199,43 @@ public partial class WhatsAppBotService
         return $"⏰ *{slot.Time} — {slot.Title}*  ({s.TrainingSlotIndex + 1}/{s.TrainingSlots.Count})\nRating 0-10, or *skip*";
     }
 
-    private string HandleTrainingSlot(string input, UserSession session)
+    private async Task<string> HandleTrainingSlotAsync(string input, int companyId, UserSession session)
     {
         var slot = session.TrainingSlots[session.TrainingSlotIndex];
         if (input is "skip" or "s" or "no" or "n")
         {
-            slot.Done = false; slot.Rating = null;
+            slot.Done = false; slot.Rating = null; slot.Skipped = true; slot.LoggedAt = _clock.Now;
         }
         else if (int.TryParse(input, out var r) && r is >= 0 and <= 10)
         {
-            slot.Done = true; slot.Rating = r;
+            slot.Done = true; slot.Skipped = false; slot.Rating = r; slot.LoggedAt = _clock.Now;
         }
         else return "❌ Reply a number from *0 to 10* (rating), or *skip*.\n\n" + SlotPrompt(session);
 
-        session.TrainingSlotIndex++;
-        if (session.TrainingSlotIndex < session.TrainingSlots.Count) return SlotPrompt(session);
+        // One chosen activity: save it now, then show the list again so the handler can log the next one when it happens.
+        if (session.TrainingSingleSlot)
+        {
+            var d = session.TrainingLogDraft;
+            if (d == null) { session.CurrentMenu = "main"; return GetMainMenu(); }
+            var saved = await _mediator.Send(new SaveDailyLogCommand(TrainingActorFor(session, companyId), new SaveDailyLogDto
+            {
+                EnrollmentId = d.EnrollmentId, TrainingDate = _clock.Today, DurationMinutes = session.TrainingMinutes > 0 ? session.TrainingMinutes : d.DurationMinutes,
+                Slots = session.TrainingSlots, ActivitiesPerformed = d.ActivitiesPerformed, CommandsPracticed = d.CommandsPracticed,
+                BehaviourObservations = d.BehaviourObservations, Challenges = d.Challenges, Improvements = d.Improvements,
+                Recommendations = d.Recommendations, NextObjectives = d.NextObjectives,
+            }));
+            session.CurrentMenu = "training_slot_pick";
+            if (saved?.Success != true || saved.Data == null)
+                return $"❌ {saved?.Message ?? "Could not save that activity."}\n\n" + SlotListText(session);
+            session.TrainingLogDraft = saved.Data;
+            session.TrainingSlots = saved.Data.Slots.Select(x => new LogSlotDto { Time = x.Time, Title = x.Title, Done = x.Done, Rating = x.Rating, Notes = x.Notes, Skipped = x.Skipped, LoggedAt = x.LoggedAt }).ToList();
+            var pending = session.TrainingSlots.Count(x => !x.Done && !x.Skipped);
+            return $"✅ *{slot.Time} — {slot.Title}* saved" + (slot.Done ? $" ({slot.Rating}/10)" : " (skipped)") + $". {pending} activity(ies) still to log today.\n\n" + SlotListText(session);
+        }
+
+        // "all": walk through the ones not logged yet.
+        var nextIdx = session.TrainingSlots.FindIndex(session.TrainingSlotIndex + 1, x => !x.Done && !x.Skipped);
+        if (nextIdx >= 0) { session.TrainingSlotIndex = nextIdx; return SlotPrompt(session); }
 
         session.CurrentMenu = "training_duration";
         return "⏱ How many *minutes* of training today? (number, or *skip*)";
@@ -222,7 +286,7 @@ public partial class WhatsAppBotService
 
     private static void ClearTrainingFlow(UserSession s)
     {
-        s.TrainingLogDraft = null; s.TrainingSlots = new(); s.TrainingSlotIndex = 0; s.TrainingMinutes = 0; s.TrainingDogName = null;
+        s.TrainingLogDraft = null; s.TrainingSlots = new(); s.TrainingSlotIndex = 0; s.TrainingSingleSlot = false; s.TrainingMinutes = 0; s.TrainingDogName = null;
         s.TrainingInvoiceId = null; s.TrainingPayAmount = 0; s.TrainingPayDraft = null; s.TrainingPayQueue = new(); s.TrainingPayBankIds = new();
     }
 
